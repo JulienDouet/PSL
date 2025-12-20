@@ -1,54 +1,46 @@
-import NextAuth from "next-auth";
-import Discord from "next-auth/providers/discord";
-import Twitch from "next-auth/providers/twitch";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import { prisma } from "./prisma";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
-  providers: [
-    Discord({
+export const auth = betterAuth({
+  database: prismaAdapter(prisma, {
+    provider: "postgresql",
+  }),
+  emailAndPassword: {
+    enabled: false, // We only use social login
+  },
+  socialProviders: {
+    discord: {
       clientId: process.env.DISCORD_CLIENT_ID!,
       clientSecret: process.env.DISCORD_CLIENT_SECRET!,
-    }),
-    Twitch({
+    },
+    twitch: {
       clientId: process.env.TWITCH_CLIENT_ID!,
       clientSecret: process.env.TWITCH_CLIENT_SECRET!,
-    }),
-  ],
-  callbacks: {
-    session: async ({ session, user }) => {
-      if (session.user) {
-        session.user.id = user.id;
-        // Fetch additional user data
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { mmr: true, displayName: true, gamesPlayed: true },
-        });
-        if (dbUser) {
-          (session.user as any).mmr = dbUser.mmr;
-          (session.user as any).displayName = dbUser.displayName;
-          (session.user as any).gamesPlayed = dbUser.gamesPlayed;
-        }
-      }
-      return session;
     },
   },
-  events: {
-    createUser: async ({ user }) => {
-      // Set displayName from name or email on first sign-in
-      if (user.id) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            displayName: user.name || user.email?.split("@")[0] || "Player",
-          },
-        });
-      }
-    },
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 days
+    updateAge: 60 * 60 * 24, // Update session every day
   },
-  pages: {
-    signIn: "/login",
-    error: "/login",
+  user: {
+    additionalFields: {
+      displayName: {
+        type: "string",
+        required: false,
+      },
+      mmr: {
+        type: "number",
+        required: false,
+        defaultValue: 1000,
+      },
+      gamesPlayed: {
+        type: "number",
+        required: false,
+        defaultValue: 0,
+      },
+    },
   },
 });
+
+export type Session = typeof auth.$Infer.Session;

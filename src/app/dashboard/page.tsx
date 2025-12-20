@@ -1,22 +1,27 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getRankProgress, RANKS } from "@/lib/mmr";
+import { getRankProgress } from "@/lib/mmr";
 
 export default async function DashboardPage() {
-  const session = await auth();
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
   if (!session?.user) {
     redirect("/login");
   }
 
-  // Mock data for now (will come from database)
+  const user = session.user;
+
+  // User stats (from session or defaults)
   const userStats = {
-    mmr: (session.user as any).mmr || 1000,
-    gamesPlayed: (session.user as any).gamesPlayed || 0,
-    displayName: (session.user as any).displayName || session.user.name || "Player",
+    mmr: (user as any).mmr || 1000,
+    gamesPlayed: (user as any).gamesPlayed || 0,
+    displayName: (user as any).displayName || user.name || "Player",
     wins: 0,
     losses: 0,
     winRate: 0,
@@ -43,13 +48,13 @@ export default async function DashboardPage() {
             <Link href="/leaderboard" className="text-muted-foreground hover:text-foreground transition-colors">
               Classement
             </Link>
-            <Link href={`/profile/${session.user.id}`} className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link href={`/profile/${user.id}`} className="text-muted-foreground hover:text-foreground transition-colors">
               Profil
             </Link>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary">
-              {session.user.image && (
+              {user.image && (
                 <img
-                  src={session.user.image}
+                  src={user.image}
                   alt={userStats.displayName}
                   className="w-6 h-6 rounded-full"
                 />
@@ -165,7 +170,6 @@ export default async function DashboardPage() {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {/* Match history will be populated from database */}
                       <div className="p-3 rounded-lg bg-secondary/30 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <span className="text-green-400 font-bold">1er</span>
@@ -221,7 +225,7 @@ export default async function DashboardPage() {
                       🏆 Voir le classement
                     </Button>
                   </Link>
-                  <Link href={`/profile/${session.user.id}`} className="block">
+                  <Link href={`/profile/${user.id}`} className="block">
                     <Button variant="outline" className="w-full justify-start">
                       👤 Mon profil
                     </Button>

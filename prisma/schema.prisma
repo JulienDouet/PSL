@@ -11,77 +11,79 @@ datasource db {
 }
 
 // ============================================
-// USER & AUTHENTICATION
+// BETTER-AUTH TABLES
 // ============================================
 
 model User {
-  id            String    @id @default(cuid())
-  email         String?   @unique
+  id            String    @id
+  email         String    @unique
   name          String?
-  displayName   String
+  emailVerified Boolean   @default(false)
   image         String?
-  
-  // OAuth providers
-  discordId     String?   @unique
-  twitchId      String?   @unique
-  jklmUsername  String?   @unique
-  
-  // MMR & Ranking
-  mmr           Int       @default(1000)
-  gamesPlayed   Int       @default(0)
-  
-  // Status
-  isVerified    Boolean   @default(false)
-  isBanned      Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
-  // Relations
+  // PSL Custom Fields
+  displayName   String?
+  mmr           Int       @default(1000)
+  gamesPlayed   Int       @default(0)
+  discordId     String?   @unique
+  twitchId      String?   @unique
+  jklmUsername  String?   @unique
+  isBanned      Boolean   @default(false)
+  isVerified    Boolean   @default(false)
+  
+  // BetterAuth Relations
+  sessions      Session[]
+  accounts      Account[]
+  
+  // PSL Relations
   matchPlayers    MatchPlayer[]
   mmrHistory      MMRHistory[]
   categoryMMRs    UserCategoryMMR[]
   achievements    UserAchievement[]
   reportsMade     Report[]  @relation("Reporter")
   reportsAgainst  Report[]  @relation("Reported")
-  
-  // NextAuth.js
-  accounts      Account[]
-  sessions      Session[]
-}
-
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+model Account {
+  id                    String    @id
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
-  @@unique([identifier, token])
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 // ============================================
@@ -183,9 +185,9 @@ model Achievement {
 }
 
 enum AchievementCategory {
-  PROGRESSION   // First win, 100 games, etc.
-  PERFORMANCE   // Streak, comeback, etc.
-  SPECIAL       // Season champion, OG, etc.
+  PROGRESSION
+  PERFORMANCE
+  SPECIAL
 }
 
 model UserAchievement {
