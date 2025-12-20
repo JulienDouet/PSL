@@ -148,7 +148,7 @@ export default function LandingPage() {
             <Link href="/leaderboard" className="hover:text-foreground transition-colors">
               Classement
             </Link>
-            <a href="https://discord.gg/psl" className="hover:text-foreground transition-colors">
+            <a href="https://discord.gg/JGHRNy6qRn" className="hover:text-foreground transition-colors">
               Discord
             </a>
             <a href="https://github.com/JulienDouet/PSL" className="hover:text-foreground transition-colors">
