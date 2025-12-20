@@ -4,6 +4,9 @@ import { RANKS } from "@/lib/mmr";
 import { Navbar } from "@/components/navbar";
 import { prisma } from "@/lib/prisma";
 
+// Force dynamic rendering (no static generation at build time)
+export const dynamic = 'force-dynamic';
+
 function getRankForMMR(mmr: number, position: number) {
   // Grand Maître pour le top 5
   if (position <= 5) {
