@@ -1,12 +1,24 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { signIn } from "@/lib/auth-client";
+import { signIn, useSession } from "@/lib/auth-client";
 
 export default function LoginPage() {
+  const { data: session, isPending } = useSession();
+  const router = useRouter();
+
+  // Redirection si déjà connecté
+  useEffect(() => {
+    if (session && !isPending) {
+      router.push("/dashboard");
+    }
+  }, [session, isPending, router]);
+
   const handleDiscordLogin = async () => {
     await signIn.social({
       provider: "discord",

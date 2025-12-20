@@ -1,9 +1,17 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Navbar } from "@/components/navbar";
+import { useSession } from "@/lib/auth-client";
 
 export default function LandingPage() {
+  const { data: session } = useSession();
+  
+  // Redirection vers dashboard si connecté, sinon login
+  const ctaHref = session ? "/dashboard" : "/login";
+
   return (
     <div className="min-h-screen">
       {/* Navigation */}
@@ -27,7 +35,7 @@ export default function LandingPage() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/login">
+            <Link href={ctaHref}>
               <Button size="lg" className="bg-gradient-psl hover:opacity-90 transition-opacity text-lg px-8 py-6 glow-primary">
                 🎮 Rejoindre la Ligue
               </Button>
@@ -128,7 +136,7 @@ export default function LandingPage() {
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
             Connecte-toi avec Discord ou Twitch et lance ta première recherche de partie.
           </p>
-          <Link href="/login">
+          <Link href={ctaHref}>
             <Button size="lg" className="bg-gradient-psl hover:opacity-90 transition-opacity text-lg px-10 py-6 glow-primary animate-glow">
               🎮 Commencer maintenant
             </Button>
@@ -142,7 +150,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-2">
             <span className="text-2xl">🎮</span>
             <span className="font-bold text-gradient">PSL</span>
-            <span className="text-muted-foreground">© 2024</span>
+            <span className="text-muted-foreground">© 2025</span>
           </div>
           <div className="flex items-center gap-4 text-muted-foreground">
             <Link href="/leaderboard" className="hover:text-foreground transition-colors">

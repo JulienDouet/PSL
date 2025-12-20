@@ -44,12 +44,19 @@ export function Navbar() {
              </div>
           ) : session ? (
             <>
-              <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
-                Dashboard
-              </Link>
               <Link href="/leaderboard" className="text-muted-foreground hover:text-foreground transition-colors">
                 Classement
               </Link>
+              <Link href="/dashboard#play">
+                <Button size="sm" className="bg-gradient-psl hover:opacity-90 transition-opacity">
+                  🎮 Jouer
+                </Button>
+              </Link>
+              <a href="https://discord.gg/JGHRNy6qRn" target="_blank" rel="noopener noreferrer">
+                <Button size="sm" variant="outline" className="border-[#5865F2] text-[#5865F2] hover:bg-[#5865F2]/10">
+                  Discord
+                </Button>
+              </a>
               
               {/* Profile Dropdown */}
               <div className="relative" ref={menuRef}>
@@ -113,11 +120,7 @@ export function Navbar() {
                   Connexion
                 </Button>
               </Link>
-              <Link href="/login">
-                <Button className="bg-gradient-psl hover:opacity-90 transition-opacity">
-                  S&apos;inscrire
-                </Button>
-              </Link>
+
             </>
           )}
         </div>
