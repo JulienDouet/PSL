@@ -1,0 +1,590 @@
+/**
+ * JKLM.fun Popsauce Bot - POC v3
+ * 
+ * Basé sur l'analyse HAR complète
+ * 
+ * JKLM utilise 2 connexions WebSocket:
+ * 1. phoenix.jklm.fun - joinRoom (lobby)
+ * 2. phoenix.jklm.fun - joinGame (popsauce game)
+ */
+
+import { io } from 'socket.io-client';
+
+// URL correcte découverte dans le HAR
+const PHOENIX_URL = 'wss://phoenix.jklm.fun';
+
+class JKLMBot {
+  constructor() {
+    this.roomSocket = null;  // Connexion lobby
+    this.gameSocket = null;  // Connexion jeu
+    this.roomCode = null;
+    this.userToken = null;
+    this.players = new Map();
+    this.gameResults = [];
+    this.selfPeerId = null;
+    this.expectedPlayers = []; // Liste des joueurs attendus
+    this.allPlayersJoined = false;
+    this.isLeader = false;
+    this.verifyMode = false; // Mode vérification JKLM
+    this.verifyCode = null;  // Code à attendre
+    this.callbackUrl = null;
+  }
+
+  generateUserToken() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let token = '';
+    for (let i = 0; i < 16; i++) {
+      token += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return token;
+  }
+
+  async getRoomServer(roomCode) {
+    try {
+      const response = await fetch('https://jklm.fun/api/joinRoom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomCode })
+      });
+      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      
+      if (data.errorCode) throw new Error(data.errorCode);
+      if (!data.url) throw new Error('No URL in response');
+      
+      const url = new URL(data.url);
+      console.log(`🌐 Serveur trouvé: ${url.host}`);
+      return url.host;
+    } catch (error) {
+      console.error('❌ Erreur lookup room:', error.message);
+      throw error;
+    }
+  }
+
+  async createRoom(options = {}) {
+    const name = options.name || 'PSL Match';
+    const isPublic = options.isPublic ?? false;
+    const gameId = options.gameId || 'popsauce';
+    const creatorUserToken = this.generateUserToken();
+    
+    console.log(`🏗️ Création d'une room "${name}" (${gameId})...`);
+    
+    try {
+      const response = await fetch('https://jklm.fun/api/startRoom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, isPublic, gameId, creatorUserToken })
+      });
+      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      
+      console.log('📦 Réponse startRoom:', JSON.stringify(data, null, 2));
+      
+      if (data.errorCode) throw new Error(data.errorCode);
+      if (!data.url) throw new Error('No URL in response');
+      
+      // Le code room peut être dans data.roomCode OU dans l'URL
+      let roomCode = data.roomCode;
+      if (!roomCode && data.url) {
+        // Essayer d'extraire depuis l'URL (ex: https://jklm.fun/ABCD)
+        const parts = data.url.split('/');
+        roomCode = parts[parts.length - 1];
+      }
+      
+      if (!roomCode) throw new Error('Could not extract room code');
+      
+      console.log(`✅ Room créée: ${roomCode}`);
+      console.log(`🔗 URL: ${data.url}`);
+      
+      // Stocker le token créateur pour pouvoir rejoindre comme leader
+      this.userToken = creatorUserToken;
+      
+      return { roomCode, url: data.url };
+    } catch (error) {
+      console.error('❌ Erreur création room:', error.message);
+      throw error;
+    }
+  }
+
+  async connect(roomCode, options = {}) {
+    this.roomCode = roomCode.toUpperCase();
+    this.userToken = options.userToken || this.userToken || this.generateUserToken();
+
+    const nickname = options.nickname || 'PSL-Bot';
+    const language = options.language || 'fr-FR';
+    this.callbackUrl = options.callbackUrl;
+
+    console.log(`🎮 Recherche du serveur pour le lobby ${this.roomCode}...`);
+
+    try {
+        const serverHost = await this.getRoomServer(this.roomCode);
+        const socketUrl = `wss://${serverHost}`;
+
+        console.log(`🔌 Connexion WebSocket vers ${socketUrl}...`);
+
+        // Étape 1: Connexion au lobby (room)
+        return new Promise((resolve, reject) => {
+          this.roomSocket = io(socketUrl, {
+            transports: ['websocket'],
+            path: '/socket.io/',
+            query: { EIO: '4', transport: 'websocket' },
+            extraHeaders: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          });
+
+          this.roomSocket.on('connect', () => {
+            console.log(`✅ Connecté à ${serverHost} (room)`);
+            
+            // Envoyer joinRoom avec callback (Ack)
+            const joinData = {
+              roomCode,
+              userToken: this.userToken,
+              nickname,
+              language,
+            };
+
+            console.log('📤 Envoi joinRoom:', roomCode);
+            this.roomSocket.emit('joinRoom', joinData, (response) => {
+               console.log('📥 [ROOM] Ack reçu:', response);
+               if (response && (response.roomEntry || response[0]?.roomEntry)) {
+                 console.log('✅ Lobby rejoint (Ack), connexion au jeu...');
+                 this.connectToGame(serverHost, roomCode, nickname);
+                 resolve();
+               } else {
+                 console.error('❌ Échec joinRoom (Ack vide/invalide)');
+               }
+            });
+          });
+
+          // Écouter tous les events (debug)
+          this.roomSocket.onAny((event, ...args) => {
+            console.log(`📥 [ROOM] ${event}:`, JSON.stringify(args).substring(0, 150));
+          });
+
+          // Écouter les messages chat (pour mode vérification)
+          this.roomSocket.on('chat', (sender, message) => {
+            // Le premier argument 'sender' est un objet: { nickname: 'Pseudo', ... }
+            const nick = (typeof sender === 'object' && sender) ? sender.nickname : sender;
+            console.log(`💬 [CHAT] ${nick}: ${message}`);
+            this.handleChatMessage(nick, message);
+          });
+
+          this.roomSocket.on('connect_error', (err) => {
+            console.error('❌ Erreur room:', err.message);
+            reject(err);
+          });
+        });
+    } catch (err) {
+        console.error('❌ Impossible de trouver/rejoindre le lobby:', err);
+    }
+  }
+
+  connectToGame(serverHost, roomCode, nickname) {
+    // Étape 2: Connexion au jeu Popsauce sur le MÊME serveur
+    const socketUrl = `wss://${serverHost}`;
+    this.gameSocket = io(socketUrl, {
+      transports: ['websocket'],
+      path: '/socket.io/',
+      query: { EIO: '4', transport: 'websocket' },
+    });
+
+    this.gameSocket.on('connect', () => {
+      console.log('✅ Connecté à phoenix.jklm.fun (game)');
+      
+      // Format: joinGame(gameType, roomCode, userToken)
+      console.log('📤 Envoi joinGame...');
+      this.gameSocket.emit('joinGame', 'popsauce', roomCode, this.userToken);
+    });
+
+    // Écouter les events du jeu
+    this.gameSocket.on('setup', (data) => {
+      console.log('📋 Setup reçu!');
+      this.selfPeerId = data.selfPeerId;
+      this.isLeader = data.selfRoles && data.selfRoles.includes('leader');
+      
+      // IMPORTANT: On ne rejoint PAS la manche pour rester spectateur
+      // this.gameSocket.emit('joinRound');
+
+      // Si on est leader, configurer les règles PSL
+      if (this.isLeader) {
+         console.log('👑 Je suis LEADER!');
+         
+         // Si on attend des joueurs, verrouiller les règles pour empêcher le démarrage
+         if (this.expectedPlayers.length > 0) {
+             console.log('🔒 Verrouillage des règles (en attente de joueurs)...');
+             this.gameSocket.emit('setRulesLocked', false); // false = menu ouvert = bloque le jeu
+         }
+         
+         // Appliquer les règles PSL par défaut après un court délai
+         setTimeout(() => {
+           console.log('⚙️ Application des règles PSL...');
+           this.gameSocket.emit('setRules', { 
+             scoreGoal: 150,
+             challengeDuration: 12,
+             dictionaryId: 'fr'
+           });
+         }, 500);
+         
+         // Si pas de joueurs attendus, lancer directement
+         if (this.expectedPlayers.length === 0) {
+             setTimeout(() => {
+                 console.log('📤 Envoi startRoundNow...');
+                 this.gameSocket.emit('startRoundNow');
+             }, 3000);
+         }
+      }
+
+      if (data.players) {
+        data.players.forEach(p => {
+          this.players.set(p.peerId, {
+            nickname: p.profile?.nickname || `Player${p.peerId}`,
+            peerId: p.peerId,
+            score: 0,
+          });
+        });
+        // Vérifier si les joueurs attendus sont déjà présents
+        this.checkExpectedPlayers();
+      }
+    });
+
+    this.gameSocket.on('addPlayer', (player) => {
+      // Log complet pour debug
+      console.log(`👤 [DEBUG] addPlayer complet:`, JSON.stringify(player, null, 2));
+      
+      const nick = player.profile?.nickname || `Player${player.profile?.peerId}`;
+      const auth = player.profile?.auth; // Probablement l'info Discord/Twitch
+      
+      console.log(`👤 Joueur: ${nick}`, auth ? `(${auth.type}: ${auth.username || auth.id})` : '');
+      
+      this.players.set(player.profile?.peerId, {
+        nickname: nick,
+        peerId: player.profile?.peerId,
+        auth: auth, // Stocker l'info d'auth
+        score: 0,
+      });
+
+      // Vérifier si tous les joueurs attendus ont rejoint
+      this.checkExpectedPlayers();
+    });
+
+    this.gameSocket.on('startChallenge', (challenge) => {
+      console.log('❓ Question:', challenge.prompt?.substring(0, 50));
+    });
+
+    this.gameSocket.on('setPlayerState', (peerId, state) => {
+      const player = this.players.get(peerId);
+      if (player && state.points !== undefined) {
+        player.score = state.points;
+      }
+    });
+
+    this.gameSocket.on('endChallenge', (result) => {
+      // result format: { source: "...", submitter: "...", details: "...", fastest: "PlayerName", ... }
+      console.log('🏁 Fin du round!');
+      
+      let message = '';
+      if (result.fastest) {
+          message = `🏆 Gg ${result.fastest} !`;
+          console.log(`🏆 BRAVO ${result.fastest} ! (Vainqueur du round)`);
+      } else {
+          message = '🤷 Personne n\'a trouvé...';
+          console.log('🤷 Personne n\'a trouvé la réponse.');
+      }
+      
+      // Annoncer dans le chat : DÉSACTIVÉ pour les rounds
+      // this.sendChat(message);
+
+      console.log(`✅ Réponse: ${result.source}`);
+      if (result.details) {
+          console.log(`ℹ️ Détails: ${result.details}`);
+      }
+    });
+
+    this.gameSocket.on('setMilestone', (milestone) => {
+      if (milestone.lastRound?.winner) {
+        console.log(`🏆 GAGNANT: ${milestone.lastRound.winner.nickname}`);
+        this.sendChat(`👑 VICTOIRE DE ${milestone.lastRound.winner.nickname} !`);
+        this.compileResults();
+      }
+    });
+
+    this.gameSocket.onAny((event, ...args) => {
+      if (!['setPlayerState'].includes(event)) {
+        console.log(`📥 [GAME] ${event}:`, JSON.stringify(args).substring(0, 100));
+      }
+    });
+  }
+
+  sendChat(message) {
+    if (this.roomSocket && this.roomSocket.connected) {
+        console.log(`💬 Envoi chat: "${message}"`);
+        this.roomSocket.emit('chat', message);
+    } else {
+        console.warn('⚠️ Impossible d\'envoyer le chat (roomSocket déconnecté)');
+    }
+  }
+
+  compileResults() {
+    const sorted = [...this.players.values()].sort((a, b) => b.score - a.score);
+    console.log('\n📊 RÉSULTATS:');
+    sorted.forEach((p, i) => {
+      console.log(`  ${i + 1}. ${p.nickname}: ${p.score} pts`);
+      this.gameResults.push({ placement: i + 1, nickname: p.nickname, score: p.score });
+    });
+    
+    if (this.callbackUrl) {
+        console.log(`📤 Envoi des résultats au callback: ${this.callbackUrl}`);
+        fetch(this.callbackUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                roomCode: this.roomCode,
+                scores: this.gameResults 
+            })
+        }).then(res => {
+            console.log(`✅ Callback statut: ${res.status}`);
+            this.disconnect();
+            process.exit(0);
+        }).catch(err => {
+            console.error('❌ Erreur callback:', err);
+            this.disconnect();
+            process.exit(1);
+        });
+    } else {
+        console.log('⚠️ Pas de callback URL configurée.');
+        this.disconnect();
+        process.exit(0);
+    }
+
+    return this.gameResults;
+  }
+
+  disconnect() {
+    this.roomSocket?.disconnect();
+    this.gameSocket?.disconnect();
+  }
+
+  setExpectedPlayers(players) {
+    // players = [{ service: 'discord', id: '...' }, { service: 'jklm', username: '...' }]
+    this.expectedPlayers = players.map(p => ({
+      service: p.service.toLowerCase(),
+      id: p.id || null,
+      username: p.username ? p.username.toLowerCase().trim() : null
+    }));
+    console.log(`⏳ En attente de ${this.expectedPlayers.length} joueurs:`);
+    this.expectedPlayers.forEach(p => console.log(`  - ${p.service}:${p.id || p.username}`));
+  }
+
+  applyRules() {
+    console.log('⚙️ Application des règles PSL (Force)...');
+    if (!this.gameSocket?.connected) return;
+    
+    // Envoyer en bloc + délai pour être sûr
+    this.gameSocket.emit('setRules', { 
+         scoreGoal: 150,
+         challengeDuration: 12,
+         dictionaryId: 'fr'
+    });
+  }
+
+  checkExpectedPlayers() {
+    if (this.expectedPlayers.length === 0 || this.allPlayersJoined) return;
+
+    // Construire la liste des joueurs présents avec leur auth
+    // On utilise auth.id car c'est l'ID Discord stocké dans la BD
+    const joinedPlayers = [...this.players.values()].map(p => ({
+      service: p.auth?.service?.toLowerCase() || 'unknown',
+      id: p.auth?.id || null,
+      username: p.auth?.username?.toLowerCase() || p.nickname.toLowerCase()
+    }));
+
+    console.log(`🔍 Joueurs présents:`);
+    joinedPlayers.forEach(p => console.log(`  - ${p.service}:${p.username} (id: ${p.id})`));
+
+    // Vérifier quels joueurs attendus sont manquants
+    // On match sur service + id OU service + username (pour flexibilité)
+    const missing = this.expectedPlayers.filter(exp => 
+      !joinedPlayers.some(jp => {
+        if (jp.service !== exp.service) return false;
+        // Matcher par ID si disponible, sinon par username
+        if (exp.id && jp.id) return jp.id === exp.id;
+        return jp.username === exp.username?.toLowerCase();
+      })
+    );
+
+    console.log(`🔍 Attendus: ${this.expectedPlayers.length}, présents: ${joinedPlayers.length}, manquants: ${missing.length}`);
+    if (missing.length > 0) {
+      console.log(`⏳ Manquants:`);
+      missing.forEach(p => console.log(`  -Service: ${p.service}, ID: ${p.id}, Username: "${p.username}"`));
+    }
+
+    if (missing.length === 0) {
+      this.allPlayersJoined = true;
+      console.log('✅ Tous les joueurs attendus ont rejoint!');
+      
+      // Déverrouiller les règles et lancer la partie
+      setTimeout(() => {
+        if (this.gameSocket?.connected) {
+          if (this.isLeader) {
+            this.applyRules(); // Appliquer les règles juste avant de lancer
+            
+            console.log('🔓 Déverrouillage des règles...');
+            this.gameSocket.emit('setRulesLocked', true); // true = menu fermé = permet le jeu
+          }
+          console.log('📤 Envoi startRoundNow (tous joueurs présents)...');
+          this.gameSocket.emit('startRoundNow');
+        }
+      }, 2000);
+    }
+  }
+
+  // Mode vérification: écoute les messages chat
+  setVerifyMode(code, callbackUrl) {
+    this.verifyMode = true;
+    this.verifyCode = code;
+    this.callbackUrl = callbackUrl;
+    console.log(`🔐 Mode vérification: en attente du code ${code}`);
+  }
+
+  handleChatMessage(nickname, message) {
+    if (!this.verifyMode || !this.verifyCode) return;
+
+    // Vérifier si le message contient le code attendu
+    if (message.includes(this.verifyCode)) {
+      console.log(`✅ Code ${this.verifyCode} trouvé de ${nickname}!`);
+      this.sendVerificationCallback(nickname);
+    }
+  }
+
+  async sendVerificationCallback(nickname) {
+    if (!this.callbackUrl) return;
+
+    try {
+      const response = await fetch(this.callbackUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: this.verifyCode,
+          nickname,
+          roomCode: this.roomCode
+        })
+      });
+
+      if (response.ok) {
+        console.log(`✅ Vérification réussie pour ${nickname}!`);
+        // Envoyer un message de confirmation
+        this.roomSocket?.emit('chat', `✅ ${nickname}, ton compte JKLM est maintenant lié à PSL !`);
+        // Attendre un peu puis quitter
+        setTimeout(() => {
+          this.disconnect();
+          process.exit(0);
+        }, 3000);
+      } else {
+        const data = await response.json();
+        console.log(`❌ Vérification échouée: ${data.error}`);
+        if (data.error === 'Nickname mismatch') {
+          this.roomSocket?.emit('chat', `❌ ${nickname}, ce code est pour un autre pseudo JKLM (${data.expected})`);
+        }
+      }
+    } catch (err) {
+      console.error('❌ Erreur callback vérification:', err);
+    }
+  }
+}
+
+async function main() {
+  const bot = new JKLMBot();
+  const args = process.argv.slice(2);
+  
+  let roomCode;
+  let callbackUrl;
+  let shouldCreate = false;
+  let expectedPlayers = [];
+  let verifyMode = false;
+  let verifyCode = null;
+  
+  // Parse arguments
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--create') {
+      shouldCreate = true;
+    } else if (args[i] === '--players') {
+      // Ancien format: --players "nick1,nick2" (rétrocompatibilité)
+      if (args[i + 1]) {
+        expectedPlayers = args[i + 1].split(',').map(n => ({
+          service: 'jklm',
+          username: n.trim()
+        }));
+        i++;
+      }
+    } else if (args[i] === '--players-json') {
+      // Nouveau format: --players-json '[{"service":"discord","username":"jd85"},...]'
+      if (args[i + 1]) {
+        try {
+          expectedPlayers = JSON.parse(args[i + 1]);
+          console.log('📋 Joueurs attendus (JSON):', expectedPlayers);
+        } catch (e) {
+          console.error('❌ Erreur parsing --players-json:', e);
+        }
+        i++;
+      }
+    } else if (args[i] === '--verify-mode') {
+      verifyMode = true;
+      if (args[i + 1] && !args[i + 1].startsWith('-') && !args[i + 1].startsWith('http')) {
+        verifyCode = args[i + 1];
+        i++;
+      }
+    } else if (args[i].startsWith('http')) {
+      callbackUrl = args[i];
+    } else if (args[i].length === 4 && !args[i].startsWith('-')) {
+      roomCode = args[i];
+    }
+  }
+  
+  try {
+    // Mode création automatique
+    if (shouldCreate) {
+      const roomName = verifyMode ? 'PSL Vérification' : 'PSL Match';
+      console.log(`🏗️ Mode création automatique (${roomName})...`);
+      const result = await bot.createRoom({ name: roomName, isPublic: false });
+      roomCode = result.roomCode;
+      console.log(`🎮 Room créée: ${roomCode}`);
+    }
+
+    // Mode vérification
+    if (verifyMode && verifyCode && callbackUrl) {
+      bot.setVerifyMode(verifyCode, callbackUrl);
+    }
+
+    // Définir les joueurs attendus
+    if (expectedPlayers.length > 0) {
+      bot.setExpectedPlayers(expectedPlayers);
+    }
+    
+    const nickname = verifyMode ? 'PSL-Verify' : 'PSL-Observer';
+    await bot.connect(roomCode, { nickname, callbackUrl });
+    console.log('✅ Bot prêt!');
+    
+    // Auto-disconnect après 10 minutes en mode verify
+    if (verifyMode) {
+      setTimeout(() => {
+        console.log('⏰ Timeout vérification (10min)');
+        bot.disconnect();
+        process.exit(0);
+      }, 10 * 60 * 1000);
+    }
+    
+    process.on('SIGINT', () => {
+      bot.disconnect();
+      process.exit(0);
+    });
+  } catch (err) {
+    console.error('❌ Échec:', err);
+    process.exit(1);
+  }
+}
+
+main();
+export { JKLMBot };

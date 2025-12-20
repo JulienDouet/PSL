@@ -38,12 +38,13 @@ model User {
   accounts      Account[]
   
   // PSL Relations
-  matchPlayers    MatchPlayer[]
-  mmrHistory      MMRHistory[]
-  categoryMMRs    UserCategoryMMR[]
-  achievements    UserAchievement[]
-  reportsMade     Report[]  @relation("Reporter")
-  reportsAgainst  Report[]  @relation("Reported")
+  matchPlayers      MatchPlayer[]
+  mmrHistory        MMRHistory[]
+  categoryMMRs      UserCategoryMMR[]
+  achievements      UserAchievement[]
+  reportsMade       Report[]  @relation("Reporter")
+  reportsAgainst    Report[]  @relation("Reported")
+  jklmVerification  JKLMVerification?
 }
 
 model Session {
@@ -238,4 +239,20 @@ model Season {
   endDate   DateTime
   isActive  Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// ============================================
+// JKLM VERIFICATION
+// ============================================
+
+model JKLMVerification {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  jklmUsername String
+  code         String   @unique
+  roomCode     String?  // Room JKLM créée pour cette vérification
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

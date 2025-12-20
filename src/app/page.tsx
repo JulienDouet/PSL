@@ -1,34 +1,13 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Navbar } from "@/components/navbar";
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <span className="text-2xl">🎮</span>
-            <span className="text-gradient">PSL</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/leaderboard" className="text-muted-foreground hover:text-foreground transition-colors">
-              Classement
-            </Link>
-            <Link href="/login">
-              <Button variant="outline" className="border-primary/50 hover:border-primary hover:bg-primary/10">
-                Connexion
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button className="bg-gradient-psl hover:opacity-90 transition-opacity">
-                S&apos;inscrire
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4">

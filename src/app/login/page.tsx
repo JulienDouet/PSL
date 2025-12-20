@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { signIn } from "@/lib/auth-client";
@@ -20,14 +21,16 @@ export default function LoginPage() {
     });
   };
 
+  // Check if Twitch is configured (client-side check via env)
+  const isTwitchEnabled = Boolean(process.env.NEXT_PUBLIC_TWITCH_ENABLED);
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navigation */}
       <nav className="border-b border-border/50 bg-background/80 backdrop-blur-lg">
         <div className="container mx-auto px-4 h-16 flex items-center">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <span className="text-2xl">🎮</span>
-            <span className="text-gradient">PSL</span>
+            <Image src="/transparent logo.png" alt="PSL" width={120} height={60} className="object-contain" />
           </Link>
         </div>
       </nav>
@@ -36,8 +39,8 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-card border-border/50 card-glow">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-3xl">🎮</span>
+            <div className="mx-auto mb-4">
+              <Image src="/transparent logo.png" alt="PSL" width={180} height={90} className="object-contain" />
             </div>
             <CardTitle className="text-2xl">
               Rejoindre <span className="text-gradient">PSL</span>
@@ -62,34 +65,19 @@ export default function LoginPage() {
               Continuer avec Discord
             </Button>
 
-            {/* Twitch Login */}
-            <Button
-              onClick={handleTwitchLogin}
-              className="w-full h-12 bg-[#9146FF] hover:bg-[#772CE8] text-white font-medium"
-            >
-              <svg
-                className="w-5 h-5 mr-2"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
-              </svg>
-              Continuer avec Twitch
-            </Button>
-
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border/50" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-card px-2 text-muted-foreground">
-                  Pourquoi ces options ?
+                  Pourquoi Discord ?
                 </span>
               </div>
             </div>
 
             <p className="text-center text-sm text-muted-foreground">
-              On utilise Discord ou Twitch pour vérifier ton identité Popsauce et éviter les multi-comptes.
+              On utilise Discord pour vérifier ton identité Popsauce et éviter les multi-comptes.
             </p>
 
             {/* Info cards */}

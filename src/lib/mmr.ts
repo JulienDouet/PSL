@@ -1,183 +1,180 @@
-/**
- * MMR Calculation Utilities for PSL
- * Based on the PSL Brainstorm document
- */
-
-// ============================================
-// CONSTANTS
-// ============================================
+export interface PlayerResult {
+  id: string; // User ID or unique identifier
+  mmr: number;
+  score: number;
+  placement: number;
+  gamesPlayed: number; // For calibration
+}
 
 export const MMR_CONFIG = {
-  BASE_MMR: 1000,
-  K_FACTOR: 32,
-  DECAY: 500, // Weight decay for MMR difference
-  CALIBRATION_GAMES: 5,
-  CALIBRATION_MULTIPLIER: 2.0,
-  PROXIMITY_POWER: 2,
-  SCORE_THRESHOLD: 110, // Below this = full penalty
-  WIN_SCORE: 150,
+  DECAY: 500,           // Diviseur exponentiel pour le poids (plus petit = plus sélectif)
+  PROXIMITY_POWER: 2,   // Puissance de la courbe de réduction de pénalité
+  SCORE_THRESHOLD: 110, // Score en dessous duquel la pénalité est maximale
+  K_FACTOR: 32,         // Facteur K standard
+  MIN_CHANGE: 1,        // Changement minimum garanti (sauf cas nul)
+  CALIBRATION_GAMES: 5, // Nombre de parties de calibration
+  CALIBRATION_MULT: 2.0 // Multiplicateur pendant la calibration
 };
 
-// ============================================
-// RANK SYSTEM
-// ============================================
-
-export type Rank =
-  | "BRONZE"
-  | "SILVER"
-  | "GOLD"
-  | "PLATINUM"
-  | "DIAMOND"
-  | "MASTER"
-  | "GRAND_MASTER";
-
-export interface RankInfo {
-  name: Rank;
-  displayName: string;
-  icon: string;
-  minMMR: number;
-  maxMMR: number;
-  color: string;
-}
-
-export const RANKS: RankInfo[] = [
-  { name: "BRONZE", displayName: "Bronze", icon: "🥉", minMMR: 0, maxMMR: 999, color: "#CD7F32" },
-  { name: "SILVER", displayName: "Argent", icon: "⚪", minMMR: 1000, maxMMR: 1299, color: "#C0C0C0" },
-  { name: "GOLD", displayName: "Or", icon: "🥇", minMMR: 1300, maxMMR: 1599, color: "#FFD700" },
-  { name: "PLATINUM", displayName: "Platine", icon: "💎", minMMR: 1600, maxMMR: 1899, color: "#00CED1" },
-  { name: "DIAMOND", displayName: "Diamant", icon: "💠", minMMR: 1900, maxMMR: 2199, color: "#B9F2FF" },
-  { name: "MASTER", displayName: "Maître", icon: "👑", minMMR: 2200, maxMMR: Infinity, color: "#9B59B6" },
-  { name: "GRAND_MASTER", displayName: "Grand Maître", icon: "🏆", minMMR: 0, maxMMR: Infinity, color: "#E74C3C" },
-];
-
 /**
- * Get the rank for a given MMR and leaderboard position
- * Top 5 players are always Grand Master regardless of MMR
+ * Calcule le poids d'un duel en fonction de la différence de MMR.
+ * Plus les MMR sont proches, plus le poids est proche de 1.
  */
-export function getRank(mmr: number, leaderboardPosition: number): RankInfo {
-  if (leaderboardPosition <= 5) {
-    return RANKS.find((r) => r.name === "GRAND_MASTER")!;
-  }
-
-  return RANKS.find((r) => mmr >= r.minMMR && mmr <= r.maxMMR) || RANKS[0];
-}
-
-/**
- * Get progress towards next rank
- */
-export function getRankProgress(mmr: number): {
-  currentRank: RankInfo;
-  nextRank: RankInfo | null;
-  progress: number;
-  remaining: number;
-} {
-  const currentRank = RANKS.find((r) => mmr >= r.minMMR && mmr <= r.maxMMR) || RANKS[0];
-  const currentIndex = RANKS.findIndex((r) => r.name === currentRank.name);
-  const nextRank = currentIndex < RANKS.length - 2 ? RANKS[currentIndex + 1] : null;
-
-  if (!nextRank || currentRank.maxMMR === Infinity) {
-    return { currentRank, nextRank: null, progress: 1, remaining: 0 };
-  }
-
-  const rangeSize = currentRank.maxMMR - currentRank.minMMR + 1;
-  const progress = (mmr - currentRank.minMMR) / rangeSize;
-  const remaining = currentRank.maxMMR - mmr + 1;
-
-  return { currentRank, nextRank, progress, remaining };
-}
-
-// ============================================
-// MMR CALCULATION (V2 - Pairwise Weighted)
-// ============================================
-
-export interface PlayerResult {
-  id: string;
-  mmr: number;
-  placement: number;
-  score: number;
-  gamesPlayed: number;
-}
-
-/**
- * Calculate weight between two players based on MMR difference
- * Players with similar MMR have higher weight (more important duels)
- */
-export function getWeight(myMMR: number, opponentMMR: number): number {
-  const diff = Math.abs(myMMR - opponentMMR);
+export function getWeight(mmr1: number, mmr2: number): number {
+  const diff = Math.abs(mmr1 - mmr2);
   return Math.exp(-diff / MMR_CONFIG.DECAY);
 }
 
 /**
- * Calculate score proximity factor for losses
- * Close losses (110-149 points) incur reduced penalty
+ * Calcule le facteur de réduction de pénalité en cas de défaite.
+ * Si le score est proche du vainqueur (150), la pénalité est réduite.
  */
-export function getScoreProximityFactor(score: number, winnerScore = MMR_CONFIG.WIN_SCORE): number {
-  // Below threshold = full penalty
+export function getScoreProximityFactor(score: number, winnerScore = 150): number {
+  // En dessous du seuil -> pénalité complète
   if (score < MMR_CONFIG.SCORE_THRESHOLD) {
     return 1.0;
   }
-
-  // Above threshold = exponential reduction
+  
+  // Ratio par rapport au score gagnant (ex: 140/150 = 0.93)
   const ratio = score / winnerScore;
+  
+  // Facteur de réduction
+  // Formule: 1 - (ratio^POWER) * 0.5
+  // Ex: 1 - (0.93^2 * 0.5) = 1 - 0.43 = 0.57 (pénalité réduite à 57%)
   const factor = 1 - Math.pow(ratio, MMR_CONFIG.PROXIMITY_POWER) * 0.5;
-
+  
+  // On ne réduit jamais en dessous de 50% de la pénalité (pour garder un enjeu)
   return Math.max(0.5, factor);
 }
 
 /**
- * Calculate MMR change for a player based on match results
- * Uses pairwise comparison with exponential weighting
+ * Calcule le changement de MMR pour un joueur donné.
+ * Utilise une comparaison par paire avec tous les autres joueurs.
  */
 export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResult[]): number {
-  const K = MMR_CONFIG.K_FACTOR;
   let totalChange = 0;
   let totalWeight = 0;
-
-  const opponents = allPlayers.filter((p) => p.id !== player.id);
+  
+  const opponents = allPlayers.filter(p => p.id !== player.id);
+  
+  // Si le joueur est seul (ne devrait pas arriver), 0
+  if (opponents.length === 0) return 0;
 
   for (const opponent of opponents) {
+    // 1. Poids du duel basé sur l'écart de niveau
     const weight = getWeight(player.mmr, opponent.mmr);
     totalWeight += weight;
-
-    // ELO expected win probability
-    const mmrDiff = player.mmr - opponent.mmr;
-    const expectedWin = 1 / (1 + Math.pow(10, -mmrDiff / 400));
-
-    // Did player beat this opponent?
-    const didBeat = player.placement < opponent.placement;
-    const actual = didBeat ? 1 : 0;
-
-    totalChange += weight * K * (actual - expectedWin);
+    
+    // 2. Probabilité de victoire attendue (Elo standard)
+    const mmrDiff = opponent.mmr - player.mmr; 
+    const expectedWin = 1 / (1 + Math.pow(10, mmrDiff / 400));
+    
+    // 3. Résultat réel
+    let actual = 0;
+    if (player.placement < opponent.placement) {
+        actual = 1; // Victoire
+    } else if (player.placement > opponent.placement) {
+        actual = 0; // Défaite
+    } else {
+        actual = 0.5; // Ex aequo
+    }
+    
+    // 4. Contribution
+    totalChange += weight * MMR_CONFIG.K_FACTOR * (actual - expectedWin);
+  }
+  
+  // Normalisation
+  let result = 0;
+  if (totalWeight > 0) {
+      result = totalChange / totalWeight;
+  }
+  
+  // Calibration: Boost si nouveau joueur
+  if (player.gamesPlayed < MMR_CONFIG.CALIBRATION_GAMES) {
+      result *= MMR_CONFIG.CALIBRATION_MULT;
   }
 
-  // Normalize by total weight
-  let result = totalWeight > 0 ? totalChange / totalWeight : 0;
-
-  // Apply score proximity factor for losses
+  // Appliquer le facteur de proximité de score (seulement si perte MMR)
   if (result < 0) {
     const proximityFactor = getScoreProximityFactor(player.score);
     result *= proximityFactor;
   }
-
-  // Apply calibration multiplier for new players
-  if (player.gamesPlayed < MMR_CONFIG.CALIBRATION_GAMES) {
-    result *= MMR_CONFIG.CALIBRATION_MULTIPLIER;
+  
+  let finalChange = Math.round(result);
+  
+  // Plancher : min ±1 point
+  if (finalChange === 0 && Math.abs(result) > 0) {
+      finalChange = result > 0 ? 1 : -1;
+  } else if (finalChange === 0 && player.placement === 1) {
+      finalChange = 1; 
   }
-
-  result = Math.round(result);
-
-  // Floor: minimum ±1 point per match
-  if (result === 0) {
-    result = player.placement === 1 ? 1 : -1;
-  }
-
-  return result;
+  
+  
+  return finalChange;
 }
 
-/**
- * Soft reset MMR for new season
- * newMMR = (oldMMR + 1000) / 2
- */
-export function softResetMMR(mmr: number): number {
-  return Math.round((mmr + MMR_CONFIG.BASE_MMR) / 2);
+// ==========================================
+// UI / RANKING UTILS
+// ==========================================
+
+export interface Rank {
+  name: string;
+  displayName: string;
+  min: number;
+  max: number;
+  icon: string;
+  color: string;
+}
+
+export const RANKS: Rank[] = [
+  { name: 'Bronze', displayName: 'Bronze', min: 0, max: 999, icon: '🥉', color: '#CD7F32' },
+  { name: 'Silver', displayName: 'Argent', min: 1000, max: 1299, icon: '⚪', color: '#C0C0C0' },
+  { name: 'Gold', displayName: 'Or', min: 1300, max: 1599, icon: '🥇', color: '#FFD700' },
+  { name: 'Platinum', displayName: 'Platine', min: 1600, max: 1899, icon: '💎', color: '#00CED1' },
+  { name: 'Diamond', displayName: 'Diamant', min: 1900, max: 2199, icon: '💠', color: '#B9F2FF' },
+  { name: 'Master', displayName: 'Maître', min: 2200, max: Infinity, icon: '👑', color: '#9B59B6' },
+];
+
+export interface RankProgress {
+  currentRank: Rank;
+  nextRank: Rank | null;
+  progress: number; // 0 to 1
+  remaining: number;
+}
+
+export function getRankProgress(mmr: number): RankProgress {
+  // Trouver le rang actuel
+  let currentRank = RANKS[0];
+  let nextRank: Rank | null = null;
+  
+  for (let i = 0; i < RANKS.length; i++) {
+    if (mmr >= RANKS[i].min && (RANKS[i].max === Infinity || mmr <= RANKS[i].max)) {
+      currentRank = RANKS[i];
+      nextRank = RANKS[i + 1] || null;
+      break;
+    }
+  }
+
+  // Si on est au dernier rang (Master) ou au-delà
+  if (!nextRank) {
+    return {
+      currentRank,
+      nextRank: null,
+      progress: 1,
+      remaining: 0
+    };
+  }
+
+  // Calcul progression
+  const totalRange = currentRank.max - currentRank.min + 1;
+  const earned = mmr - currentRank.min;
+  const progress = Math.min(1, Math.max(0, earned / totalRange));
+  const remaining = currentRank.max - mmr + 1;
+
+  return {
+    currentRank,
+    nextRank,
+    progress,
+    remaining
+  };
 }

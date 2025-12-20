@@ -5,6 +5,8 @@ import { auth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRankProgress } from "@/lib/mmr";
+import { PlayCard } from "@/components/dashboard/play-card";
+import { Navbar } from "@/components/navbar";
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({
@@ -35,35 +37,7 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <span className="text-2xl">🎮</span>
-            <span className="text-gradient">PSL</span>
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="text-foreground font-medium">
-              Dashboard
-            </Link>
-            <Link href="/leaderboard" className="text-muted-foreground hover:text-foreground transition-colors">
-              Classement
-            </Link>
-            <Link href={`/profile/${user.id}`} className="text-muted-foreground hover:text-foreground transition-colors">
-              Profil
-            </Link>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary">
-              {user.image && (
-                <img
-                  src={user.image}
-                  alt={userStats.displayName}
-                  className="w-6 h-6 rounded-full"
-                />
-              )}
-              <span className="font-medium">{userStats.displayName}</span>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <main className="pt-24 pb-12 px-4">
         <div className="container mx-auto max-w-6xl">
@@ -186,33 +160,7 @@ export default async function DashboardPage() {
             {/* Right Column - Play */}
             <div className="space-y-6">
               {/* Play Card */}
-              <Card className="bg-card border-primary/30 card-glow">
-                <CardHeader className="text-center">
-                  <CardTitle className="text-2xl">🎮 Jouer</CardTitle>
-                  <CardDescription>
-                    Lance une recherche de partie ranked
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="text-center py-4">
-                    <div className="text-4xl mb-2 animate-float">🔍</div>
-                    <div className="text-muted-foreground">
-                      <span className="text-primary font-medium">3</span> joueurs en ligne
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      <span className="text-accent font-medium">1</span> en recherche
-                    </div>
-                  </div>
-
-                  <Button className="w-full h-14 text-lg bg-gradient-psl hover:opacity-90 transition-opacity glow-primary">
-                    🎮 Chercher une partie
-                  </Button>
-
-                  <p className="text-center text-xs text-muted-foreground">
-                    Partie lancée à 2+ joueurs ou après 90 secondes
-                  </p>
-                </CardContent>
-              </Card>
+              <PlayCard />
 
               {/* Quick Links */}
               <Card className="bg-card border-border/50">

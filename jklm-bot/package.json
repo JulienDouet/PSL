@@ -1,0 +1,14 @@
+{
+  "name": "jklm-bot",
+  "version": "1.0.0",
+  "description": "JKLM.fun Popsauce bot for PSL matchmaking",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.7.0"
+  }
+}
