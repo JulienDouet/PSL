@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar } from "@/components/navbar";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface MatchPlayer {
   nickname: string;
@@ -25,24 +26,28 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-function getCategoryLabel(category: string): string {
-  const labels: Record<string, string> = {
-    'GP_FR': '🍿 Grand Public [FR]',
-    'MS_EN': '🍿 Mainstream [EN]',
-    'ANIME': '🎌 Anime',
-    'FLAGS': '🚩 Drapeaux',
-    'NOFILTER_FR': '🔥 Sans Filtre [FR]',
-    'NOFILTER_EN': '🔥 No Filter [EN]'
-  };
-  return labels[category] || category;
-}
-
 export default function MatchesPage() {
   const [matches, setMatches] = useState<ActiveMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
   const [killing, setKilling] = useState<string | null>(null);
+  const { t } = useTranslation();
+
+  // Category label dynamique
+  const getCategoryLabel = (category: string): string => {
+    const emoji: Record<string, string> = {
+      'GP_FR': '🍿',
+      'MS_EN': '🍿',
+      'ANIME': '🎌',
+      'FLAGS': '🚩',
+      'NOFILTER_FR': '🔥',
+      'NOFILTER_EN': '🔥'
+    };
+    // @ts-ignore
+    const catLabel = t.categories[category] || category;
+    return `${emoji[category] || '🎮'} ${catLabel}`;
+  };
 
   const fetchMatches = async () => {
     try {
@@ -60,13 +65,12 @@ export default function MatchesPage() {
 
   useEffect(() => {
     fetchMatches();
-    // Refresh toutes les 5 secondes
     const interval = setInterval(fetchMatches, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const handleKill = async (roomCode: string) => {
-    if (!confirm(`Êtes-vous sûr de vouloir terminer la partie ${roomCode} ?`)) {
+    if (!confirm(t.matches.confirm_end.replace('{room}', roomCode))) {
       return;
     }
     
@@ -79,15 +83,14 @@ export default function MatchesPage() {
       });
       
       if (res.ok) {
-        // Rafraîchir la liste
         await fetchMatches();
       } else {
         const data = await res.json();
-        alert(data.error || 'Erreur lors de la suppression');
+        alert(data.error || t.matches.error_delete);
       }
     } catch (err) {
       console.error('Error killing match:', err);
-      alert('Erreur lors de la suppression');
+      alert(t.matches.error_delete);
     }
     setKilling(null);
   };
@@ -101,24 +104,26 @@ export default function MatchesPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold mb-2">
-              🎮 <span className="text-gradient">Parties en cours</span>
+              🎮 <span className="text-gradient">{t.matches.live_title}</span>
             </h1>
             <p className="text-muted-foreground">
-              {matches.length === 0 ? 'Aucune partie en cours' : `${matches.length} partie${matches.length > 1 ? 's' : ''} active${matches.length > 1 ? 's' : ''}`}
+              {matches.length === 0 
+                ? t.matches.live_none 
+                : t.matches.live_count.replace('{n}', String(matches.length))}
             </p>
           </div>
 
           {loading ? (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <p className="mt-4 text-muted-foreground">Chargement...</p>
+              <p className="mt-4 text-muted-foreground">{t.matches.live_loading}</p>
             </div>
           ) : matches.length === 0 ? (
             <Card className="glass-card">
               <CardContent className="py-12 text-center">
-                <p className="text-xl text-muted-foreground">Aucune partie ranked en cours</p>
+                <p className="text-xl text-muted-foreground">{t.matches.live_no_ranked}</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Les parties apparaîtront ici dès qu'un match commencera
+                  {t.matches.live_will_appear}
                 </p>
               </CardContent>
             </Card>
@@ -146,7 +151,7 @@ export default function MatchesPage() {
                       <div className="flex items-center gap-4">
                         <div className="text-right">
                           <div className="text-sm text-muted-foreground">
-                            {match.playerCount} joueur{match.playerCount > 1 ? 's' : ''}
+                            {match.playerCount} {t.matches.live_players}
                           </div>
                           <div className="text-xs text-muted-foreground/70">
                             ⏱️ {formatDuration(match.durationSeconds)}
@@ -164,7 +169,7 @@ export default function MatchesPage() {
                     <CardContent className="border-t border-border/50 pt-4">
                       <div className="space-y-3">
                         <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-                          Joueurs
+                          {t.matches.players_label}
                         </h4>
                         <div className="grid gap-2">
                           {match.players.map((player, idx) => (
@@ -184,7 +189,7 @@ export default function MatchesPage() {
                             rel="noopener noreferrer"
                             className="text-sm text-primary hover:underline"
                           >
-                            🔗 Voir sur JKLM.fun
+                            🔗 {t.matches.view_on_jklm}
                           </a>
 
                           {isAdmin && (
@@ -196,7 +201,7 @@ export default function MatchesPage() {
                               disabled={killing === match.roomCode}
                               className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
                             >
-                              {killing === match.roomCode ? '⏳ Arrêt...' : '🛑 Terminer la partie'}
+                              {killing === match.roomCode ? `⏳ ${t.matches.stopping}` : `🛑 ${t.matches.end_match}`}
                             </button>
                           )}
                         </div>
@@ -218,3 +223,4 @@ export default function MatchesPage() {
     </div>
   );
 }
+

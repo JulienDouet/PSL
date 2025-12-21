@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/navbar";
 import { useSession } from "@/lib/auth-client";
 import { Loader2, Check, ExternalLink, Copy, X } from 'lucide-react';
+import { useTranslation } from "@/lib/i18n/context";
 
 interface VerificationStatus {
   status: 'none' | 'pending' | 'verified';
@@ -21,6 +22,7 @@ interface VerificationStatus {
 export default function ProfileEditPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const router = useRouter();
+  const { t } = useTranslation();
   
   const [displayName, setDisplayName] = useState('');
   const [jklmUsername, setJklmUsername] = useState('');
@@ -63,7 +65,7 @@ export default function ProfileEditPage() {
         body: JSON.stringify({ displayName })
       });
       if (res.ok) {
-        alert('Pseudo mis à jour !');
+        alert(t.profile.save_success);
       }
     } catch (err) {
       console.error('Error saving:', err);
@@ -95,7 +97,7 @@ export default function ProfileEditPage() {
         });
       } else {
         const error = await res.json();
-        alert(error.error || 'Erreur lors de la vérification');
+        alert(error.error || t.profile.error_verification);
       }
     } catch (err) {
       console.error('Error starting verification:', err);
@@ -143,20 +145,20 @@ export default function ProfileEditPage() {
         <div className="container mx-auto max-w-2xl">
           <div className="mb-6">
             <Link href={`/profile/${session.user.id}`} className="text-muted-foreground hover:text-foreground transition-colors">
-              ← Retour au profil
+              ← {t.profile.back_to_profile}
             </Link>
           </div>
 
           <h1 className="text-3xl font-bold mb-6">
-            ⚙️ <span className="text-gradient">Modifier mon profil</span>
+            ⚙️ <span className="text-gradient">{t.profile.edit_title}</span>
           </h1>
 
           {/* Display Name */}
           <Card className="bg-card border-border/50 mb-6">
             <CardHeader>
-              <CardTitle>Pseudo affiché</CardTitle>
+              <CardTitle>{t.profile.display_name_label}</CardTitle>
               <CardDescription>
-                Ce nom sera affiché sur PSL
+                {t.profile.display_name_desc}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -165,7 +167,7 @@ export default function ProfileEditPage() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                placeholder="Ton pseudo"
+                placeholder={t.profile.display_name_placeholder}
               />
               <Button 
                 onClick={handleSaveDisplayName}
@@ -173,7 +175,7 @@ export default function ProfileEditPage() {
                 className="bg-gradient-psl"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Sauvegarder
+                {t.common.save}
               </Button>
             </CardContent>
           </Card>
@@ -182,15 +184,15 @@ export default function ProfileEditPage() {
           <Card className="bg-card border-border/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                🎮 Liaison JKLM.fun (Pour les membres du Staff JKLM)
+                🎮 {t.profile.jklm_link_title}
                 {verifyStatus.status === 'verified' && (
                   <span className="text-sm bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
-                    ✓ Vérifié
+                    ✓ {t.profile.verified_badge}
                   </span>
                 )}
               </CardTitle>
               <CardDescription>
-                Lie ton pseudo JKLM pour que tes parties soient comptabilisées
+                {t.profile.jklm_link_desc}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -199,7 +201,7 @@ export default function ProfileEditPage() {
               {verifyStatus.status === 'verified' && (
                 <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
                   <p className="text-green-400 font-medium">
-                    Compte lié : <span className="text-white">{verifyStatus.jklmUsername} on JKLM.FUN</span>
+                    {t.profile.account_linked} <span className="text-white">{verifyStatus.jklmUsername} on JKLM.FUN</span>
                   </p>
                 </div>
               )}
@@ -209,7 +211,7 @@ export default function ProfileEditPage() {
                 <>
                   <div>
                     <label className="text-sm text-muted-foreground mb-2 block">
-                      Ton pseudo JKLM.fun
+                      {t.profile.jklm_pseudo_label}
                     </label>
                     <input
                       type="text"
@@ -225,7 +227,7 @@ export default function ProfileEditPage() {
                     className="bg-gradient-psl"
                   >
                     {verifying ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Lancer la vérification
+                    {t.profile.start_verification}
                   </Button>
                 </>
               )}
@@ -234,9 +236,9 @@ export default function ProfileEditPage() {
               {verifyStatus.status === 'pending' && (
                 <div className="space-y-4">
                   <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
-                    <p className="font-medium mb-2">📍 Vérification en cours pour : {verifyStatus.jklmUsername}</p>
+                    <p className="font-medium mb-2">📍 {t.profile.verification_pending} {verifyStatus.jklmUsername}</p>
                     <ol className="text-sm text-muted-foreground space-y-2">
-                      <li>1. Rejoins la room de vérification :</li>
+                      <li>{t.profile.step_1}</li>
                       <li className="pl-4">
                         <Button
                           variant="outline"
@@ -247,7 +249,7 @@ export default function ProfileEditPage() {
                           jklm.fun/{verifyStatus.roomCode}
                         </Button>
                       </li>
-                      <li>2. Tape ce code dans le chat :</li>
+                      <li>{t.profile.step_2}</li>
                       <li className="pl-4">
                         <div className="inline-flex items-center gap-2 px-3 py-2 bg-background rounded border font-mono text-lg">
                           {verifyStatus.code}
@@ -256,14 +258,14 @@ export default function ProfileEditPage() {
                           </Button>
                         </div>
                       </li>
-                      <li>3. Le bot validera automatiquement !</li>
+                      <li>{t.profile.step_3}</li>
                     </ol>
                   </div>
                   
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      En attente de validation...
+                      {t.profile.waiting_validation}
                     </div>
                     <Button 
                       variant="ghost" 
@@ -275,7 +277,7 @@ export default function ProfileEditPage() {
                       className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
                     >
                       <X className="w-4 h-4 mr-2" />
-                      Annuler / Recommencer
+                      {t.profile.cancel_button}
                     </Button>
                   </div>
                 </div>

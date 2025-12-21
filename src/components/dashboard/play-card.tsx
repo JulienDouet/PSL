@@ -90,7 +90,7 @@ export function PlayCard() {
     
     // Polling toutes les 5 secondes en mode idle
     if (mode === 'idle') {
-      const interval = setInterval(fetchCounts, 5000);
+      const interval = setInterval(fetchCounts, 1000);
       return () => clearInterval(interval);
     }
   }, [mode]);
@@ -143,7 +143,7 @@ export function PlayCard() {
       // Premier appel immédiat
       poll();
       // Puis toutes les 1 seconde (searching) ou 3 secondes (matched)
-      const interval = mode === 'searching' ? 1000 : 3000;
+      const interval = mode === 'searching' ? 500 : 2000;
       pollingRef.current = setInterval(poll, interval);
     }
 

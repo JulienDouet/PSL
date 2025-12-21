@@ -3,24 +3,25 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRankProgress } from "@/lib/mmr";
+import { useTranslation } from "@/lib/i18n/context";
 
-// Labels et emojis pour les catégories
-const CATEGORY_INFO: Record<string, { label: string; emoji: string }> = {
-  'GP_FR': { label: 'Grand Public [FR]', emoji: '🍿' },
-  'MS_EN': { label: 'Mainstream [EN]', emoji: '🍿' },
-  'ANIME': { label: 'Anime', emoji: '🎌' },
-  'FLAGS': { label: 'Drapeaux', emoji: '🚩' },
-  'NOFILTER_FR': { label: 'Sans Filtre [FR]', emoji: '🔥' },
-  'NOFILTER_EN': { label: 'No Filter [EN]', emoji: '🔥' },
-  // Anciennes catégories (rétrocompat)
-  'GP': { label: 'GP', emoji: '🌐' },
-  'NOFILTER': { label: 'Sans Filtre', emoji: '🔥' }
+// Emojis pour les catégories
+const CATEGORY_EMOJIS: Record<string, string> = {
+  'GP_FR': '🍿',
+  'MS_EN': '🍿',
+  'ANIME': '🎌',
+  'FLAGS': '🚩',
+  'NOFILTER_FR': '🔥',
+  'NOFILTER_EN': '🔥',
+  'GP': '🌐',
+  'NOFILTER': '🔥'
 };
 
 interface CategoryMMR {
   category: string;
   mmr: number;
   gamesPlayed: number;
+  // ... other fields
 }
 
 interface MatchPlayer {
@@ -42,6 +43,8 @@ interface CategoryStatsProps {
 }
 
 export function CategoryStats({ categoryMMRs, matchPlayers, globalMMR, globalGamesPlayed }: CategoryStatsProps) {
+  const { t } = useTranslation();
+  
   // Catégories avec des données - triées par parties jouées
   const categoriesWithData = categoryMMRs
     .filter(c => c.gamesPlayed > 0)
@@ -58,8 +61,8 @@ export function CategoryStats({ categoryMMRs, matchPlayers, globalMMR, globalGam
       <Card className="bg-card border-border/50 text-center py-12">
         <CardContent>
           <div className="text-4xl mb-4">🎮</div>
-          <h3 className="text-xl font-bold mb-2">Aucune partie classée</h3>
-          <p className="text-muted-foreground">Joue ta première partie pour apparaître ici !</p>
+          <h3 className="text-xl font-bold mb-2">{t.profile.no_ranked_games}</h3>
+          <p className="text-muted-foreground">{t.profile.play_to_appear}</p>
         </CardContent>
       </Card>
     );
@@ -70,7 +73,6 @@ export function CategoryStats({ categoryMMRs, matchPlayers, globalMMR, globalGam
   
   const displayMMR = activeStats.mmr;
   const displayGames = activeStats.gamesPlayed;
-  const rankInfo = getRankProgress(displayMMR);
   
   // Matchs filtrés par catégorie active
   const filteredMatches = matchPlayers.filter(mp => mp.match.category === activeCategory);
@@ -85,7 +87,10 @@ export function CategoryStats({ categoryMMRs, matchPlayers, globalMMR, globalGam
       {/* Onglets de catégorie */}
       <div className="flex flex-wrap gap-2">
         {categoriesWithData.map(cat => {
-          const info = CATEGORY_INFO[cat.category] || { label: cat.category, emoji: '🎮' };
+          const emoji = CATEGORY_EMOJIS[cat.category] || '🎮';
+          // @ts-ignore
+          const label = t.categories[cat.category] || cat.category;
+          
           return (
             <button
               key={cat.category}
@@ -96,7 +101,7 @@ export function CategoryStats({ categoryMMRs, matchPlayers, globalMMR, globalGam
                   : 'bg-secondary hover:bg-secondary/80'
               }`}
             >
-              {info.emoji} {info.label}
+              {emoji} {label}
               <span className="ml-2 text-xs opacity-70">({cat.mmr})</span>
             </button>
           );
@@ -114,13 +119,13 @@ export function CategoryStats({ categoryMMRs, matchPlayers, globalMMR, globalGam
         <Card className="bg-card border-border/50">
           <CardContent className="pt-6 text-center">
             <div className="text-3xl font-bold">{displayGames}</div>
-            <div className="text-sm text-muted-foreground">Parties</div>
+            <div className="text-sm text-muted-foreground">{t.profile.games_played}</div>
           </CardContent>
         </Card>
         <Card className="bg-card border-border/50">
           <CardContent className="pt-6 text-center">
             <div className="text-3xl font-bold text-green-400">{wins}</div>
-            <div className="text-sm text-muted-foreground">Victoires</div>
+            <div className="text-sm text-muted-foreground">{t.profile.wins}</div>
           </CardContent>
         </Card>
         <Card className="bg-card border-border/50">
@@ -128,7 +133,7 @@ export function CategoryStats({ categoryMMRs, matchPlayers, globalMMR, globalGam
             <div className={`text-3xl font-bold ${winRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
               {winRate}%
             </div>
-            <div className="text-sm text-muted-foreground">Winrate</div>
+            <div className="text-sm text-muted-foreground">{t.profile.winrate}</div>
           </CardContent>
         </Card>
       </div>
@@ -137,11 +142,11 @@ export function CategoryStats({ categoryMMRs, matchPlayers, globalMMR, globalGam
       <Card className="bg-card border-border/50">
         <CardHeader>
           <CardTitle>
-            🕐 Dernières parties 
-            {activeCategory && (
-              <span className="text-sm font-normal text-muted-foreground ml-2">
-                ({CATEGORY_INFO[activeCategory]?.label || activeCategory})
-              </span>
+            {t.profile.recent_matches_category.replace('{category}', 
+              activeCategory 
+                // @ts-ignore
+                ? (t.categories[activeCategory] || activeCategory) 
+                : ''
             )}
           </CardTitle>
         </CardHeader>
@@ -149,24 +154,24 @@ export function CategoryStats({ categoryMMRs, matchPlayers, globalMMR, globalGam
           {filteredMatches.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <div className="text-4xl mb-2">🎮</div>
-              <p>Aucune partie jouée {activeCategory ? 'dans ce mode' : ''}</p>
+              <p>{t.profile.no_matches_category}</p>
             </div>
           ) : (
             <div className="space-y-2">
               {filteredMatches.slice(0, 10).map((mp) => {
-                const catInfo = CATEGORY_INFO[mp.match.category];
+                const emoji = CATEGORY_EMOJIS[mp.match.category] || '🎮';
                 return (
                   <div
                     key={mp.id}
                     className="p-3 rounded-lg bg-secondary/30 flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-lg">{catInfo?.emoji || '🎮'}</span>
+                      <span className="text-lg">{emoji}</span>
                       <span className={mp.placement === 1 ? "text-green-400 font-bold" : "text-muted-foreground"}>
-                        {mp.placement === 1 ? "🥇 1er" : `#${mp.placement}`}
+                        {mp.placement === 1 ? t.dashboard.placement.first : t.dashboard.placement.other.replace('{n}', String(mp.placement))}
                       </span>
                       <span className="text-muted-foreground text-sm">
-                        {mp.points} pts
+                        {mp.points} {t.common.pts}
                       </span>
                     </div>
                     <span className={mp.mmrChange && mp.mmrChange > 0 ? "text-green-400" : "text-red-400"}>

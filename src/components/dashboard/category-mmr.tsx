@@ -3,18 +3,18 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRankProgress } from "@/lib/mmr";
+import { useTranslation } from "@/lib/i18n/context";
 
-// Labels et emojis pour les catégories
-const CATEGORY_INFO: Record<string, { label: string; emoji: string }> = {
-  'GP_FR': { label: 'Grand Public [FR]', emoji: '🍿' },
-  'MS_EN': { label: 'Mainstream [EN]', emoji: '🍿' },
-  'ANIME': { label: 'Anime', emoji: '🎌' },
-  'FLAGS': { label: 'Drapeaux', emoji: '🚩' },
-  'NOFILTER_FR': { label: 'Sans Filtre [FR]', emoji: '🔥' },
-  'NOFILTER_EN': { label: 'No Filter [EN]', emoji: '🔥' },
-  // Anciennes catégories
-  'GP': { label: 'GP', emoji: '🌐' },
-  'NOFILTER': { label: 'Sans Filtre', emoji: '🔥' }
+// Emojis pour les catégories
+const CATEGORY_EMOJIS: Record<string, string> = {
+  'GP_FR': '🍿',
+  'MS_EN': '🍿',
+  'ANIME': '🎌',
+  'FLAGS': '🚩',
+  'NOFILTER_FR': '🔥',
+  'NOFILTER_EN': '🔥',
+  'GP': '🌐',
+  'NOFILTER': '🔥'
 };
 
 interface CategoryMMR {
@@ -26,6 +26,7 @@ interface CategoryMMR {
 export function DashboardCategoryMMR() {
   const [categoryMMRs, setCategoryMMRs] = useState<CategoryMMR[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     async function fetchCategoryMMRs() {
@@ -50,7 +51,7 @@ export function DashboardCategoryMMR() {
     return (
       <Card className="bg-card border-border/50">
         <CardHeader>
-          <CardTitle>🎯 MMR par mode</CardTitle>
+          <CardTitle>{t.dashboard.category_mmr.title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex justify-center py-4">
@@ -65,11 +66,11 @@ export function DashboardCategoryMMR() {
     return (
       <Card className="bg-card border-border/50">
         <CardHeader>
-          <CardTitle>🎯 MMR par mode</CardTitle>
+          <CardTitle>{t.dashboard.category_mmr.title}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-sm text-center py-2">
-            Joue des parties pour voir ton MMR par mode !
+            {t.dashboard.category_mmr.unranked}
           </p>
         </CardContent>
       </Card>
@@ -79,12 +80,14 @@ export function DashboardCategoryMMR() {
   return (
     <Card className="bg-card border-border/50">
       <CardHeader>
-        <CardTitle>🎯 MMR par mode</CardTitle>
+        <CardTitle>{t.dashboard.category_mmr.title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           {categoriesWithData.map(cat => {
-            const info = CATEGORY_INFO[cat.category] || { label: cat.category, emoji: '🎮' };
+            const emoji = CATEGORY_EMOJIS[cat.category] || '🎮';
+            // @ts-ignore
+            const label = t.categories[cat.category] || cat.category;
             const rankInfo = getRankProgress(cat.mmr);
             return (
               <div 
@@ -92,11 +95,11 @@ export function DashboardCategoryMMR() {
                 className="flex items-center justify-between p-3 rounded-lg bg-secondary/30"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-xl">{info.emoji}</span>
+                  <span className="text-xl">{emoji}</span>
                   <div>
-                    <div className="font-medium">{info.label}</div>
+                    <div className="font-medium">{label}</div>
                     <div className="text-xs text-muted-foreground">
-                      {cat.gamesPlayed} partie{cat.gamesPlayed > 1 ? 's' : ''}
+                      {t.dashboard.category_mmr.games.replace('{count}', String(cat.gamesPlayed))}
                     </div>
                   </div>
                 </div>
@@ -114,3 +117,4 @@ export function DashboardCategoryMMR() {
     </Card>
   );
 }
+
