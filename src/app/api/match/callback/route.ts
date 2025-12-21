@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { clearMatch } from '@/lib/queue';
 import type { Category } from '@prisma/client';
 
 export async function POST(req: Request) {
@@ -8,13 +9,17 @@ export async function POST(req: Request) {
     console.log('📥 [API] Callback reçu du bot:', JSON.stringify(body, null, 2));
 
     const { roomCode, scores, category: rawCategory } = body;
-    const category: Category = rawCategory || 'GP';
+    const category: Category = rawCategory || 'GP_FR';
 
     // Validation basique
     if (!roomCode || !scores || !Array.isArray(scores)) {
         console.error('❌ Données invalides reçues');
         return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
     }
+
+    // Nettoyer le match des pendingMatches (libère les joueurs du mode "matched")
+    clearMatch(roomCode);
+    console.log(`🧹 Match ${roomCode} nettoyé de pendingMatches`);
 
     // 1. Créer le match en base
     const match = await prisma.match.create({
