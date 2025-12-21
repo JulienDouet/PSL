@@ -286,9 +286,33 @@ export function PlayCard() {
                     const count = queueCounts[gm.key] || 0;
                     if (count === 0) return null;
                     return (
-                      <span key={gm.key} className="text-xs px-2 py-1 bg-background/50 rounded">
+                      <button 
+                        key={gm.key} 
+                        onClick={() => {
+                          setSelectedGameMode(gm.key);
+                          // Petite attente pour que le state soit mis à jour avant handleJoinQueue
+                          setTimeout(() => {
+                            setMode('searching');
+                            fetch('/api/queue/join', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ mode: gm.key, category: gm.category })
+                            }).then(res => res.json()).then(data => {
+                              if (data.status === 'matched') {
+                                setMatchInfo({ roomCode: data.roomCode, players: data.players || [] });
+                                setMode('matched');
+                                sendMatchNotification(data.roomCode);
+                              } else {
+                                setQueueCount(data.count || 1);
+                              }
+                            }).catch(() => setMode('idle'));
+                          }, 0);
+                        }}
+                        className="text-xs px-2 py-1 bg-background/50 rounded hover:bg-primary/30 hover:text-primary transition-colors cursor-pointer"
+                        title={`Rejoindre ${gm.label}`}
+                      >
                         {gm.emoji} {count}
-                      </span>
+                      </button>
                     );
                   })}
                 </div>
