@@ -27,18 +27,28 @@ export async function GET(req: Request) {
     const counts = getQueueCounts();
 
     // Si en queue et timer expiré, déclencher le match
+    console.log(`🔍 [DEBUG] status.inQueue=${status.inQueue}, category=${status.category}, canStart=${status.category ? canStartMatch(status.category) : 'N/A'}, timerExpired=${status.category ? isLobbyTimerExpired(status.category) : 'N/A'}`);
+    
     if (status.inQueue && status.category && canStartMatch(status.category) && isLobbyTimerExpired(status.category)) {
       const category = status.category;
+      console.log(`🎮 [QUEUE/STATUS] Timer expiré pour ${category}, lancement du match...`);
       clearLobbyTimer(category);
       
       const players = popPlayersForMatch(category);
+      console.log(`👥 [QUEUE/STATUS] ${players.length} joueurs extraits pour le match`);
+      
       if (players.length >= 2) {
-        const gameMode = getGameMode('GP_FR'); // Default, idéalement on stockerait le mode
+        // Utiliser la catégorie du match pour les règles
+        const gameMode = getGameMode(category as any);
+        console.log(`⚙️ [QUEUE/STATUS] Mode de jeu: ${gameMode.label}, règles: ${JSON.stringify(gameMode.rules)}`);
+        
         const result = await createMatchWithBot(players, category, gameMode.rules);
         
         if (result?.roomCode) {
+          console.log(`✅ [QUEUE/STATUS] Match créé: ${result.roomCode}`);
           registerPendingMatch(result.roomCode, players, category, result.botPid);
         } else {
+          console.log(`❌ [QUEUE/STATUS] Échec création match, remise en queue des joueurs`);
           cancelMatchingPlayers(players, category);
         }
       }

@@ -75,14 +75,24 @@ class JKLMBot {
     
     console.log(`🏗️ Création d'une room "${name}" (${gameId})...`);
     
+    const payload = { name, isPublic, gameId, creatorUserToken };
+    console.log('📤 Payload envoyé à JKLM:', JSON.stringify(payload));
+    
     try {
       const response = await fetch('https://jklm.fun/api/startRoom', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, isPublic, gameId, creatorUserToken })
+        headers: { 
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        body: JSON.stringify(payload)
       });
       
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('❌ Réponse erreur JKLM:', errorBody);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       
       console.log('📦 Réponse startRoom:', JSON.stringify(data, null, 2));
