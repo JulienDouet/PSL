@@ -105,12 +105,19 @@ model UserCategoryMMR {
 }
 
 enum Category {
+  // Nouvelles catégories
   GP_FR       // Grand Public FR
   MS_EN       // Mainstream EN
   ANIME       // Anime/Manga
   FLAGS       // Drapeaux
   NOFILTER_FR // Sans Filtre FR
   NOFILTER_EN // No Filter EN
+  // Anciennes catégories (gardées pour rétrocompatibilité DB)
+  GP          // @deprecated - utiliser GP_FR
+  NOFILTER    // @deprecated - utiliser NOFILTER_FR ou NOFILTER_EN
+  MUSIC       // @deprecated - pas encore implémenté
+  MOVIES      // @deprecated - pas encore implémenté
+  GAMES       // @deprecated - pas encore implémenté
 }
 
 // ============================================
