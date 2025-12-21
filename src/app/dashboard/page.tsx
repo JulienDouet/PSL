@@ -8,6 +8,16 @@ import { getRankProgress } from "@/lib/mmr";
 import { PlayCard } from "@/components/dashboard/play-card";
 import { DashboardCategoryMMR } from "@/components/dashboard/category-mmr";
 import { Navbar } from "@/components/navbar";
+import { prisma } from "@/lib/prisma";
+
+const CATEGORY_INFO: Record<string, { label: string; emoji: string }> = {
+  GP_FR: { label: 'Grand Public [FR]', emoji: '🍿' },
+  MS_EN: { label: 'Mainstream [EN]', emoji: '🍿' },
+  ANIME: { label: 'Anime', emoji: '🎌' },
+  FLAGS: { label: 'Drapeaux', emoji: '🚩' },
+  NOFILTER_FR: { label: 'Sans Filtre [FR]', emoji: '🔥' },
+  NOFILTER_EN: { label: 'No Filter [EN]', emoji: '🔥' },
+};
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({
@@ -31,6 +41,14 @@ export default async function DashboardPage() {
     currentStreak: 0,
     leaderboardPosition: 99,
   };
+
+  // Récupérer les dernières parties de l'utilisateur
+  const recentMatches = await prisma.matchPlayer.findMany({
+    where: { userId: user.id },
+    include: { match: true },
+    orderBy: { match: { createdAt: 'desc' } },
+    take: 5,
+  });
 
   const rankInfo = getRankProgress(userStats.mmr);
   const isCalibrating = userStats.gamesPlayed < 5;
@@ -65,7 +83,7 @@ export default async function DashboardPage() {
                   <CardTitle>🕐 Dernières parties</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {userStats.gamesPlayed === 0 ? (
+                  {recentMatches.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <div className="text-4xl mb-2">🎮</div>
                       <p>Aucune partie jouée pour l&apos;instant</p>
@@ -73,13 +91,28 @@ export default async function DashboardPage() {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <div className="p-3 rounded-lg bg-secondary/30 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-green-400 font-bold">1er</span>
-                          <span className="text-muted-foreground">vs 5 joueurs</span>
-                        </div>
-                        <span className="text-green-400">+12 MMR</span>
-                      </div>
+                      {recentMatches.map((mp) => {
+                        const catInfo = CATEGORY_INFO[mp.match.category] || { label: mp.match.category, emoji: '🎮' };
+                        return (
+                          <div
+                            key={mp.id}
+                            className="p-3 rounded-lg bg-secondary/30 flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg">{catInfo.emoji}</span>
+                              <span className={mp.placement === 1 ? "text-green-400 font-bold" : "text-muted-foreground"}>
+                                {mp.placement === 1 ? "🥇 1er" : `#${mp.placement}`}
+                              </span>
+                              <span className="text-muted-foreground text-sm">
+                                {mp.points} pts
+                              </span>
+                            </div>
+                            <span className={mp.mmrChange && mp.mmrChange > 0 ? "text-green-400" : "text-red-400"}>
+                              {mp.mmrChange && mp.mmrChange > 0 ? "+" : ""}{mp.mmrChange} MMR
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
