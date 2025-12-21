@@ -266,7 +266,7 @@ class JKLMBot {
                      this.sendChat(`⏰ Timeout ! Démarrage avec ${connectedCount}/${totalExpected} joueurs...`);
                      
                      this.allPlayersJoined = true; // Empêcher le démarrage normal
-                     this.applyRules();
+                     // Note: les règles ont déjà été appliquées au setup, pas besoin de les ré-appliquer
                      console.log('🔓 Déverrouillage des règles (timeout)...');
                      this.gameSocket.emit('setRulesLocked', true);
                      console.log('📤 Envoi startRoundNow (timeout)...');
@@ -612,8 +612,7 @@ class JKLMBot {
       setTimeout(() => {
         if (this.gameSocket?.connected) {
           if (this.isLeader) {
-            this.applyRules(); // Appliquer les règles juste avant de lancer
-            
+            // Note: les règles ont déjà été appliquées au setup, pas besoin de les ré-appliquer
             console.log('🔓 Déverrouillage des règles...');
             this.gameSocket.emit('setRulesLocked', true); // true = menu fermé = permet le jeu
           }
