@@ -87,12 +87,11 @@ const soloNotifyTimers = new Map<Category, NodeJS.Timeout>();
 export const QUEUE_CONFIG = {
   MIN_PLAYERS: 2,
   MAX_PLAYERS: 10,
-  LOBBY_TIMER_MS: 10_000, // 10 secondes d'attente avant match
+  LOBBY_TIMER_MS: 30_000, // 30 secondes d'attente avant match
   MATCH_TIMEOUT_MS: 90_000, // 90s (pour V2)
   QUEUE_TIMEOUT_MS: 5 * 60_000, // 5 min inactif = kick
   HEARTBEAT_TIMEOUT_MS: 15_000, // 15 secondes sans heartbeat = joueur inactif
-  DISCORD_SOLO_DELAY_MS: 15_000, // 15 secondes seul avant notification Discord
-  DISCORD_COOLDOWN_MS: 5 * 60_000, // 5 minutes entre deux pings du même rôle
+  DISCORD_JOIN_COOLDOWN_MS: 3 * 60_000, // 3 minutes entre deux pings pour queue join
 };
 
 // ==========================================
@@ -134,30 +133,12 @@ export function joinQueue(entry: QueueEntry, category: Category): QueueStatus {
     });
     console.log(`⏱️ [QUEUE] Timer de lobby démarré pour ${category} (${QUEUE_CONFIG.LOBBY_TIMER_MS / 1000}s)`);
     
-    // Annuler le timer de notification solo puisqu'on a assez de joueurs
-    const soloTimer = soloNotifyTimers.get(category);
-    if (soloTimer) {
-      clearTimeout(soloTimer);
-      soloNotifyTimers.delete(category);
-      console.log(`🔕 [DISCORD] Timer solo annulé pour ${category} (assez de joueurs)`);
-    }
+    // Notifier Discord que le match va bientôt commencer (PAS de cooldown)
+    notifyDiscordMatchReady(category, queue.length);
   }
   
-  // Si le joueur est seul, démarrer un timer pour notifier Discord après 15s
-  if (queue.length === 1 && !soloNotifyTimers.has(category)) {
-    const timer = setTimeout(() => {
-      // Vérifier qu'il est toujours seul
-      const currentQueue = queues.get(category);
-      if (currentQueue && currentQueue.length === 1) {
-        const soloPlayer = currentQueue[0];
-        notifyDiscord(category, soloPlayer.nickname);
-      }
-      soloNotifyTimers.delete(category);
-    }, QUEUE_CONFIG.DISCORD_SOLO_DELAY_MS);
-    
-    soloNotifyTimers.set(category, timer);
-    console.log(`📢 [DISCORD] Timer solo démarré pour ${category} (${QUEUE_CONFIG.DISCORD_SOLO_DELAY_MS / 1000}s)`);
-  }
+  // Notifier Discord quand un joueur rejoint (cooldown 3 min)
+  notifyDiscordJoin(category, entry.nickname);
 
   return getQueueStatus(entry.userId);
 }
@@ -481,20 +462,36 @@ export function stopHeartbeatCleanup(): void {
 // ==========================================
 
 /**
- * Envoie une notification Discord pour une catégorie.
- * Respecte le cooldown configuré.
+ * Envoie une notification Discord quand un joueur rejoint la queue.
+ * Respecte le cooldown de 3 minutes.
  */
-async function notifyDiscord(category: Category, playerName: string): Promise<void> {
+async function notifyDiscordJoin(category: Category, playerName: string): Promise<void> {
   // Vérifier le cooldown
   const lastPing = lastDiscordPing.get(category);
   const now = new Date();
   
-  if (lastPing && (now.getTime() - lastPing.getTime()) < QUEUE_CONFIG.DISCORD_COOLDOWN_MS) {
-    const remainingMs = QUEUE_CONFIG.DISCORD_COOLDOWN_MS - (now.getTime() - lastPing.getTime());
+  if (lastPing && (now.getTime() - lastPing.getTime()) < QUEUE_CONFIG.DISCORD_JOIN_COOLDOWN_MS) {
+    const remainingMs = QUEUE_CONFIG.DISCORD_JOIN_COOLDOWN_MS - (now.getTime() - lastPing.getTime());
     console.log(`⏳ [DISCORD] Cooldown actif pour ${category}: ${Math.ceil(remainingMs / 1000)}s restantes`);
     return;
   }
   
+  await sendDiscordNotification(category, playerName, 'join');
+  lastDiscordPing.set(category, now);
+}
+
+/**
+ * Envoie une notification Discord quand un match est sur le point de commencer.
+ * PAS de cooldown - toujours envoyer.
+ */
+export async function notifyDiscordMatchReady(category: Category, playerCount: number): Promise<void> {
+  await sendDiscordNotification(category, `${playerCount} joueurs`, 'match_ready');
+}
+
+/**
+ * Fonction interne pour envoyer la notification Discord.
+ */
+async function sendDiscordNotification(category: Category, playerName: string, type: 'join' | 'match_ready'): Promise<void> {
   const webhookUrl = process.env.DISCORD_BOT_WEBHOOK_URL;
   
   if (!webhookUrl) {
@@ -513,13 +510,13 @@ async function notifyDiscord(category: Category, playerName: string): Promise<vo
         category,
         playerName,
         queueCount,
+        type, // 'join' ou 'match_ready'
         secret: process.env.DISCORD_WEBHOOK_SECRET
       })
     });
     
     if (response.ok) {
-      lastDiscordPing.set(category, now);
-      console.log(`✅ [DISCORD] Notification envoyée pour ${category} (joueur: ${playerName})`);
+      console.log(`✅ [DISCORD] Notification ${type} envoyée pour ${category} (${playerName})`);
     } else {
       console.error(`❌ [DISCORD] Erreur webhook: ${response.status}`);
     }
@@ -527,3 +524,4 @@ async function notifyDiscord(category: Category, playerName: string): Promise<vo
     console.error('❌ [DISCORD] Erreur notification:', err);
   }
 }
+

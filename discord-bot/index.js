@@ -46,7 +46,7 @@ const CONFIG = {
   },
   
   // Cooldown entre deux pings du même rôle (en ms)
-  COOLDOWN_MS: parseInt(process.env.DISCORD_NOTIFY_COOLDOWN_MS) || 5 * 60 * 1000, // 5 minutes
+  COOLDOWN_MS: parseInt(process.env.DISCORD_NOTIFY_COOLDOWN_MS) || 3 * 60 * 1000, // 3 minutes
   
   // Port pour le serveur webhook
   PORT: parseInt(process.env.DISCORD_BOT_PORT) || 3001,
@@ -79,7 +79,7 @@ client.once('ready', () => {
 // NOTIFICATION LOGIC
 // ==========================================
 
-async function sendQueueNotification(category, playerName, queueCount) {
+async function sendQueueNotification(category, playerName, queueCount, type = 'join') {
   const channelId = CONFIG.CHANNELS[category];
   const roleId = CONFIG.ROLES[category];
   const label = CONFIG.LABELS[category] || category;
@@ -89,14 +89,17 @@ async function sendQueueNotification(category, playerName, queueCount) {
     return { success: false, reason: 'no_config' };
   }
   
-  // Vérifier le cooldown
-  const lastPing = lastPingTime.get(category) || 0;
-  const now = Date.now();
-  const remaining = CONFIG.COOLDOWN_MS - (now - lastPing);
-  
-  if (remaining > 0) {
-    console.log(`⏳ Cooldown actif pour ${category}: ${Math.ceil(remaining / 1000)}s restantes`);
-    return { success: false, reason: 'cooldown', remainingMs: remaining };
+  // Pour les notifications "join", vérifier le cooldown
+  // Pour les notifications "match_ready", PAS de cooldown
+  if (type === 'join') {
+    const lastPing = lastPingTime.get(category) || 0;
+    const now = Date.now();
+    const remaining = CONFIG.COOLDOWN_MS - (now - lastPing);
+    
+    if (remaining > 0) {
+      console.log(`⏳ Cooldown actif pour ${category}: ${Math.ceil(remaining / 1000)}s restantes`);
+      return { success: false, reason: 'cooldown', remainingMs: remaining };
+    }
   }
   
   try {
@@ -106,16 +109,24 @@ async function sendQueueNotification(category, playerName, queueCount) {
       return { success: false, reason: 'channel_not_found' };
     }
     
-    // Construire le message
-    const message = `🎮 **${playerName}** cherche une partie en **${label}** !\n\n` +
-                    `<@&${roleId}> Rejoignez le matchmaking sur [psl-ranked.app](https://www.psl-ranked.app) !`;
+    // Construire le message selon le type
+    let message;
+    if (type === 'match_ready') {
+      message = `🚀 **Match en préparation !** Une partie en **${label}** va bientôt commencer !\n\n` +
+                `<@&${roleId}> Rejoignez vite sur [psl-ranked.app](https://www.psl-ranked.app) ! (30s avant lancement)`;
+    } else {
+      message = `🎮 **${playerName}** cherche une partie en **${label}** !\n\n` +
+                `<@&${roleId}> Rejoignez le matchmaking sur [psl-ranked.app](https://www.psl-ranked.app) !`;
+    }
     
     await channel.send(message);
     
-    // Mettre à jour le cooldown
-    lastPingTime.set(category, now);
+    // Mettre à jour le cooldown uniquement pour les notifications "join"
+    if (type === 'join') {
+      lastPingTime.set(category, Date.now());
+    }
     
-    console.log(`✅ Notification envoyée: ${category} (joueur: ${playerName})`);
+    console.log(`✅ Notification ${type} envoyée: ${category} (${playerName})`);
     return { success: true };
     
   } catch (err) {
@@ -142,7 +153,7 @@ app.get('/health', (req, res) => {
 
 // Endpoint pour recevoir les notifications de l'app Next.js
 app.post('/notify', async (req, res) => {
-  const { category, playerName, queueCount, secret } = req.body;
+  const { category, playerName, queueCount, type, secret } = req.body;
   
   // Vérification simple du secret (optionnel mais recommandé)
   if (process.env.DISCORD_WEBHOOK_SECRET && secret !== process.env.DISCORD_WEBHOOK_SECRET) {
@@ -153,9 +164,9 @@ app.post('/notify', async (req, res) => {
     return res.status(400).json({ error: 'Missing category or playerName' });
   }
   
-  console.log(`📥 Notification reçue: ${category} - ${playerName} (${queueCount} en queue)`);
+  console.log(`📥 Notification reçue: ${category} - ${playerName} (${queueCount} en queue, type: ${type || 'join'})`);
   
-  const result = await sendQueueNotification(category, playerName, queueCount);
+  const result = await sendQueueNotification(category, playerName, queueCount, type || 'join');
   res.json(result);
 });
 
