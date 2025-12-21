@@ -221,15 +221,30 @@ class JKLMBot {
          }
          
          // Appliquer les règles PSL après un court délai
+         // IMPORTANT: Chaque règle doit être envoyée séparément !
          setTimeout(() => {
-           console.log('⚙️ Application des règles...');
-           const rules = this.customRules || { scoreGoal: 150, challengeDuration: 12, dictionaryId: 'fr' };
+           const rules = this.customRules || { scoreGoal: 150, challengeDuration: 12 };
+           console.log('⚙️ Application des règles (une par une)...');
            console.log('📋 Règles:', JSON.stringify(rules));
-           this.gameSocket.emit('setRules', { 
-             scoreGoal: rules.scoreGoal || 150,
-             challengeDuration: rules.challengeDuration || 12,
-             dictionaryId: rules.dictionaryId || 'fr'
-           });
+           
+           // 1. Score goal
+           this.gameSocket.emit('setRules', { scoreGoal: rules.scoreGoal || 150 });
+           console.log('  ✓ scoreGoal:', rules.scoreGoal || 150);
+           
+           // 2. Challenge duration (avec délai)
+           setTimeout(() => {
+             this.gameSocket.emit('setRules', { challengeDuration: rules.challengeDuration || 12 });
+             console.log('  ✓ challengeDuration:', rules.challengeDuration || 12);
+             
+             // 3. TagOps pour filtrer le dictionnaire (après les autres règles)
+             if (rules.tagOps && Array.isArray(rules.tagOps) && rules.tagOps.length > 0) {
+               setTimeout(() => {
+                 console.log('  📁 setTagOps:', JSON.stringify(rules.tagOps));
+                 this.gameSocket.emit('setTagOps', rules.tagOps);
+                 console.log('  ✓ tagOps appliqués');
+               }, 200);
+             }
+           }, 200);
          }, 500);
          
          // Si pas de joueurs attendus, lancer directement

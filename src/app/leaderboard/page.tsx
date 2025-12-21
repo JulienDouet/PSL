@@ -22,12 +22,14 @@ interface LeaderboardEntry {
   };
 }
 
-// Mapping des modes vers les catégories pour le leaderboard
+// Catégories pour le leaderboard (correspondant aux modes de jeu)
 const LEADERBOARD_CATEGORIES = [
-  { key: 'GP', label: 'GP / MS', emoji: '🌐' },
+  { key: 'GP_FR', label: 'GP FR', emoji: '🇫🇷' },
+  { key: 'MS_EN', label: 'MS EN', emoji: '🇬🇧' },
   { key: 'ANIME', label: 'Anime', emoji: '🎌' },
   { key: 'FLAGS', label: 'Drapeaux', emoji: '🚩' },
-  { key: 'NOFILTER', label: 'Sans Filtre', emoji: '🔥' }
+  { key: 'NOFILTER_FR', label: 'Sans Filtre', emoji: '🔥' },
+  { key: 'NOFILTER_EN', label: 'No Filter', emoji: '💥' }
 ];
 
 function getPositionBadge(position: number) {
@@ -38,7 +40,7 @@ function getPositionBadge(position: number) {
 }
 
 export default function LeaderboardPage() {
-  const [activeCategory, setActiveCategory] = useState('GP');
+  const [activeCategory, setActiveCategory] = useState('GP_FR');
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 

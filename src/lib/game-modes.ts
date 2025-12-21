@@ -6,6 +6,11 @@ import type { Category } from '@prisma/client';
 
 export type GameModeKey = 'GP_FR' | 'MS_EN' | 'ANIME' | 'FLAGS' | 'NOFILTER_FR' | 'NOFILTER_EN';
 
+interface TagOp {
+  op: 'union' | 'difference' | 'intersection';
+  tag: string;
+}
+
 export interface GameMode {
   key: GameModeKey;
   category: Category;
@@ -15,51 +20,92 @@ export interface GameMode {
     dictionaryId: string;
     scoreGoal?: number;
     challengeDuration?: number;
+    tagOps?: TagOp[];
   };
 }
 
 export const GAME_MODES: Record<GameModeKey, GameMode> = {
   GP_FR: {
     key: 'GP_FR',
-    category: 'GP',
+    category: 'GP_FR',
     label: 'GP FR',
     emoji: '🇫🇷',
-    rules: { dictionaryId: 'fr', scoreGoal: 150, challengeDuration: 12 }
+    rules: { 
+      dictionaryId: 'fr', 
+      scoreGoal: 150, 
+      challengeDuration: 12,
+      tagOps: [
+        { op: 'union', tag: 'Grand public' },
+        { op: 'difference', tag: 'Difficile' }
+      ]
+    }
   },
   MS_EN: {
     key: 'MS_EN',
-    category: 'GP',
+    category: 'MS_EN',
     label: 'MS EN',
     emoji: '🇬🇧',
-    rules: { dictionaryId: 'en', scoreGoal: 150, challengeDuration: 12 }
+    rules: { 
+      dictionaryId: 'en', 
+      scoreGoal: 150, 
+      challengeDuration: 12,
+      tagOps: [
+        { op: 'union', tag: 'Mainstream' },
+        { op: 'difference', tag: 'Hard' }
+      ]
+    }
   },
   ANIME: {
     key: 'ANIME',
     category: 'ANIME',
     label: 'Anime',
     emoji: '🎌',
-    rules: { dictionaryId: 'en', scoreGoal: 150, challengeDuration: 12 }
+    rules: { 
+      dictionaryId: 'en', 
+      scoreGoal: 150, 
+      challengeDuration: 12,
+      tagOps: [
+        { op: 'intersection', tag: 'Anime and Manga' }
+      ]
+    }
   },
   FLAGS: {
     key: 'FLAGS',
     category: 'FLAGS',
     label: 'Drapeaux',
     emoji: '🚩',
-    rules: { dictionaryId: 'en', scoreGoal: 150, challengeDuration: 12 }
+    rules: { 
+      dictionaryId: 'fr', 
+      scoreGoal: 150, 
+      challengeDuration: 12,
+      tagOps: [
+        { op: 'intersection', tag: 'Drapeaux' }
+      ]
+    }
   },
   NOFILTER_FR: {
     key: 'NOFILTER_FR',
-    category: 'NOFILTER',
+    category: 'NOFILTER_FR',
     label: 'Sans Filtre FR',
     emoji: '🔥',
-    rules: { dictionaryId: 'fr', scoreGoal: 150, challengeDuration: 12 }
+    rules: { 
+      dictionaryId: 'fr', 
+      scoreGoal: 150, 
+      challengeDuration: 12,
+      // Pas de tagOps = pas de filtre
+    }
   },
   NOFILTER_EN: {
     key: 'NOFILTER_EN',
-    category: 'NOFILTER',
+    category: 'NOFILTER_EN',
     label: 'No Filter EN',
     emoji: '💥',
-    rules: { dictionaryId: 'en', scoreGoal: 150, challengeDuration: 12 }
+    rules: { 
+      dictionaryId: 'en', 
+      scoreGoal: 150, 
+      challengeDuration: 12,
+      // Pas de tagOps = pas de filtre
+    }
   }
 };
 
@@ -69,3 +115,4 @@ export const DEFAULT_MODE: GameModeKey = 'GP_FR';
 export function getGameMode(key: GameModeKey): GameMode {
   return GAME_MODES[key] || GAME_MODES.GP_FR;
 }
+
