@@ -23,61 +23,137 @@ function printScenario(title: string, players: PlayerResult[]) {
 // SCENARIOS
 // ==========================================
 
-// 1. DUEL ÉQUILIBRÉ
-// Deux joueurs de même niveau. Le gagnant doit gagner autant que le perdant perd.
-printScenario('1. Duel Équilibré (1500 vs 1500)', [
-  { id: 'Winner', mmr: 1500, score: 150, placement: 1, gamesPlayed: 20 },
-  { id: 'Loser',  mmr: 1500, score: 100, placement: 2, gamesPlayed: 20 },
+
+// ===================================
+// PARTIE 1: DUELS (1v1) - 13 Scénarios
+// ===================================
+
+console.log('\n🔵 --- SÉRIE 1: DUELS 1v1 (Impact écart MMR) ---');
+
+// Cas 1-5: Victoire du favori (Higher MMR) avec écart croissant
+const gaps = [0, 100, 500, 1000, 2000];
+gaps.forEach((gap, i) => {
+  printScenario(`1.${i+1}. Duel 1v1 - Écart ${gap} (Favori gagne)`, [
+    { id: 'High', mmr: 1500 + gap, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'Low',  mmr: 1500,       score: 100, placement: 2, gamesPlayed: 50 }
+  ]);
+});
+
+// Cas 6-10: Upset (Low MMR gagne) avec écart croissant
+gaps.forEach((gap, i) => {
+  printScenario(`1.${i+6}. Duel 1v1 - Écart ${gap} (Outsider gagne)`, [
+    { id: 'Low',  mmr: 1500,       score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'High', mmr: 1500 + gap, score: 140, placement: 2, gamesPlayed: 50 }
+  ]);
+});
+
+// Cas 11-13: Impact du score de défaite (Proximity)
+console.log('\n🔵 --- SÉRIE 2: DUELS 1v1 (Impact Score de défaite) ---');
+printScenario('2.1. Défaite serrée (149 pts) - Écart 0', [
+    { id: 'A', mmr: 1500, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'B', mmr: 1500, score: 149, placement: 2, gamesPlayed: 50 }
+]);
+printScenario('2.2. Défaite moyenne (110 pts) - Écart 0', [
+    { id: 'A', mmr: 1500, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'B', mmr: 1500, score: 110, placement: 2, gamesPlayed: 50 }
+]);
+printScenario('2.3. Défaite large (<110 pts) - Écart 0', [
+    { id: 'A', mmr: 1500, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'B', mmr: 1500, score: 50,  placement: 2, gamesPlayed: 50 }
 ]);
 
-// 2. DUEL DÉSÉQUILIBRÉ (LOGIQUE)
-// Le fort bat le faible. Gain faible pour le fort, perte faible pour le faible.
-printScenario('2. Duel Déséquilibré - Logique (2000 vs 1000)', [
-  { id: 'Strong', mmr: 2000, score: 150, placement: 1, gamesPlayed: 50 },
-  { id: 'Weak',   mmr: 1000, score: 50,  placement: 2, gamesPlayed: 50 },
+// ===================================
+// PARTIE 2: LOBBY 3 JOUEURS (FFA)
+// ===================================
+console.log('\n🟢 --- SÉRIE 3: LOBBY 3 JOUEURS ---');
+
+printScenario('3.1. 3 Joueurs Équilibrés', [
+  { id: 'P1', mmr: 1500, score: 150, placement: 1, gamesPlayed: 50 },
+  { id: 'P2', mmr: 1500, score: 140, placement: 2, gamesPlayed: 50 },
+  { id: 'P3', mmr: 1500, score: 100, placement: 3, gamesPlayed: 50 }
 ]);
 
-// 3. DUEL UPSET (SURPRISE)
-// Le faible bat le fort. Gros gain pour le faible, grosse perte pour le fort.
-printScenario('3. Duel Upset - Surprise (1000 bat 2000)', [
-  { id: 'Weak',   mmr: 1000, score: 150, placement: 1, gamesPlayed: 50 },
-  { id: 'Strong', mmr: 2000, score: 140, placement: 2, gamesPlayed: 50 },
+printScenario('3.2. Sandwich (High - Med - Low) - Logique', [
+  { id: 'High', mmr: 2000, score: 150, placement: 1, gamesPlayed: 50 },
+  { id: 'Med',  mmr: 1500, score: 120, placement: 2, gamesPlayed: 50 },
+  { id: 'Low',  mmr: 1000, score: 80,  placement: 3, gamesPlayed: 50 }
 ]);
 
-// 4. MATCH STANDARD (4 JOUEURS)
-// Mélange de niveaux.
-printScenario('4. Match Standard 4 Joueurs', [
-  { id: 'P1_Gold',   mmr: 1500, score: 150, placement: 1, gamesPlayed: 100 },
-  { id: 'P2_Silver', mmr: 1200, score: 130, placement: 2, gamesPlayed: 100 },
-  { id: 'P3_Plat',   mmr: 1800, score: 110, placement: 3, gamesPlayed: 100 },
-  { id: 'P4_Bronze', mmr: 800,  score: 40,  placement: 4, gamesPlayed: 100 },
+printScenario('3.3. Sandwich - Upset Total (Low bat tout le monde)', [
+  { id: 'Low',  mmr: 1000, score: 150, placement: 1, gamesPlayed: 50 },
+  { id: 'Med',  mmr: 1500, score: 140, placement: 2, gamesPlayed: 50 },
+  { id: 'High', mmr: 2000, score: 130, placement: 3, gamesPlayed: 50 }
 ]);
 
-// 5. CALIBRATION
-// Nouveau joueur (gamesPlayed < 5) gagne/perd double.
-printScenario('5. Calibration (Newbie vs Regular)', [
-  { id: 'Newbie',  mmr: 1000, score: 150, placement: 1, gamesPlayed: 0 }, // Doit gagner beaucoup (x2)
-  { id: 'Regular', mmr: 1200, score: 140, placement: 2, gamesPlayed: 50 },
+// ===================================
+// PARTIE 3: LOBBY 4 JOUEURS (FFA)
+// ===================================
+console.log('\n🟡 --- SÉRIE 4: LOBBY 4 JOUEURS ---');
+
+printScenario('4.1. Lobby Disparate (800 à 2200)', [
+  { id: 'Master', mmr: 2200, score: 150, placement: 1, gamesPlayed: 100 },
+  { id: 'Gold',   mmr: 1500, score: 130, placement: 2, gamesPlayed: 100 },
+  { id: 'Silver', mmr: 1200, score: 110, placement: 3, gamesPlayed: 100 },
+  { id: 'Bronze', mmr: 800,  score: 50,  placement: 4, gamesPlayed: 100 }
 ]);
 
-// 6. PROXIMITY SCORE (Défaite serrée vs Défaite large)
-// P2 perd de peu (149 pts), P3 perd largement (50 pts).
-console.log('\n=== 6. Proximity Score Test (Same MMR, different scores) ===');
-const winner = { id: 'Winner', mmr: 1500, score: 150, placement: 1, gamesPlayed: 20 };
-const closeLoser = { id: 'Close', mmr: 1500, score: 149, placement: 2, gamesPlayed: 20 }; // Devrait perdre moins
-const farLoser = { id: 'Far',   mmr: 1500, score: 50,  placement: 2, gamesPlayed: 20 }; // Devrait perdre plein pot
+printScenario('4.2. Lobby Disparate - Master finit dernier', [
+  { id: 'Gold',   mmr: 1500, score: 150, placement: 1, gamesPlayed: 100 },
+  { id: 'Silver', mmr: 1200, score: 140, placement: 2, gamesPlayed: 100 },
+  { id: 'Bronze', mmr: 800,  score: 130, placement: 3, gamesPlayed: 100 },
+  { id: 'Master', mmr: 2200, score: 100, placement: 4, gamesPlayed: 100 }
+]);
 
-console.log('--- Duel: Winner vs Close Loser (149 pts) ---');
-const changeClose = calculateMMRChange(closeLoser, [winner, closeLoser]);
-console.log(`Close Loser (149pts): ${changeClose}`);
+// ===================================
+// PARTIE 4: LOBBY 5 JOUEURS (FFA)
+// ===================================
+console.log('\n🟠 --- SÉRIE 5: LOBBY 5 JOUEURS ---');
 
-console.log('--- Duel: Winner vs Far Loser (50 pts) ---');
-const changeFar = calculateMMRChange(farLoser, [winner, farLoser]);
-console.log(`Far Loser (50pts):   ${changeFar}`);
+printScenario('5.1. Lobby Full Équilibré (Tous 1500)', [
+    { id: 'P1', mmr: 1500, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'P2', mmr: 1500, score: 145, placement: 2, gamesPlayed: 50 },
+    { id: 'P3', mmr: 1500, score: 140, placement: 3, gamesPlayed: 50 },
+    { id: 'P4', mmr: 1500, score: 130, placement: 4, gamesPlayed: 50 },
+    { id: 'P5', mmr: 1500, score: 100, placement: 5, gamesPlayed: 50 }
+]);
 
-// 7. PLANCHER (MIN 1 POINT)
-// Cas improbable où le calcul donnerait 0.
-printScenario('7. Plancher Minimum (Même MMR, victoire)', [
-    { id: 'A', mmr: 1000, score: 150, placement: 1, gamesPlayed: 100 },
-    { id: 'B', mmr: 1000, score: 140, placement: 2, gamesPlayed: 100 }
+printScenario('5.2. David contre Goliaths (1 Low vs 4 Highs) - Low gagne', [
+    { id: 'Low',   mmr: 1000, score: 150, placement: 1, gamesPlayed: 50 }, // Devrait gagner énormément
+    { id: 'High1', mmr: 2000, score: 140, placement: 2, gamesPlayed: 50 },
+    { id: 'High2', mmr: 2000, score: 135, placement: 3, gamesPlayed: 50 },
+    { id: 'High3', mmr: 2000, score: 130, placement: 4, gamesPlayed: 50 },
+    { id: 'High4', mmr: 2000, score: 120, placement: 5, gamesPlayed: 50 }
+]);
+
+printScenario('5.3. Goliath contre Davids (1 High vs 4 Lows) - High perd', [
+    { id: 'Low1', mmr: 1000, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'Low2', mmr: 1000, score: 140, placement: 2, gamesPlayed: 50 },
+    { id: 'Low3', mmr: 1000, score: 130, placement: 3, gamesPlayed: 50 },
+    { id: 'Low4', mmr: 1000, score: 120, placement: 4, gamesPlayed: 50 },
+    { id: 'High', mmr: 2000, score: 100, placement: 5, gamesPlayed: 50 } // Devrait perdre énormément
+]);
+
+// ===================================
+// PARTIE 5: CALIBRATION 
+// ===================================
+console.log('\n🟣 --- SÉRIE 6: CALIBRATION ---');
+
+printScenario('6.1. Nouveau Joueur (0 games) finit 1er', [
+    { id: 'New', mmr: 1000, score: 150, placement: 1, gamesPlayed: 0 },
+    { id: 'Old', mmr: 1200, score: 140, placement: 2, gamesPlayed: 50 }
+]);
+
+printScenario('6.2. Nouveau Joueur (0 games) finit dernier', [
+    { id: 'Old', mmr: 1200, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'New', mmr: 1000, score: 100, placement: 2, gamesPlayed: 0 }
+]);
+
+printScenario('6.3. Fin de calibration (4ème game)', [
+    { id: 'New', mmr: 1100, score: 150, placement: 1, gamesPlayed: 4 },
+    { id: 'Old', mmr: 1200, score: 140, placement: 2, gamesPlayed: 50 }
+]);
+
+printScenario('6.4. Post calibration (5ème game = normal)', [
+    { id: 'New', mmr: 1150, score: 150, placement: 1, gamesPlayed: 5 },
+    { id: 'Old', mmr: 1200, score: 140, placement: 2, gamesPlayed: 50 }
 ]);
