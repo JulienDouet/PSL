@@ -94,7 +94,7 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
       dictionaryId: 'fr', 
       scoreGoal: FIXED_SCORE_GOAL, 
       challengeDuration: 12,
-      // Pas de tagOps = pas de filtre
+      tagOps: [], // Tableau vide = clear tous les filtres
     }
   },
   NOFILTER_EN: {
@@ -106,7 +106,7 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
       dictionaryId: 'en', 
       scoreGoal: FIXED_SCORE_GOAL, 
       challengeDuration: 12,
-      // Pas de tagOps = pas de filtre
+      tagOps: [], // Tableau vide = clear tous les filtres
     }
   }
 };

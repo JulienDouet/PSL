@@ -527,12 +527,13 @@ class JKLMBot {
         console.log('  ✓ challengeDuration:', rules.challengeDuration || 12);
         
         // TagOps pour filtrer le dictionnaire (après les autres règles)
-        if (rules.tagOps && Array.isArray(rules.tagOps) && rules.tagOps.length > 0) {
+        // Note: tableau vide = clear tous les filtres, undefined = ne rien changer
+        if (rules.tagOps && Array.isArray(rules.tagOps)) {
           setTimeout(() => {
             if (!this.gameSocket?.connected) return;
             console.log('  📁 setTagOps:', JSON.stringify(rules.tagOps));
             this.gameSocket.emit('setTagOps', rules.tagOps);
-            console.log('  ✓ tagOps appliqués');
+            console.log(rules.tagOps.length > 0 ? '  ✓ tagOps appliqués' : '  ✓ filtres effacés (tableau vide)');
           }, 200);
         }
       }, 200);
