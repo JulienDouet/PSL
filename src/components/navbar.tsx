@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Loader2, LogOut, User, Settings, ChevronDown } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/context";
 
 export function Navbar() {
   const { data: session, isPending } = useSession();
