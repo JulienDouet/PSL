@@ -367,17 +367,21 @@ class JKLMBot {
       // Enregistrer les réponses de ce round
       if (this.currentChallenge) {
         const { question, index, playerTimes } = this.currentChallenge;
-        const answer = result.source;
+        const correctAnswer = result.source;
+        const playerAnswers = result.foundSourcesByPlayerPeerId || {};
         
         for (const [peerId, elapsedTime] of playerTimes.entries()) {
             const player = this.players.get(peerId);
             if (player) {
+                const actualAnswer = playerAnswers[peerId] || correctAnswer; // Si pas trouvé spécifiquement, on suppose qu'ils ont trouvé la bonne réponse (cas rare sans foundSourcesByPlayerPeerId)
+                
                 this.matchAnswers.push({
                     peerId: peerId,
                     nickname: player.nickname,
                     roundIndex: index,
                     question: question,
-                    answer: answer,
+                    answer: correctAnswer,      // La bonne réponse attendue
+                    playerAnswer: actualAnswer, // Ce que le joueur a écrit
                     elapsedTime: elapsedTime
                 });
             }

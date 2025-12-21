@@ -171,6 +171,7 @@ model MatchAnswer {
   
   question    String   // La question posée
   answer      String   // La réponse (correcte)
+  playerAnswer String? // Ce que le joueur a répondu (peut être différent de la réponse canonique)
   elapsedTime Int      // Temps en ms
   
   createdAt   DateTime @default(now())

@@ -189,6 +189,7 @@ export async function POST(req: Request) {
             roundIndex: ans.roundIndex,
             question: ans.question,
             answer: ans.answer,
+            playerAnswer: ans.playerAnswer || ans.answer, // Fallback sur la réponse canonique si pas dispo
             elapsedTime: ans.elapsedTime,
         }));
 
