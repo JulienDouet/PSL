@@ -21,6 +21,9 @@ class JKLMBot {
     this.userToken = null;
     this.players = new Map();
     this.gameResults = [];
+    this.matchAnswers = []; // Stockage des réponses timecode
+    this.currentChallenge = null;
+    this.roundCounter = 0;
     this.selfPeerId = null;
     this.expectedPlayers = []; // Liste des joueurs attendus
     this.allPlayersJoined = false;
@@ -306,6 +309,12 @@ class JKLMBot {
 
     this.gameSocket.on('startChallenge', (challenge) => {
       console.log('❓ Question:', challenge.prompt?.substring(0, 50));
+      this.roundCounter++;
+      this.currentChallenge = {
+        question: challenge.prompt,
+        index: this.roundCounter,
+        playerTimes: new Map() // peerId -> elapsedTime
+      };
     });
 
     this.gameSocket.on('setPlayerState', (peerId, state) => {
@@ -313,11 +322,40 @@ class JKLMBot {
       if (player && state.points !== undefined) {
         player.score = state.points;
       }
+      
+      // Tracking du temps de réponse si trouvé
+      if (this.currentChallenge && state.hasFoundSource && state.elapsedTime > 0) {
+        if (!this.currentChallenge.playerTimes.has(peerId)) {
+           // On enregistre le premier temps valide reçu pour ce joueur sur ce round
+           this.currentChallenge.playerTimes.set(peerId, state.elapsedTime);
+        }
+      }
     });
 
     this.gameSocket.on('endChallenge', (result) => {
       // result format: { source: "...", submitter: "...", details: "...", fastest: "PlayerName", ... }
       console.log('🏁 Fin du round!');
+      
+      // Enregistrer les réponses de ce round
+      if (this.currentChallenge) {
+        const { question, index, playerTimes } = this.currentChallenge;
+        const answer = result.source;
+        
+        for (const [peerId, elapsedTime] of playerTimes.entries()) {
+            const player = this.players.get(peerId);
+            if (player) {
+                this.matchAnswers.push({
+                    peerId: peerId,
+                    nickname: player.nickname,
+                    roundIndex: index,
+                    question: question,
+                    answer: answer,
+                    elapsedTime: elapsedTime
+                });
+            }
+        }
+        this.currentChallenge = null;
+      }
       
       let message = '';
       if (result.fastest) {
@@ -394,6 +432,7 @@ class JKLMBot {
             body: JSON.stringify({ 
                 roomCode: this.roomCode,
                 scores: this.gameResults,
+                answers: this.matchAnswers,
                 category: this.category
             })
         }).then(res => {

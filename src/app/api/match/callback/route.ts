@@ -40,6 +40,7 @@ export async function POST(req: Request) {
     
     const playersForCalculation: import('@/lib/mmr').PlayerResult[] = [];
     const userMap = new Map<string, any>();
+    const nicknameToUser = new Map<string, string>();
 
     for (const scoreData of scores) {
         let user = null;
@@ -109,6 +110,7 @@ export async function POST(req: Request) {
                 gamesPlayed: user.gamesPlayed
             });
             userMap.set(user.id, user);
+            nicknameToUser.set(scoreData.nickname, user.id);
         } else {
             console.log(`⚠️ Joueur non trouvé: ${scoreData.nickname}`);
         }
@@ -174,6 +176,28 @@ export async function POST(req: Request) {
                 gamesPlayed: { increment: 1 }
             }
         });
+    }
+
+    // 4. Sauvegarder les réponses (MatchAnswer)
+    const answers = (body as any).answers;
+    if (answers && Array.isArray(answers)) {
+        console.log(`📝 Traitement de ${answers.length} réponses...`);
+        const answersData = answers.map((ans: any) => ({
+            matchId: match.id,
+            userId: nicknameToUser.get(ans.nickname) || null,
+            peerId: typeof ans.peerId === 'number' ? ans.peerId : parseInt(ans.peerId) || 0,
+            roundIndex: ans.roundIndex,
+            question: ans.question,
+            answer: ans.answer,
+            elapsedTime: ans.elapsedTime,
+        }));
+
+        if (answersData.length > 0) {
+             await prisma.matchAnswer.createMany({
+                data: answersData
+            });
+            console.log(`✅ ${answersData.length} réponses sauvegardées en base.`);
+        }
     }
 
     return NextResponse.json({ success: true, matchId: match.id, processedPlayers: playersForCalculation.length });
