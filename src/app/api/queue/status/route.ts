@@ -28,10 +28,10 @@ export async function GET(req: Request) {
       const players = popPlayersForMatch(category);
       if (players.length >= 2) {
         const gameMode = getGameMode('GP_FR'); // Default, idéalement on stockerait le mode
-        const roomCode = await createMatchWithBot(players, category, gameMode.rules);
+        const result = await createMatchWithBot(players, category, gameMode.rules);
         
-        if (roomCode) {
-          registerPendingMatch(roomCode, players, category);
+        if (result?.roomCode) {
+          registerPendingMatch(result.roomCode, players, category, result.botPid);
         } else {
           cancelMatchingPlayers(players, category);
         }
@@ -51,7 +51,7 @@ export async function GET(req: Request) {
   }
 }
 
-async function createMatchWithBot(players: any[], category: Category, rules: { dictionaryId: string; scoreGoal?: number; challengeDuration?: number }): Promise<string | null> {
+async function createMatchWithBot(players: any[], category: Category, rules: { dictionaryId: string; scoreGoal?: number; challengeDuration?: number; tagOps?: any[] }): Promise<{ roomCode: string; botPid?: number } | null> {
   return new Promise((resolve) => {
     const botScript = path.join(process.cwd(), 'jklm-bot/index.js');
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -80,6 +80,8 @@ async function createMatchWithBot(players: any[], category: Category, rules: { d
       cwd: process.cwd()
     });
 
+    const botPid = child.pid;
+
     const timeout = setTimeout(() => {
       console.log('⏰ [QUEUE/STATUS] Timeout waiting for room code');
       resolve(null);
@@ -91,7 +93,7 @@ async function createMatchWithBot(players: any[], category: Category, rules: { d
       const match = output.match(/Room cr..?e: ([A-Z]{4})/i);
       if (match) {
         clearTimeout(timeout);
-        resolve(match[1]);
+        resolve({ roomCode: match[1], botPid });
       }
     });
 

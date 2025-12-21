@@ -47,6 +47,9 @@ export function Navbar() {
               <Link href="/leaderboard" className="text-muted-foreground hover:text-foreground transition-colors">
                 Classement
               </Link>
+              <Link href="/matches" className="text-muted-foreground hover:text-foreground transition-colors">
+                Parties
+              </Link>
               <Link href="/dashboard#play">
                 <Button size="sm" className="bg-gradient-psl hover:opacity-90 transition-opacity">
                   🎮 Jouer

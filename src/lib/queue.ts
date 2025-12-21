@@ -26,6 +26,7 @@ export interface MatchInfo {
   players: QueueEntry[];
   category: Category;
   createdAt: Date;
+  botPid?: number; // PID du processus bot pour le kill admin
 }
 
 export interface QueueStatus {
@@ -275,12 +276,13 @@ export function popPlayersForMatch(category: Category): QueueEntry[] {
  * Enregistre un match en attente de joueurs.
  * Nettoie l'état "matching" et passe les joueurs en "matched".
  */
-export function registerPendingMatch(roomCode: string, players: QueueEntry[], category: Category): MatchInfo {
+export function registerPendingMatch(roomCode: string, players: QueueEntry[], category: Category, botPid?: number): MatchInfo {
   const match: MatchInfo = {
     roomCode,
     players,
     category,
-    createdAt: new Date()
+    createdAt: new Date(),
+    botPid
   };
 
   pendingMatches.set(roomCode, match);
@@ -291,7 +293,7 @@ export function registerPendingMatch(roomCode: string, players: QueueEntry[], ca
     userMatches.set(p.userId, roomCode);
   });
 
-  console.log(`✅ [QUEUE] Match confirmé: ${roomCode} pour ${players.length} joueurs`);
+  console.log(`✅ [QUEUE] Match confirmé: ${roomCode} pour ${players.length} joueurs (botPid: ${botPid || 'N/A'})`);
 
   return match;
 }
@@ -342,4 +344,36 @@ export function getQueueCounts(): Record<Category, number> {
   }
 
   return counts as Record<Category, number>;
+}
+
+// ==========================================
+// ADMIN FUNCTIONS
+// ==========================================
+
+/**
+ * Retourne tous les matchs actifs (pour le panel admin).
+ */
+export function getAllActiveMatches(): MatchInfo[] {
+  return Array.from(pendingMatches.values());
+}
+
+/**
+ * Tue un match et son bot associé (admin only).
+ * Retourne le PID du bot tué, ou null si pas de bot.
+ */
+export function killMatch(roomCode: string): { success: boolean; botPid?: number } {
+  const match = pendingMatches.get(roomCode);
+  if (!match) {
+    return { success: false };
+  }
+
+  const { botPid } = match;
+  
+  // Nettoyer le match
+  match.players.forEach(p => userMatches.delete(p.userId));
+  pendingMatches.delete(roomCode);
+  
+  console.log(`🔴 [ADMIN] Match ${roomCode} tué par admin (botPid: ${botPid || 'N/A'})`);
+  
+  return { success: true, botPid };
 }

@@ -84,15 +84,15 @@ export async function POST(req: Request) {
       
       if (players.length >= 2) {
         // Lancer le bot et créer la room
-        const roomCode = await createMatchWithBot(players, category, gameMode.rules);
+        const result = await createMatchWithBot(players, category, gameMode.rules);
         
-        if (roomCode) {
-          // Enregistrer le match en attente
-          const match = registerPendingMatch(roomCode, players, category);
+        if (result?.roomCode) {
+          // Enregistrer le match en attente (avec le PID du bot pour le kill admin)
+          const match = registerPendingMatch(result.roomCode, players, category, result.botPid);
           
           return NextResponse.json({
             status: 'matched',
-            roomCode,
+            roomCode: result.roomCode,
             players: players.map(p => ({ nickname: p.nickname, mmr: p.mmr })),
             category
           });
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
   }
 }
 
-async function createMatchWithBot(players: any[], category: Category, rules: { dictionaryId: string; scoreGoal?: number; challengeDuration?: number }): Promise<string | null> {
+async function createMatchWithBot(players: any[], category: Category, rules: { dictionaryId: string; scoreGoal?: number; challengeDuration?: number; tagOps?: any[] }): Promise<{ roomCode: string; botPid?: number } | null> {
   return new Promise((resolve) => {
     const botScript = path.join(process.cwd(), 'jklm-bot/index.js');
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -151,6 +151,8 @@ async function createMatchWithBot(players: any[], category: Category, rules: { d
       cwd: process.cwd()
     });
 
+    const botPid = child.pid;
+    
     const timeout = setTimeout(() => {
       console.log('⏰ [QUEUE] Timeout waiting for room code');
       resolve(null);
@@ -162,7 +164,7 @@ async function createMatchWithBot(players: any[], category: Category, rules: { d
       const match = output.match(/Room cr..?e: ([A-Z]{4})/i);
       if (match) {
         clearTimeout(timeout);
-        resolve(match[1]);
+        resolve({ roomCode: match[1], botPid });
       }
     });
 
