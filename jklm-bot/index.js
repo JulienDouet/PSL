@@ -546,9 +546,9 @@ async function main() {
   try {
     // Mode création automatique
     if (shouldCreate) {
-      const roomName = verifyMode ? 'PSL Vérification' : 'PSL Match';
+      const roomName = verifyMode ? '[PSL Bot] Vérification' : '[PSL Bot] Ranked';
       console.log(`🏗️ Mode création automatique (${roomName})...`);
-      const result = await bot.createRoom({ name: roomName, isPublic: false });
+      const result = await bot.createRoom({ name: roomName, isPublic: true });
       roomCode = result.roomCode;
       console.log(`🎮 Room créée: ${roomCode}`);
     }
