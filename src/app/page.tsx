@@ -152,7 +152,7 @@ export default function LandingPage() {
             <span className="font-bold text-gradient">PSL</span>
             <span className="text-muted-foreground">© 2025</span>
           </div>
-          <div className="flex items-center gap-4 text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-muted-foreground text-sm">
             <Link href="/leaderboard" className="hover:text-foreground transition-colors">
               Classement
             </Link>
@@ -162,6 +162,16 @@ export default function LandingPage() {
             <a href="https://github.com/JulienDouet/PSL" className="hover:text-foreground transition-colors">
               GitHub
             </a>
+            <span className="hidden sm:inline text-border">|</span>
+            <Link href="/legal/mentions" className="hover:text-foreground transition-colors">
+              Mentions légales
+            </Link>
+            <Link href="/legal/privacy" className="hover:text-foreground transition-colors">
+              Confidentialité
+            </Link>
+            <Link href="/legal/terms" className="hover:text-foreground transition-colors">
+              CGU
+            </Link>
           </div>
         </div>
       </footer>
