@@ -182,7 +182,7 @@ export default function ProfileEditPage() {
           <Card className="bg-card border-border/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                🎮 Liaison JKLM.fun
+                🎮 Liaison JKLM.fun (Pour les membres du Staff JKLM)
                 {verifyStatus.status === 'verified' && (
                   <span className="text-sm bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
                     ✓ Vérifié
@@ -199,7 +199,7 @@ export default function ProfileEditPage() {
               {verifyStatus.status === 'verified' && (
                 <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
                   <p className="text-green-400 font-medium">
-                    Compte lié : <span className="text-white">{verifyStatus.jklmUsername}</span>
+                    Compte lié : <span className="text-white">{verifyStatus.jklmUsername} on JKLM.FUN</span>
                   </p>
                 </div>
               )}

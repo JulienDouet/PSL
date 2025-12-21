@@ -10,18 +10,17 @@ export async function GET() {
       headers: await headers()
     });
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Vérifier si l'utilisateur est admin (seulement si connecté)
+    let isAdmin = false;
+    if (session?.user?.id) {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { isAdmin: true }
+      });
+      isAdmin = user?.isAdmin || false;
     }
 
-    // Vérifier si l'utilisateur est admin
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { isAdmin: true }
-    });
-
-    // Tout le monde peut voir les matchs actifs (utile pour les joueurs aussi)
-    // Mais le kill sera réservé aux admins
+    // Tout le monde peut voir les matchs actifs (même sans connexion)
     
     const matches = getAllActiveMatches();
     
@@ -36,12 +35,12 @@ export async function GET() {
       })),
       createdAt: match.createdAt.toISOString(),
       durationSeconds: Math.floor((Date.now() - match.createdAt.getTime()) / 1000),
-      botPid: user?.isAdmin ? match.botPid : undefined // Seulement visible pour les admins
+      botPid: isAdmin ? match.botPid : undefined // Seulement visible pour les admins
     }));
 
     return NextResponse.json({
       matches: formattedMatches,
-      isAdmin: user?.isAdmin || false
+      isAdmin
     });
   } catch (err) {
     console.error('❌ [MATCHES] Error getting active matches:', err);

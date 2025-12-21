@@ -77,32 +77,36 @@ export default function LoginPage() {
               Continuer avec Discord
             </Button>
 
-            <div className="relative">
+            {/* Twitch Login */}
+            <Button
+              onClick={handleTwitchLogin}
+              className="w-full h-12 bg-[#9146FF] hover:bg-[#7B2FE8] text-white font-medium"
+            >
+              <svg
+                className="w-5 h-5 mr-2"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+              </svg>
+              Continuer avec Twitch
+            </Button>
+
+            <div className="relative pt-2">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border/50" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-card px-2 text-muted-foreground">
-                  Pourquoi Discord ?
+                  Synchronisation JKLM
                 </span>
               </div>
             </div>
 
             <p className="text-center text-sm text-muted-foreground">
-              On utilise Discord pour vérifier ton identité Popsauce et éviter les multi-comptes.
+              Pour synchroniser votre compte à celui de JKLM.fun, utilisez le même mode de connexion. 
+              Pour les utilisateurs Staff JKLM, connectez-vous via Discord ou Twitch et allez dans les paramètres du compte pour faire la liaison.
             </p>
-
-            {/* Info cards */}
-            <div className="grid grid-cols-2 gap-3 pt-4">
-              <div className="p-3 rounded-lg bg-secondary/50 text-center">
-                <div className="text-2xl mb-1">🎯</div>
-                <div className="text-xs text-muted-foreground">MMR dès la 1ère partie</div>
-              </div>
-              <div className="p-3 rounded-lg bg-secondary/50 text-center">
-                <div className="text-2xl mb-1">🏆</div>
-                <div className="text-xs text-muted-foreground">Classement en direct</div>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
@@ -113,10 +117,6 @@ export default function LoginPage() {
           <Link href="/" className="hover:text-foreground transition-colors">
             Accueil
           </Link>
-          <span>•</span>
-          <a href="https://discord.gg/psl" className="hover:text-foreground transition-colors">
-            Discord
-          </a>
         </div>
       </footer>
     </div>
