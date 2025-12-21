@@ -220,10 +220,7 @@ export default function LeaderboardPage() {
           <Link href="/" className="hover:text-foreground transition-colors">
             Accueil
           </Link>
-          <span>•</span>
-          <a href="https://discord.gg/psl" className="hover:text-foreground transition-colors">
-            Discord
-          </a>
+
         </div>
       </footer>
     </div>

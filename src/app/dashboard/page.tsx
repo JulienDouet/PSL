@@ -107,11 +107,7 @@ export default async function DashboardPage() {
                       👤 Mon profil
                     </Button>
                   </Link>
-                  <a href="https://discord.gg/psl" target="_blank" rel="noopener noreferrer" className="block">
-                    <Button variant="outline" className="w-full justify-start">
-                      💬 Discord PSL
-                    </Button>
-                  </a>
+
                 </CardContent>
               </Card>
             </div>
