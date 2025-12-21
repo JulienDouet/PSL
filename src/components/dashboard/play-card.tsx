@@ -26,6 +26,39 @@ export function PlayCard() {
 
   const currentGameMode = getGameMode(selectedGameMode);
 
+  // Demander la permission pour les notifications au montage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }
+  }, []);
+
+  // Fonction pour envoyer une notification navigateur
+  const sendMatchNotification = (roomCode: string) => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      const notification = new Notification('🎮 Match trouvé !', {
+        body: `Room ${roomCode} - Clique pour rejoindre`,
+        icon: '/logo.png',
+        tag: 'psl-match', // Évite les doublons
+        requireInteraction: true // Reste affiché jusqu'à interaction
+      });
+      
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+    }
+    
+    // Jouer un son de notification
+    try {
+      const audio = new Audio('/sounds/match-found.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(() => {}); // Ignorer si bloqué par le navigateur
+    } catch (e) {}
+  };
+
   // Fermer le sélecteur de mode si on clique ailleurs
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -57,6 +90,9 @@ export function PlayCard() {
                   players: data.match.players || []
                 });
                 setMode('matched');
+                
+                // Envoyer notification navigateur
+                sendMatchNotification(data.match.roomCode);
               }
             } else if (mode === 'matched') {
               // En mode matched, vérifier si le match est toujours actif
