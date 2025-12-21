@@ -52,6 +52,16 @@ const userCategories = new Map<string, Category>();
 // Mapping userId -> roomCode (si matché)
 const userMatches = new Map<string, string>();
 
+// Joueurs en cours de matching (entre popPlayersForMatch et registerPendingMatch)
+// userId -> { players, category, matchingId }
+interface MatchingState {
+  matchingId: string;
+  players: QueueEntry[];
+  category: Category;
+  createdAt: Date;
+}
+const matchingPlayers = new Map<string, MatchingState>();
+
 // ==========================================
 // CONFIG
 // ==========================================
@@ -129,7 +139,7 @@ export function leaveQueue(userId: string): boolean {
  * Récupère le statut d'un joueur dans la queue.
  */
 export function getQueueStatus(userId: string): QueueStatus {
-  // Vérifier si le joueur est dans un match
+  // Vérifier si le joueur est dans un match confirmé
   const matchRoomCode = userMatches.get(userId);
   if (matchRoomCode) {
     const match = pendingMatches.get(matchRoomCode);
@@ -142,6 +152,19 @@ export function getQueueStatus(userId: string): QueueStatus {
         match: match
       };
     }
+  }
+
+  // Vérifier si le joueur est en cours de matching (room en création)
+  const matchingState = matchingPlayers.get(userId);
+  if (matchingState) {
+    // Retourner un statut "matching" - le match est en préparation
+    return {
+      inQueue: false,
+      position: 0,
+      count: matchingState.players.length,
+      category: matchingState.category,
+      match: null // Pas encore de roomCode
+    };
   }
 
   // Vérifier si le joueur est en queue
@@ -175,7 +198,7 @@ export function canStartMatch(category: Category): boolean {
 }
 
 /**
- * Pop les joueurs pour un match et les marque comme "en match".
+ * Pop les joueurs pour un match et les marque comme "matching".
  * @returns Les joueurs retirés de la queue
  */
 export function popPlayersForMatch(category: Category): QueueEntry[] {
@@ -191,13 +214,24 @@ export function popPlayersForMatch(category: Category): QueueEntry[] {
   // Retirer de la map des catégories
   players.forEach(p => userCategories.delete(p.userId));
 
-  console.log(`🎮 [QUEUE] Match créé avec ${players.length} joueurs pour ${category}`);
+  // Marquer les joueurs comme "matching" (en cours de création de room)
+  const matchingId = `matching_${Date.now()}`;
+  const matchingState: MatchingState = {
+    matchingId,
+    players,
+    category,
+    createdAt: new Date()
+  };
+  players.forEach(p => matchingPlayers.set(p.userId, matchingState));
+
+  console.log(`🎮 [QUEUE] Match créé avec ${players.length} joueurs pour ${category} (${matchingId})`);
 
   return players;
 }
 
 /**
  * Enregistre un match en attente de joueurs.
+ * Nettoie l'état "matching" et passe les joueurs en "matched".
  */
 export function registerPendingMatch(roomCode: string, players: QueueEntry[], category: Category): MatchInfo {
   const match: MatchInfo = {
@@ -208,9 +242,40 @@ export function registerPendingMatch(roomCode: string, players: QueueEntry[], ca
   };
 
   pendingMatches.set(roomCode, match);
-  players.forEach(p => userMatches.set(p.userId, roomCode));
+  
+  // Nettoyer l'état "matching" et passer en "matched"
+  players.forEach(p => {
+    matchingPlayers.delete(p.userId);
+    userMatches.set(p.userId, roomCode);
+  });
+
+  console.log(`✅ [QUEUE] Match confirmé: ${roomCode} pour ${players.length} joueurs`);
 
   return match;
+}
+
+/**
+ * Annule un matching en cours (si la création de room échoue).
+ * Remet les joueurs dans la queue.
+ */
+export function cancelMatchingPlayers(players: QueueEntry[], category: Category): void {
+  console.log(`❌ [QUEUE] Annulation du matching pour ${players.length} joueurs`);
+  
+  // Nettoyer l'état matching
+  players.forEach(p => matchingPlayers.delete(p.userId));
+  
+  // Remettre les joueurs en queue
+  if (!queues.has(category)) {
+    queues.set(category, []);
+  }
+  const queue = queues.get(category)!;
+  
+  players.forEach(p => {
+    queue.unshift(p); // Ajouter au début de la queue (priorité)
+    userCategories.set(p.userId, category);
+  });
+  
+  console.log(`🔄 [QUEUE] ${players.length} joueurs remis en queue ${category}`);
 }
 
 /**

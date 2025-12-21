@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { joinQueue, canStartMatch, popPlayersForMatch, registerPendingMatch, getQueueStatus } from '@/lib/queue';
+import { joinQueue, canStartMatch, popPlayersForMatch, registerPendingMatch, getQueueStatus, cancelMatchingPlayers } from '@/lib/queue';
 import { getGameMode, type GameModeKey } from '@/lib/game-modes';
 import { spawn } from 'child_process';
 import path from 'path';
@@ -94,6 +94,10 @@ export async function POST(req: Request) {
             players: players.map(p => ({ nickname: p.nickname, mmr: p.mmr })),
             category
           });
+        } else {
+          // Échec de création de room - rollback
+          cancelMatchingPlayers(players, category);
+          console.error('❌ [QUEUE] Échec création room, joueurs remis en queue');
         }
       }
     }
