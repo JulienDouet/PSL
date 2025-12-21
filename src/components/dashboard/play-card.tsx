@@ -38,25 +38,36 @@ export function PlayCard() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Polling pour vérifier le statut de la queue
+  // Polling pour vérifier le statut de la queue et du match
   useEffect(() => {
-    if (mode === 'searching') {
+    if (mode === 'searching' || mode === 'matched') {
       const poll = async () => {
         try {
           const res = await fetch('/api/queue/status');
           if (res.ok) {
             const data = await res.json();
-            setQueueCount(data.count || 0);
-            setCountdown(data.countdown || null);
             
-            if (data.match) {
-              // Match trouvé !
-              setMatchInfo({
-                roomCode: data.match.roomCode,
-                players: data.match.players || []
-              });
-              setMode('matched');
-              stopPolling();
+            if (mode === 'searching') {
+              setQueueCount(data.count || 0);
+              setCountdown(data.countdown || null);
+              
+              if (data.match) {
+                // Match trouvé !
+                setMatchInfo({
+                  roomCode: data.match.roomCode,
+                  players: data.match.players || []
+                });
+                setMode('matched');
+              }
+            } else if (mode === 'matched') {
+              // En mode matched, vérifier si le match est toujours actif
+              if (!data.match && !data.inQueue) {
+                // Le match est terminé (plus dans pendingMatches)
+                console.log('🏁 Match terminé, retour à idle');
+                setMode('idle');
+                setMatchInfo(null);
+                stopPolling();
+              }
             }
           }
         } catch (err) {
@@ -66,8 +77,9 @@ export function PlayCard() {
 
       // Premier appel immédiat
       poll();
-      // Puis toutes les 2 secondes
-      pollingRef.current = setInterval(poll, 2000);
+      // Puis toutes les 1 seconde (searching) ou 3 secondes (matched)
+      const interval = mode === 'searching' ? 1000 : 3000;
+      pollingRef.current = setInterval(poll, interval);
     }
 
     return () => stopPolling();
