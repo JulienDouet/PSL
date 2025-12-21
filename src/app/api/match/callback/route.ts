@@ -218,7 +218,7 @@ export async function POST(req: Request) {
             roundIndex: ans.roundIndex,
             question: ans.question,
             answer: ans.answer,
-            playerAnswer: ans.playerAnswer || ans.answer, // Fallback sur la réponse canonique si pas dispo
+            playerAnswer: (ans.playerAnswer || ans.answer).toLowerCase().replace(/[^a-z0-9]/g, ''), // Normalisation: minuscule + alphanumérique only
             elapsedTime: ans.elapsedTime,
         }));
 

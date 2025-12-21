@@ -153,7 +153,10 @@ export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResul
   } else if (finalChange === 0 && player.placement === 1) {
       finalChange = 1; 
   }
-  
+
+  // PLAFOND : max ±50 points
+  if (finalChange > 50) finalChange = 50;
+  if (finalChange < -50) finalChange = -50;
   
   return finalChange;
 }
