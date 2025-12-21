@@ -742,18 +742,18 @@ async function main() {
     if (shouldCreate) {
       let roomName = 'PSL Ranked';
       if (verifyMode) {
-        roomName = 'PSL Verification';
+        roomName = 'PSL Verif';
       } else {
         const categoryNames = {
-          'GP_FR': 'Grand Public FR',
-          'MS_EN': 'Mainstream EN',
+          'GP_FR': 'GP FR',
+          'MS_EN': 'MS EN',
           'ANIME': 'Anime',
-          'FLAGS': 'Drapeaux',
-          'NOFILTER_FR': 'Sans Filtre FR',
-          'NOFILTER_EN': 'No Filter EN'
+          'FLAGS': 'Flags',
+          'NOFILTER_FR': 'NF FR',
+          'NOFILTER_EN': 'NF EN'
         };
         const catLabel = categoryNames[bot.category] || bot.category || 'GP';
-        roomName = `PSL Ranked - ${catLabel}`;
+        roomName = `PSL Bot - ${catLabel}`;
       }
       console.log(`🏗️ Mode création automatique (${roomName})...`);
       const result = await bot.createRoom({ name: roomName, isPublic: false });
