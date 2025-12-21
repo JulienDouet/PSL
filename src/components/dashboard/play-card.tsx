@@ -21,6 +21,7 @@ export function PlayCard() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [matchInfo, setMatchInfo] = useState<MatchInfo | null>(null);
   const [copied, setCopied] = useState(false);
+  const [queueCounts, setQueueCounts] = useState<Record<string, number>>({});
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const modeSelectorRef = useRef<HTMLDivElement>(null);
 
@@ -70,6 +71,30 @@ export function PlayCard() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Fetch queue counts au montage et périodiquement en mode idle
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const res = await fetch('/api/queue/status');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.queueCounts) {
+            setQueueCounts(data.queueCounts);
+          }
+        }
+      } catch (err) {}
+    };
+    
+    // Fetch immédiat
+    fetchCounts();
+    
+    // Polling toutes les 5 secondes en mode idle
+    if (mode === 'idle') {
+      const interval = setInterval(fetchCounts, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [mode]);
+
   // Polling pour vérifier le statut de la queue et du match
   useEffect(() => {
     if (mode === 'searching' || mode === 'matched') {
@@ -78,6 +103,11 @@ export function PlayCard() {
           const res = await fetch('/api/queue/status');
           if (res.ok) {
             const data = await res.json();
+            
+            // Mettre à jour les counts globaux
+            if (data.queueCounts) {
+              setQueueCounts(data.queueCounts);
+            }
             
             if (mode === 'searching') {
               setQueueCount(data.count || 0);
@@ -244,6 +274,26 @@ export function PlayCard() {
             >
               🔍 Rechercher ({currentGameMode.label})
             </Button>
+
+            {/* Joueurs en recherche par catégorie */}
+            {Object.keys(queueCounts).length > 0 && Object.values(queueCounts).some(c => c > 0) && (
+              <div className="mt-3 p-3 bg-secondary/30 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                  <Users className="w-3 h-3" /> En recherche :
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {GAME_MODE_LIST.map((gm) => {
+                    const count = queueCounts[gm.key] || 0;
+                    if (count === 0) return null;
+                    return (
+                      <span key={gm.key} className="text-xs px-2 py-1 bg-background/50 rounded">
+                        {gm.emoji} {count}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </>
         )}
 
