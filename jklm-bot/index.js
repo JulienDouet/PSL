@@ -259,16 +259,31 @@ class JKLMBot {
       console.log(`👤 [DEBUG] addPlayer complet:`, JSON.stringify(player, null, 2));
       
       const nick = player.profile?.nickname || `Player${player.profile?.peerId}`;
-      const auth = player.profile?.auth; // Probablement l'info Discord/Twitch
+      const auth = player.profile?.auth;
       
-      console.log(`👤 Joueur: ${nick}`, auth ? `(${auth.type}: ${auth.username || auth.id})` : '');
+      console.log(`👤 Joueur: ${nick}`, auth ? `(${auth.service}: ${auth.username || auth.id})` : '');
       
       this.players.set(player.profile?.peerId, {
         nickname: nick,
         peerId: player.profile?.peerId,
-        auth: auth, // Stocker l'info d'auth
+        auth: auth,
         score: 0,
       });
+
+      // Message chat selon si le joueur est attendu ou non
+      if (this.expectedPlayers.length > 0) {
+        const isExpected = this.findExpectedPlayer(nick, auth);
+        const connectedCount = this.countConnectedExpectedPlayers();
+        const totalExpected = this.expectedPlayers.length;
+        
+        if (isExpected) {
+          // Joueur inscrit et attendu
+          this.sendChat(`✅ ${nick} connecté ! (${connectedCount}/${totalExpected} joueurs)`);
+        } else {
+          // Joueur non inscrit
+          this.sendChat(`👋 Bienvenue ${nick} ! Rejoins psl-ranked.app pour participer à la ligue ranked`);
+        }
+      }
 
       // Vérifier si tous les joueurs attendus ont rejoint
       this.checkExpectedPlayers();
@@ -334,9 +349,26 @@ class JKLMBot {
   compileResults() {
     const sorted = [...this.players.values()].sort((a, b) => b.score - a.score);
     console.log('\n📊 RÉSULTATS:');
+    
+    // Afficher les scores dans le chat
+    this.sendChat('🏆 RÉSULTATS FINAUX:');
+    
     sorted.forEach((p, i) => {
-      console.log(`  ${i + 1}. ${p.nickname}: ${p.score} pts`);
-      this.gameResults.push({ placement: i + 1, nickname: p.nickname, score: p.score });
+      console.log(`  ${i + 1}. ${p.nickname}: ${p.score} pts`, p.auth ? `(${p.auth.service}:${p.auth.id})` : '');
+      
+      // Trouver si ce joueur était attendu pour récupérer ses infos
+      const expectedInfo = this.findExpectedPlayer(p.nickname, p.auth);
+      
+      this.gameResults.push({ 
+        placement: i + 1, 
+        nickname: p.nickname, 
+        score: p.score,
+        auth: p.auth || null, // Info Discord/Twitch si disponible
+        expectedPlayer: expectedInfo || null // Infos joueur attendu si matché
+      });
+      
+      // Message chat pour chaque joueur
+      this.sendChat(`${i + 1}. ${p.nickname}: ${p.score} pts`);
     });
     
     if (this.callbackUrl) {
@@ -387,12 +419,43 @@ class JKLMBot {
     console.log('⚙️ Application des règles PSL (Force)...');
     if (!this.gameSocket?.connected) return;
     
-    // Envoyer en bloc + délai pour être sûr
+    // Utiliser les règles personnalisées si disponibles
+    const rules = this.customRules || { scoreGoal: 150, challengeDuration: 12, dictionaryId: 'fr' };
+    console.log('📋 Règles appliquées:', JSON.stringify(rules));
+    
     this.gameSocket.emit('setRules', { 
-         scoreGoal: 150,
-         challengeDuration: 12,
-         dictionaryId: 'fr'
+      scoreGoal: rules.scoreGoal || 150,
+      challengeDuration: rules.challengeDuration || 12,
+      dictionaryId: rules.dictionaryId || 'fr'
     });
+  }
+
+  findExpectedPlayer(nickname, auth) {
+    // Cherche si ce joueur était attendu (pour récupérer son userId)
+    if (!auth && !nickname) return null;
+    
+    for (const exp of this.expectedPlayers) {
+      // Match par auth (Discord/Twitch ID)
+      if (auth?.service?.toLowerCase() === exp.service && auth?.id === exp.id) {
+        return exp;
+      }
+      // Match par username si pas d'ID
+      if (exp.username && nickname?.toLowerCase() === exp.username) {
+        return exp;
+      }
+    }
+    return null;
+  }
+
+  countConnectedExpectedPlayers() {
+    // Compte combien de joueurs attendus sont déjà connectés
+    let count = 0;
+    for (const player of this.players.values()) {
+      if (this.findExpectedPlayer(player.nickname, player.auth)) {
+        count++;
+      }
+    }
+    return count;
   }
 
   checkExpectedPlayers() {
@@ -567,9 +630,9 @@ async function main() {
   try {
     // Mode création automatique
     if (shouldCreate) {
-      const roomName = verifyMode ? '[PSL Bot] Vérification' : '[PSL Bot] Ranked';
+      const roomName = verifyMode ? '[PSL Bot] Vérification' : '[PSL Bot] Ranked TEST';
       console.log(`🏗️ Mode création automatique (${roomName})...`);
-      const result = await bot.createRoom({ name: roomName, isPublic: true });
+      const result = await bot.createRoom({ name: roomName, isPublic: false });
       roomCode = result.roomCode;
       console.log(`🎮 Room créée: ${roomCode}`);
     }
@@ -584,7 +647,7 @@ async function main() {
       bot.setExpectedPlayers(expectedPlayers);
     }
     
-    const nickname = verifyMode ? 'PSL-Verify' : 'PSL-Observer';
+    const nickname = verifyMode ? 'PSL-Verify' : 'PSL Bot';
     await bot.connect(roomCode, { nickname, callbackUrl });
     console.log('✅ Bot prêt!');
     

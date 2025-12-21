@@ -30,47 +30,82 @@ export async function POST(req: Request) {
     console.log(`✅ Match créé: ${match.id}`);
 
     // 2. Associer les joueurs et calculer le MMR (V2)
-    // D'abord, on récupère tous les utilisateurs concernés
-    const nicknames = scores.map((s: any) => s.nickname);
+    // On essaie de matcher par auth (Discord ID, Twitch ID) en priorité
+    // puis par nickname (jklmUsername, displayName) en fallback
     
-    // On cherche par jklmUsername ou displayName
-    const users = await prisma.user.findMany({
-        where: {
-            OR: [
-                { jklmUsername: { in: nicknames, mode: 'insensitive' } },
-                { displayName: { in: nicknames, mode: 'insensitive' } }
-            ]
-        }
-    });
-
-    // On prépare les objets pour le calcul MMR
-    // Il nous faut le MMR actuel de chaque joueur
-    // Pour l'instant on utilise user.mmr (Global/GP par défaut)
-    
-    // Map pour accès rapide user -> score/placement
-    const resultsMap = new Map();
-    scores.forEach((s: any) => {
-        // Normalisation très basique pour la correspondance
-        resultsMap.set(s.nickname.toLowerCase(), s);
-    });
-
     const playersForCalculation: import('@/lib/mmr').PlayerResult[] = [];
-    const userMap = new Map<string, typeof users[0]>();
+    const userMap = new Map<string, any>();
 
-    for (const user of users) {
-        // Trouver le score correspondant
-        // On essaie jklmUsername puis displayName
-        let scoreData = resultsMap.get(user.jklmUsername?.toLowerCase()) || resultsMap.get(user.displayName?.toLowerCase());
+    for (const scoreData of scores) {
+        let user = null;
         
-        if (scoreData) {
+        // 1. Essayer de matcher par auth (Discord/Twitch ID)
+        if (scoreData.auth?.id && scoreData.auth?.service) {
+            const authService = scoreData.auth.service.toLowerCase();
+            const authId = String(scoreData.auth.id);
+            
+            // Chercher l'account avec ce service/ID
+            const account = await prisma.account.findFirst({
+                where: {
+                    providerId: authService,
+                    accountId: authId
+                },
+                include: { user: true }
+            });
+            
+            if (account?.user) {
+                user = account.user;
+                console.log(`✅ Match par auth: ${scoreData.nickname} -> ${user.name} (${authService}:${authId})`);
+            }
+        }
+        
+        // 2. Essayer par expectedPlayer (infos du bot sur les joueurs attendus)
+        if (!user && scoreData.expectedPlayer?.id) {
+            const authId = String(scoreData.expectedPlayer.id);
+            const authService = scoreData.expectedPlayer.service;
+            
+            const account = await prisma.account.findFirst({
+                where: {
+                    providerId: authService,
+                    accountId: authId
+                },
+                include: { user: true }
+            });
+            
+            if (account?.user) {
+                user = account.user;
+                console.log(`✅ Match par expectedPlayer: ${scoreData.nickname} -> ${user.name}`);
+            }
+        }
+        
+        // 3. Fallback: matcher par nickname
+        if (!user) {
+            const nick = scoreData.nickname?.toLowerCase();
+            user = await prisma.user.findFirst({
+                where: {
+                    OR: [
+                        { jklmUsername: { equals: nick, mode: 'insensitive' } },
+                        { displayName: { equals: nick, mode: 'insensitive' } },
+                        { name: { equals: nick, mode: 'insensitive' } }
+                    ]
+                }
+            });
+            if (user) {
+                console.log(`✅ Match par nickname: ${scoreData.nickname} -> ${user.name}`);
+            }
+        }
+        
+        if (user) {
             playersForCalculation.push({
                 id: user.id,
                 mmr: user.mmr,
                 score: scoreData.score,
                 placement: scoreData.placement,
-                gamesPlayed: user.gamesPlayed // Important pour la calibration (V2)
+                gamesPlayed: user.gamesPlayed
             });
             userMap.set(user.id, user);
+        } else {
+            console.log(`⚠️ Joueur non trouvé: ${scoreData.nickname}`);
         }
     }
 

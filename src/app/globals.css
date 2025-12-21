@@ -115,6 +115,10 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  /* Cursor pointer global pour tous les éléments cliquables */
+  button, [role="button"], a, input[type="submit"], input[type="button"], [type="checkbox"], [type="radio"], select, .cursor-pointer {
+    cursor: pointer;
+  }
 }
 
 /* PSL Custom Utilities */
