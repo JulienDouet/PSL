@@ -281,7 +281,11 @@ class JKLMBot {
            const rules = this.customRules || { scoreGoal: 150, challengeDuration: 12 };
            console.log('⚙️ Application des règles (une par une)...');
            console.log('📋 Règles:', JSON.stringify(rules));
-           
+          
+           // Dictionary Id (FR / EN)
+           this.gameSocket.emit('setRules', { dictionaryId: rules.dictionaryId || 'fr' });
+           console.log('  ✓ dictionaryId:', rules.dictionaryId || 'fr');
+
            // 1. Score goal
            this.gameSocket.emit('setRules', { scoreGoal: rules.scoreGoal || 150 });
            console.log('  ✓ scoreGoal:', rules.scoreGoal || 150);
