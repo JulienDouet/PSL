@@ -24,6 +24,8 @@ export interface GameMode {
   };
 }
 
+const FIXED_SCORE_GOAL = 50;
+
 export const GAME_MODES: Record<GameModeKey, GameMode> = {
   GP_FR: {
     key: 'GP_FR',
@@ -32,7 +34,7 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
     emoji: '🍿',
     rules: { 
       dictionaryId: 'fr', 
-      scoreGoal: 150, 
+      scoreGoal: FIXED_SCORE_GOAL, 
       challengeDuration: 12,
       tagOps: [
         { op: 'union', tag: 'Grand public' },
@@ -47,7 +49,7 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
     emoji: '🍿',
     rules: { 
       dictionaryId: 'en', 
-      scoreGoal: 150, 
+      scoreGoal: FIXED_SCORE_GOAL, 
       challengeDuration: 12,
       tagOps: [
         { op: 'union', tag: 'Mainstream' },
@@ -62,10 +64,10 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
     emoji: '🎌',
     rules: { 
       dictionaryId: 'en', 
-      scoreGoal: 150, 
+      scoreGoal: FIXED_SCORE_GOAL, 
       challengeDuration: 12,
       tagOps: [
-        { op: 'intersection', tag: 'Anime and Manga' }
+        { op: 'intersection', tag: 'Anime & Manga' }
       ]
     }
   },
@@ -75,11 +77,11 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
     label: 'Drapeaux',
     emoji: '🚩',
     rules: { 
-      dictionaryId: 'fr', 
-      scoreGoal: 150, 
+      dictionaryId: 'en', 
+      scoreGoal: FIXED_SCORE_GOAL, 
       challengeDuration: 12,
       tagOps: [
-        { op: 'intersection', tag: 'Drapeaux' }
+        { op: 'intersection', tag: 'Flags' }
       ]
     }
   },
@@ -90,7 +92,7 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
     emoji: '🔥',
     rules: { 
       dictionaryId: 'fr', 
-      scoreGoal: 150, 
+      scoreGoal: FIXED_SCORE_GOAL, 
       challengeDuration: 12,
       // Pas de tagOps = pas de filtre
     }
@@ -102,7 +104,7 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
     emoji: '🔥',
     rules: { 
       dictionaryId: 'en', 
-      scoreGoal: 150, 
+      scoreGoal: FIXED_SCORE_GOAL, 
       challengeDuration: 12,
       // Pas de tagOps = pas de filtre
     }

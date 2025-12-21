@@ -283,8 +283,7 @@ class JKLMBot {
            console.log('📋 Règles:', JSON.stringify(rules));
            
            // 1. Score goal
-           this.gameSocket.emit('setScoreGoal', 50);
-           // this.gameSocket.emit('setRules', { scoreGoal: rules.scoreGoal || 150 });
+           this.gameSocket.emit('setRules', { scoreGoal: rules.scoreGoal || 150 });
            console.log('  ✓ scoreGoal:', rules.scoreGoal || 150);
            
            // 2. Challenge duration (avec délai)
@@ -746,15 +745,15 @@ async function main() {
         roomName = 'PSL Verif';
       } else {
         const categoryNames = {
-          'GP_FR': 'GP FR',
-          'MS_EN': 'MS EN',
+          'GP_FR': 'GP [FR]',
+          'MS_EN': 'MS [EN]',
           'ANIME': 'Anime',
           'FLAGS': 'Flags',
-          'NOFILTER_FR': 'NF FR',
-          'NOFILTER_EN': 'NF EN'
+          'NOFILTER_FR': 'NF [FR]',
+          'NOFILTER_EN': 'NF [EN]'
         };
         const catLabel = categoryNames[bot.category] || bot.category || 'GP';
-        roomName = `PSL Bot - ${catLabel}`;
+        roomName = `[PSL Bot Ranked] - ${catLabel}`;
       }
       console.log(`🏗️ Mode création automatique (${roomName})...`);
       const result = await bot.createRoom({ name: roomName, isPublic: false });
