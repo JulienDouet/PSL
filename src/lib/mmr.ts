@@ -127,11 +127,11 @@ export interface Rank {
 }
 
 export const RANKS: Rank[] = [
-  { name: 'Bronze', displayName: 'Bronze', min: 0, max: 999, icon: '🥉', color: '#CD7F32' },
+  { name: 'Bronze', displayName: 'Bronze', min: 0, max: 999, icon: '🟤', color: '#CD7F32' },
   { name: 'Silver', displayName: 'Argent', min: 1000, max: 1299, icon: '⚪', color: '#C0C0C0' },
-  { name: 'Gold', displayName: 'Or', min: 1300, max: 1599, icon: '🥇', color: '#FFD700' },
-  { name: 'Platinum', displayName: 'Platine', min: 1600, max: 1899, icon: '💎', color: '#00CED1' },
-  { name: 'Diamond', displayName: 'Diamant', min: 1900, max: 2199, icon: '💠', color: '#B9F2FF' },
+  { name: 'Gold', displayName: 'Or', min: 1300, max: 1599, icon: '🟡', color: '#FFD700' },
+  { name: 'Platinum', displayName: 'Platine', min: 1600, max: 1899, icon: '🔵', color: '#00CED1' },
+  { name: 'Diamond', displayName: 'Diamant', min: 1900, max: 2199, icon: '💎', color: '#B9F2FF' },
   { name: 'Master', displayName: 'Maître', min: 2200, max: Infinity, icon: '👑', color: '#9B59B6' },
 ];
 

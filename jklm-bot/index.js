@@ -283,7 +283,8 @@ class JKLMBot {
            console.log('📋 Règles:', JSON.stringify(rules));
            
            // 1. Score goal
-           this.gameSocket.emit('setRules', { scoreGoal: rules.scoreGoal || 150 });
+           this.gameSocket.emit('setScoreGoal', 50);
+           // this.gameSocket.emit('setRules', { scoreGoal: rules.scoreGoal || 150 });
            console.log('  ✓ scoreGoal:', rules.scoreGoal || 150);
            
            // 2. Challenge duration (avec délai)

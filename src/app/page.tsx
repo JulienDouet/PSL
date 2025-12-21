@@ -102,13 +102,12 @@ export default function LandingPage() {
           
           <div className="flex flex-wrap justify-center gap-6">
             {[
-              { icon: "🥉", name: "Bronze", color: "#CD7F32" },
+              { icon: "🟤", name: "Bronze", color: "#CD7F32" },
               { icon: "⚪", name: "Argent", color: "#C0C0C0" },
-              { icon: "🥇", name: "Or", color: "#FFD700" },
-              { icon: "💎", name: "Platine", color: "#00CED1" },
-              { icon: "💠", name: "Diamant", color: "#B9F2FF" },
+              { icon: "🟡", name: "Or", color: "#FFD700" },
+              { icon: "🔵", name: "Platine", color: "#00CED1" },
+              { icon: "💎", name: "Diamant", color: "#B9F2FF" },
               { icon: "👑", name: "Maître", color: "#9B59B6" },
-              { icon: "🏆", name: "Grand Maître", color: "#E74C3C" },
             ].map((rank) => (
               <div
                 key={rank.name}
