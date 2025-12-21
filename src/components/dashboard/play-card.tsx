@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Copy, ExternalLink, Check, Users, Loader2, X, ChevronDown } from 'lucide-react';
 import { GAME_MODE_LIST, DEFAULT_MODE, getGameMode, type GameModeKey } from '@/lib/game-modes';
+import { useTranslation } from "@/lib/i18n/context";
 
 type QueueMode = 'idle' | 'searching' | 'matched';
 
@@ -26,6 +27,7 @@ export function PlayCard() {
   const modeSelectorRef = useRef<HTMLDivElement>(null);
 
   const currentGameMode = getGameMode(selectedGameMode);
+  const { t } = useTranslation();
 
   // Demander la permission pour les notifications au montage
   useEffect(() => {
@@ -221,9 +223,9 @@ export function PlayCard() {
   return (
     <Card className="bg-card border-primary/30 card-glow">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">🎮 Jouer</CardTitle>
+        <CardTitle className="text-2xl">🎮 {t.navbar.play}</CardTitle>
         <CardDescription>
-          Lance une partie ranked PSL
+          {t.dashboard.play_card.title}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -272,14 +274,14 @@ export function PlayCard() {
               onClick={handleJoinQueue}
               className="w-full h-14 text-lg bg-gradient-psl hover:opacity-90 transition-opacity glow-primary"
             >
-              🔍 Rechercher ({currentGameMode.label})
+              🔍 {t.common.search} ({currentGameMode.label})
             </Button>
 
             {/* Joueurs en recherche par catégorie */}
             {Object.keys(queueCounts).length > 0 && Object.values(queueCounts).some(c => c > 0) && (
               <div className="mt-3 p-3 bg-secondary/30 rounded-lg">
                 <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                  <Users className="w-3 h-3" /> En recherche :
+                  <Users className="w-3 h-3" /> {t.dashboard.play_card.in_queue.replace('{count}', '')}:
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {GAME_MODE_LIST.map((gm) => {
@@ -329,10 +331,10 @@ export function PlayCard() {
                 <div className="text-5xl mb-3">🔍</div>
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-pulse" />
               </div>
-              <p className="text-lg font-medium">Recherche en cours...</p>
+              <p className="text-lg font-medium">{t.dashboard.play_card.waiting}</p>
               <div className="flex items-center justify-center gap-2 mt-2 text-muted-foreground">
                 <Users className="w-4 h-4" />
-                <span>{queueCount} joueur{queueCount > 1 ? 's' : ''} en attente</span>
+                <span>{queueCount} {t.matches.live_players}</span>
               </div>
             </div>
             
@@ -358,7 +360,7 @@ export function PlayCard() {
               className="w-full flex items-center justify-center gap-2"
             >
               <X className="w-4 h-4" />
-              Annuler la recherche
+              {t.dashboard.play_card.cancel}
             </Button>
           </div>
         )}
@@ -393,14 +395,14 @@ export function PlayCard() {
                 onClick={copyLink}
               >
                 {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
-                {copied ? 'Copié !' : 'Lien'}
+                {copied ? t.common.copied : t.common.copy}
               </Button>
               <Button 
                 className="flex-1 bg-gradient-psl"
                 onClick={() => window.open(`https://jklm.fun/${matchInfo.roomCode}`, '_blank')}
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
-                Rejoindre
+                {t.dashboard.play_card.join}
               </Button>
             </div>
             
@@ -410,7 +412,7 @@ export function PlayCard() {
               className="w-full text-muted-foreground hover:text-white"
               onClick={handleBackToIdle}
             >
-              Retour
+              {t.common.back}
             </Button>
           </div>
         )}

@@ -9,6 +9,8 @@ export const en = {
     cancel: "Cancel",
     home: "Home",
     pts: "pts",
+    copy: "Link",
+    copied: "Copied!",
   },
   navbar: {
     dashboard: "Dashboard",
