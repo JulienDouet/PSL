@@ -74,6 +74,12 @@ const lobbyTimers = new Map<Category, LobbyTimer>();
 // Heartbeat pour détecter les joueurs inactifs
 const userHeartbeats = new Map<string, Date>();
 
+// Discord notifications: dernier ping par catégorie (cooldown)
+const lastDiscordPing = new Map<Category, Date>();
+
+// Timer pour notification Discord quand joueur seul
+const soloNotifyTimers = new Map<Category, NodeJS.Timeout>();
+
 // ==========================================
 // CONFIG
 // ==========================================
@@ -85,6 +91,8 @@ export const QUEUE_CONFIG = {
   MATCH_TIMEOUT_MS: 90_000, // 90s (pour V2)
   QUEUE_TIMEOUT_MS: 5 * 60_000, // 5 min inactif = kick
   HEARTBEAT_TIMEOUT_MS: 15_000, // 15 secondes sans heartbeat = joueur inactif
+  DISCORD_SOLO_DELAY_MS: 15_000, // 15 secondes seul avant notification Discord
+  DISCORD_COOLDOWN_MS: 5 * 60_000, // 5 minutes entre deux pings du même rôle
 };
 
 // ==========================================
@@ -125,6 +133,30 @@ export function joinQueue(entry: QueueEntry, category: Category): QueueStatus {
       category
     });
     console.log(`⏱️ [QUEUE] Timer de lobby démarré pour ${category} (${QUEUE_CONFIG.LOBBY_TIMER_MS / 1000}s)`);
+    
+    // Annuler le timer de notification solo puisqu'on a assez de joueurs
+    const soloTimer = soloNotifyTimers.get(category);
+    if (soloTimer) {
+      clearTimeout(soloTimer);
+      soloNotifyTimers.delete(category);
+      console.log(`🔕 [DISCORD] Timer solo annulé pour ${category} (assez de joueurs)`);
+    }
+  }
+  
+  // Si le joueur est seul, démarrer un timer pour notifier Discord après 15s
+  if (queue.length === 1 && !soloNotifyTimers.has(category)) {
+    const timer = setTimeout(() => {
+      // Vérifier qu'il est toujours seul
+      const currentQueue = queues.get(category);
+      if (currentQueue && currentQueue.length === 1) {
+        const soloPlayer = currentQueue[0];
+        notifyDiscord(category, soloPlayer.nickname);
+      }
+      soloNotifyTimers.delete(category);
+    }, QUEUE_CONFIG.DISCORD_SOLO_DELAY_MS);
+    
+    soloNotifyTimers.set(category, timer);
+    console.log(`📢 [DISCORD] Timer solo démarré pour ${category} (${QUEUE_CONFIG.DISCORD_SOLO_DELAY_MS / 1000}s)`);
   }
 
   return getQueueStatus(entry.userId);
@@ -441,5 +473,57 @@ export function stopHeartbeatCleanup(): void {
   if (cleanupInterval) {
     clearInterval(cleanupInterval);
     cleanupInterval = null;
+  }
+}
+
+// ==========================================
+// DISCORD NOTIFICATIONS
+// ==========================================
+
+/**
+ * Envoie une notification Discord pour une catégorie.
+ * Respecte le cooldown configuré.
+ */
+async function notifyDiscord(category: Category, playerName: string): Promise<void> {
+  // Vérifier le cooldown
+  const lastPing = lastDiscordPing.get(category);
+  const now = new Date();
+  
+  if (lastPing && (now.getTime() - lastPing.getTime()) < QUEUE_CONFIG.DISCORD_COOLDOWN_MS) {
+    const remainingMs = QUEUE_CONFIG.DISCORD_COOLDOWN_MS - (now.getTime() - lastPing.getTime());
+    console.log(`⏳ [DISCORD] Cooldown actif pour ${category}: ${Math.ceil(remainingMs / 1000)}s restantes`);
+    return;
+  }
+  
+  const webhookUrl = process.env.DISCORD_BOT_WEBHOOK_URL;
+  
+  if (!webhookUrl) {
+    console.log('⚠️ [DISCORD] DISCORD_BOT_WEBHOOK_URL non configuré');
+    return;
+  }
+  
+  try {
+    const queue = queues.get(category);
+    const queueCount = queue?.length || 0;
+    
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        category,
+        playerName,
+        queueCount,
+        secret: process.env.DISCORD_WEBHOOK_SECRET
+      })
+    });
+    
+    if (response.ok) {
+      lastDiscordPing.set(category, now);
+      console.log(`✅ [DISCORD] Notification envoyée pour ${category} (joueur: ${playerName})`);
+    } else {
+      console.error(`❌ [DISCORD] Erreur webhook: ${response.status}`);
+    }
+  } catch (err) {
+    console.error('❌ [DISCORD] Erreur notification:', err);
   }
 }
