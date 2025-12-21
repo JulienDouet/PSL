@@ -19,6 +19,7 @@ export function PlayCard() {
   const [showModeSelector, setShowModeSelector] = useState(false);
   const [manualRoomCode, setManualRoomCode] = useState('');
   const [queueCount, setQueueCount] = useState(0);
+  const [countdown, setCountdown] = useState<number | null>(null);
   const [matchInfo, setMatchInfo] = useState<MatchInfo | null>(null);
   const [copied, setCopied] = useState(false);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -46,6 +47,7 @@ export function PlayCard() {
           if (res.ok) {
             const data = await res.json();
             setQueueCount(data.count || 0);
+            setCountdown(data.countdown || null);
             
             if (data.match) {
               // Match trouvé !
@@ -243,8 +245,20 @@ export function PlayCard() {
               </div>
             </div>
             
-            <div className="bg-secondary/30 rounded-lg p-3 text-center text-sm text-muted-foreground">
-              <p>La partie démarre dès que 2 joueurs sont prêts</p>
+            <div className="bg-secondary/30 rounded-lg p-3 text-center">
+              {countdown !== null && countdown > 0 ? (
+                <p className="text-lg font-bold text-primary">
+                  ⏱️ Match dans {countdown}s...
+                </p>
+              ) : countdown === 0 ? (
+                <p className="text-lg font-bold text-green-400">
+                  🚀 Lancement du match...
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  La partie démarre dès que 2 joueurs sont prêts
+                </p>
+              )}
             </div>
 
             <Button 

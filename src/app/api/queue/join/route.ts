@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { joinQueue, canStartMatch, popPlayersForMatch, registerPendingMatch, getQueueStatus, cancelMatchingPlayers } from '@/lib/queue';
+import { joinQueue, canStartMatch, popPlayersForMatch, registerPendingMatch, getQueueStatus, cancelMatchingPlayers, isLobbyTimerExpired, clearLobbyTimer } from '@/lib/queue';
 import { getGameMode, type GameModeKey } from '@/lib/game-modes';
 import { spawn } from 'child_process';
 import path from 'path';
@@ -76,8 +76,10 @@ export async function POST(req: Request) {
 
     const status = joinQueue(entry, category);
 
-    // Vérifier si on peut lancer un match
-    if (canStartMatch(category)) {
+    // Vérifier si on peut lancer un match (timer expiré)
+    if (canStartMatch(category) && isLobbyTimerExpired(category)) {
+      clearLobbyTimer(category); // Nettoyer le timer avant de lancer le match
+      
       const players = popPlayersForMatch(category);
       
       if (players.length >= 2) {
@@ -102,10 +104,13 @@ export async function POST(req: Request) {
       }
     }
 
+    // Retourner le statut avec le countdown
+    const updatedStatus = getQueueStatus(session.user.id);
     return NextResponse.json({
       status: 'waiting',
-      position: status.position,
-      count: status.count,
+      position: updatedStatus.position,
+      count: updatedStatus.count,
+      countdown: updatedStatus.countdown,
       category
     });
 

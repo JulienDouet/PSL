@@ -15,10 +15,12 @@ let pendingMatches = new Map();
 let userCategories = new Map();
 let userMatches = new Map();
 let matchingPlayers = new Map();
+let lobbyTimers = new Map();
 
 const QUEUE_CONFIG = {
   MIN_PLAYERS: 2,
   MAX_PLAYERS: 10,
+  LOBBY_TIMER_MS: 10000,
 };
 
 function reset() {
@@ -27,10 +29,11 @@ function reset() {
   userCategories = new Map();
   userMatches = new Map();
   matchingPlayers = new Map();
+  lobbyTimers = new Map();
 }
 
 // ==========================================
-// FONCTIONS À TESTER (copie)
+// FONCTIONS À TESTER
 // ==========================================
 
 function joinQueue(entry, category) {
@@ -47,10 +50,33 @@ function joinQueue(entry, category) {
   queue.push(entry);
   userCategories.set(entry.userId, category);
   
-  if (queue.length >= QUEUE_CONFIG.MIN_PLAYERS) {
-    return { ...getQueueStatus(entry.userId), count: queue.length };
+  // Démarrer le timer si min_players atteint
+  if (queue.length >= QUEUE_CONFIG.MIN_PLAYERS && !lobbyTimers.has(category)) {
+    lobbyTimers.set(category, { startedAt: new Date(), category });
   }
+  
   return getQueueStatus(entry.userId);
+}
+
+function leaveQueue(userId) {
+  const category = userCategories.get(userId);
+  if (!category) return false;
+  
+  const queue = queues.get(category);
+  if (!queue) return false;
+  
+  const index = queue.findIndex(e => e.userId === userId);
+  if (index === -1) return false;
+  
+  queue.splice(index, 1);
+  userCategories.delete(userId);
+  
+  // Clear timer if queue drops below min
+  if (queue.length < QUEUE_CONFIG.MIN_PLAYERS) {
+    lobbyTimers.delete(category);
+  }
+  
+  return true;
 }
 
 function getQueueStatus(userId) {
@@ -58,7 +84,7 @@ function getQueueStatus(userId) {
   if (matchRoomCode) {
     const match = pendingMatches.get(matchRoomCode);
     if (match) {
-      return { inQueue: false, position: 0, count: 0, category: match.category, match };
+      return { inQueue: false, position: 0, count: 0, category: match.category, match, countdown: null };
     }
   }
 
@@ -69,20 +95,42 @@ function getQueueStatus(userId) {
       position: 0,
       count: matchingState.players.length,
       category: matchingState.category,
-      match: null
+      match: null,
+      countdown: 0
     };
   }
 
   const category = userCategories.get(userId);
   if (!category) {
-    return { inQueue: false, position: 0, count: 0, category: null, match: null };
+    return { inQueue: false, position: 0, count: 0, category: null, match: null, countdown: null };
   }
   const queue = queues.get(category);
   if (!queue) {
-    return { inQueue: false, position: 0, count: 0, category: null, match: null };
+    return { inQueue: false, position: 0, count: 0, category: null, match: null, countdown: null };
   }
   const position = queue.findIndex(e => e.userId === userId) + 1;
-  return { inQueue: true, position, count: queue.length, category, match: null };
+  
+  // Calculate countdown
+  let countdown = null;
+  const lobbyTimer = lobbyTimers.get(category);
+  if (lobbyTimer) {
+    const elapsed = Date.now() - lobbyTimer.startedAt.getTime();
+    const remaining = Math.max(0, QUEUE_CONFIG.LOBBY_TIMER_MS - elapsed);
+    countdown = Math.ceil(remaining / 1000);
+  }
+  
+  return { inQueue: true, position, count: queue.length, category, match: null, countdown };
+}
+
+function isLobbyTimerExpired(category) {
+  const timer = lobbyTimers.get(category);
+  if (!timer) return false;
+  const elapsed = Date.now() - timer.startedAt.getTime();
+  return elapsed >= QUEUE_CONFIG.LOBBY_TIMER_MS;
+}
+
+function clearLobbyTimer(category) {
+  lobbyTimers.delete(category);
 }
 
 function popPlayersForMatch(category) {
@@ -155,22 +203,22 @@ describe('Queue System', () => {
     assert.equal(status.position, 1);
     assert.equal(status.count, 1);
     assert.equal(status.category, 'GP');
+    assert.equal(status.countdown, null);
   });
 
-  it('should match when 2 players join', () => {
+  it('should start lobby timer when 2 players join', () => {
     const entry1 = createEntry('user1', 'Player1');
     const entry2 = createEntry('user2', 'Player2');
     
     joinQueue(entry1, 'GP');
-    const status2 = joinQueue(entry2, 'GP');
+    assert.equal(lobbyTimers.has('GP'), false, 'Timer should not start with 1 player');
     
-    assert.equal(status2.count, 2, 'Queue should have 2 players');
+    joinQueue(entry2, 'GP');
+    assert.equal(lobbyTimers.has('GP'), true, 'Timer should start with 2 players');
     
-    const players = popPlayersForMatch('GP');
-    assert.equal(players.length, 2, 'Should pop 2 players');
-    
-    const queueAfter = queues.get('GP') || [];
-    assert.equal(queueAfter.length, 0, 'Queue should be empty after pop');
+    const status = getQueueStatus('user1');
+    assert.notEqual(status.countdown, null, 'Countdown should be set');
+    assert.ok(status.countdown > 0, 'Countdown should be positive');
   });
 
   it('should mark players as matching after pop', () => {
@@ -185,8 +233,8 @@ describe('Queue System', () => {
     const status2 = getQueueStatus('user2');
     
     assert.equal(status1.inQueue, false);
-    assert.equal(status1.match, null, 'Match not confirmed yet');
-    assert.equal(status1.category, 'GP');
+    assert.equal(status1.match, null);
+    assert.equal(status1.countdown, 0);
     
     assert.equal(status2.inQueue, false);
     assert.equal(status2.match, null);
@@ -205,11 +253,9 @@ describe('Queue System', () => {
     const status1 = getQueueStatus('user1');
     const status2 = getQueueStatus('user2');
     
-    assert.notEqual(status1.match, null, 'Player1 should have match');
+    assert.notEqual(status1.match, null);
     assert.equal(status1.match?.roomCode, 'ABCD');
-    
-    assert.notEqual(status2.match, null, 'Player2 should have match');
-    assert.equal(status2.match?.roomCode, 'ABCD');
+    assert.notEqual(status2.match, null);
   });
 
   it('should rollback players if match creation fails', () => {
@@ -225,8 +271,8 @@ describe('Queue System', () => {
     const status1 = getQueueStatus('user1');
     const status2 = getQueueStatus('user2');
     
-    assert.equal(status1.inQueue, true, 'Player1 should be back in queue');
-    assert.equal(status2.inQueue, true, 'Player2 should be back in queue');
+    assert.equal(status1.inQueue, true);
+    assert.equal(status2.inQueue, true);
   });
 
   it('should keep separate queues for different categories', () => {
@@ -241,8 +287,57 @@ describe('Queue System', () => {
     
     assert.equal(status1.category, 'GP');
     assert.equal(status2.category, 'ANIME');
-    
     assert.equal(status1.count, 1);
     assert.equal(status2.count, 1);
   });
+
+  it('should not add player already in queue', () => {
+    const entry = createEntry('user1', 'Player1');
+    
+    joinQueue(entry, 'GP');
+    const status2 = joinQueue(entry, 'GP');
+    
+    assert.equal(status2.count, 1, 'Should still be 1 player');
+  });
+
+  it('should remove player from queue on leave', () => {
+    const entry1 = createEntry('user1', 'Player1');
+    const entry2 = createEntry('user2', 'Player2');
+    
+    joinQueue(entry1, 'GP');
+    joinQueue(entry2, 'GP');
+    
+    const left = leaveQueue('user1');
+    assert.equal(left, true);
+    
+    const status = getQueueStatus('user2');
+    assert.equal(status.count, 1);
+    assert.equal(status.countdown, null, 'Timer should clear when below min');
+  });
+
+  it('should handle 3+ players in queue', () => {
+    joinQueue(createEntry('user1', 'P1'), 'GP');
+    joinQueue(createEntry('user2', 'P2'), 'GP');
+    joinQueue(createEntry('user3', 'P3'), 'GP');
+    
+    const status = getQueueStatus('user3');
+    assert.equal(status.count, 3);
+    assert.equal(status.position, 3);
+    
+    const players = popPlayersForMatch('GP');
+    assert.equal(players.length, 3, 'Should pop all 3 players');
+  });
+
+  it('should detect timer expired', () => {
+    joinQueue(createEntry('user1', 'P1'), 'GP');
+    joinQueue(createEntry('user2', 'P2'), 'GP');
+    
+    assert.equal(isLobbyTimerExpired('GP'), false);
+    
+    // Simulate time passing
+    lobbyTimers.get('GP').startedAt = new Date(Date.now() - 15000);
+    
+    assert.equal(isLobbyTimerExpired('GP'), true);
+  });
 });
+

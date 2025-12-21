@@ -34,6 +34,7 @@ export interface QueueStatus {
   count: number;
   category: Category | null;
   match: MatchInfo | null; // Si match trouvé
+  countdown: number | null; // Secondes restantes avant démarrage du match
 }
 
 // ==========================================
@@ -62,6 +63,13 @@ interface MatchingState {
 }
 const matchingPlayers = new Map<string, MatchingState>();
 
+// Timer de lobby par catégorie (démarre quand min_players atteint)
+interface LobbyTimer {
+  startedAt: Date;
+  category: Category;
+}
+const lobbyTimers = new Map<Category, LobbyTimer>();
+
 // ==========================================
 // CONFIG
 // ==========================================
@@ -69,6 +77,7 @@ const matchingPlayers = new Map<string, MatchingState>();
 export const QUEUE_CONFIG = {
   MIN_PLAYERS: 2,
   MAX_PLAYERS: 10,
+  LOBBY_TIMER_MS: 10_000, // 10 secondes d'attente avant match
   MATCH_TIMEOUT_MS: 90_000, // 90s (pour V2)
   QUEUE_TIMEOUT_MS: 5 * 60_000, // 5 min inactif = kick
 };
@@ -104,11 +113,13 @@ export function joinQueue(entry: QueueEntry, category: Category): QueueStatus {
 
   console.log(`🎮 [QUEUE] ${entry.nickname} rejoint la queue ${category} (${queue.length} joueurs)`);
 
-  // Vérifier si on peut lancer un match
-  if (queue.length >= QUEUE_CONFIG.MIN_PLAYERS) {
-    // Pour V1: match instantané à 2 joueurs
-    // Pour V2: on pourrait attendre un timer pour avoir plus de joueurs
-    return { ...getQueueStatus(entry.userId), count: queue.length };
+  // Démarrer le timer de lobby si on atteint le minimum et timer pas encore actif
+  if (queue.length >= QUEUE_CONFIG.MIN_PLAYERS && !lobbyTimers.has(category)) {
+    lobbyTimers.set(category, {
+      startedAt: new Date(),
+      category
+    });
+    console.log(`⏱️ [QUEUE] Timer de lobby démarré pour ${category} (${QUEUE_CONFIG.LOBBY_TIMER_MS / 1000}s)`);
   }
 
   return getQueueStatus(entry.userId);
@@ -149,7 +160,8 @@ export function getQueueStatus(userId: string): QueueStatus {
         position: 0,
         count: 0,
         category: match.category,
-        match: match
+        match: match,
+        countdown: null
       };
     }
   }
@@ -163,30 +175,60 @@ export function getQueueStatus(userId: string): QueueStatus {
       position: 0,
       count: matchingState.players.length,
       category: matchingState.category,
-      match: null // Pas encore de roomCode
+      match: null,
+      countdown: 0 // Match imminent
     };
   }
 
   // Vérifier si le joueur est en queue
   const category = userCategories.get(userId);
   if (!category) {
-    return { inQueue: false, position: 0, count: 0, category: null, match: null };
+    return { inQueue: false, position: 0, count: 0, category: null, match: null, countdown: null };
   }
 
   const queue = queues.get(category);
   if (!queue) {
-    return { inQueue: false, position: 0, count: 0, category: null, match: null };
+    return { inQueue: false, position: 0, count: 0, category: null, match: null, countdown: null };
   }
 
   const position = queue.findIndex(e => e.userId === userId) + 1;
+
+  // Calculer le countdown si un timer est actif
+  let countdown: number | null = null;
+  const lobbyTimer = lobbyTimers.get(category);
+  if (lobbyTimer) {
+    const elapsed = Date.now() - lobbyTimer.startedAt.getTime();
+    const remaining = Math.max(0, QUEUE_CONFIG.LOBBY_TIMER_MS - elapsed);
+    countdown = Math.ceil(remaining / 1000); // En secondes
+  }
 
   return {
     inQueue: true,
     position,
     count: queue.length,
     category,
-    match: null
+    match: null,
+    countdown
   };
+}
+
+/**
+ * Vérifie si le timer de lobby est expiré pour une catégorie.
+ */
+export function isLobbyTimerExpired(category: Category): boolean {
+  const timer = lobbyTimers.get(category);
+  if (!timer) return false;
+  
+  const elapsed = Date.now() - timer.startedAt.getTime();
+  return elapsed >= QUEUE_CONFIG.LOBBY_TIMER_MS;
+}
+
+/**
+ * Nettoie le timer de lobby pour une catégorie.
+ */
+export function clearLobbyTimer(category: Category): void {
+  lobbyTimers.delete(category);
+  console.log(`🧹 [QUEUE] Timer de lobby nettoyé pour ${category}`);
 }
 
 /**
