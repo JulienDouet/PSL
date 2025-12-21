@@ -105,7 +105,8 @@ export default function LoginPage() {
 
             <p className="text-center text-sm text-muted-foreground">
               Pour synchroniser votre compte à celui de JKLM.fun, utilisez le même mode de connexion. 
-              Pour les utilisateurs Staff JKLM, connectez-vous via Discord ou Twitch et allez dans les paramètres du compte pour faire la liaison.
+              <br/>
+              Pour les membres Staff JKLM, connectez-vous via Discord ou Twitch et allez dans les paramètres du profil (en cliquant sur votre profil en haut à droite) pour faire la liaison.
             </p>
           </CardContent>
         </Card>

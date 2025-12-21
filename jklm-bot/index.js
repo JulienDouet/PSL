@@ -177,6 +177,31 @@ class JKLMBot {
             this.handleChatMessage(nick, message);
           });
 
+          // Écouter quand un joueur rejoint le LOBBY (pas le jeu)
+          this.roomSocket.on('chatterAdded', (chatter) => {
+            // Format: { nickname: "...", peerId: N, auth: { service: "discord", username: "...", id: "..." } }
+            console.log(`👋 [LOBBY] Joueur au lobby:`, JSON.stringify(chatter));
+            
+            const nick = chatter.nickname;
+            const auth = chatter.auth;
+            
+            // Message de bienvenue au lobby selon si le joueur est inscrit ou non
+            if (this.expectedPlayers.length > 0) {
+              const isExpected = this.findExpectedPlayer(nick, auth);
+              const connectedCount = this.countConnectedExpectedPlayers();
+              const totalExpected = this.expectedPlayers.length;
+              
+              if (isExpected) {
+                // Joueur inscrit et attendu - seulement le compter, pas encore de message
+                // Le message sera envoyé quand il rejoindra la partie (addPlayer)
+                console.log(`✅ [LOBBY] ${nick} est inscrit (en attente qu'il rejoigne la partie)`);
+              } else {
+                // Joueur non inscrit - l'informer immédiatement
+                this.sendChat(`👋 Hey ${nick} ! Rejoins www.psl-ranked.app pour participer à la ligue ranked`);
+              }
+            }
+          });
+
           this.roomSocket.on('connect_error', (err) => {
             console.error('❌ Erreur room:', err.message);
             reject(err);
@@ -312,12 +337,10 @@ class JKLMBot {
         const totalExpected = this.expectedPlayers.length;
         
         if (isExpected) {
-          // Joueur inscrit et attendu
-          this.sendChat(`✅ ${nick} connecté ! (${connectedCount}/${totalExpected} joueurs)`);
-        } else {
-          // Joueur non inscrit
-          this.sendChat(`👋 Bienvenue ${nick} ! Rejoins www.psl-ranked.app pour participer à la ligue ranked`);
+          // Joueur inscrit et attendu - afficher le compteur de progression
+          this.sendChat(`✅ ${nick} a rejoint la partie ! (${connectedCount}/${totalExpected})`);
         }
+        // Note: le message de bienvenue pour les non-inscrits est envoyé dans chatterAdded (lobby join)
       }
 
       // Vérifier si tous les joueurs attendus ont rejoint
