@@ -761,7 +761,7 @@ async function main() {
         roomName = `[PSL Bot Ranked] - ${catLabel}`;
       }
       console.log(`🏗️ Mode création automatique (${roomName})...`);
-      const result = await bot.createRoom({ name: roomName, isPublic: false });
+      const result = await bot.createRoom({ name: roomName, isPublic: true });
       roomCode = result.roomCode;
       console.log(`🎮 Room créée: ${roomCode}`);
     }

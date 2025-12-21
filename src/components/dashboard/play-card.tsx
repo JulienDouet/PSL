@@ -340,11 +340,8 @@ export function PlayCard() {
             </Button>
           </div>
         )}
-
-        <p className="text-center text-xs text-muted-foreground">
-          Le bot attend que tous les joueurs rejoignent
-        </p>
       </CardContent>
     </Card>
   );
 }
+
