@@ -24,12 +24,12 @@ interface LeaderboardEntry {
 
 // Catégories pour le leaderboard (correspondant aux modes de jeu)
 const LEADERBOARD_CATEGORIES = [
-  { key: 'GP_FR', label: 'GP FR', emoji: '🇫🇷' },
-  { key: 'MS_EN', label: 'MS EN', emoji: '🇬🇧' },
+  { key: 'GP_FR', label: 'Grand Public [FR]', emoji: '🍿' },
+  { key: 'MS_EN', label: 'Mainstream [EN]', emoji: '🍿' },
   { key: 'ANIME', label: 'Anime', emoji: '🎌' },
   { key: 'FLAGS', label: 'Drapeaux', emoji: '🚩' },
-  { key: 'NOFILTER_FR', label: 'Sans Filtre', emoji: '🔥' },
-  { key: 'NOFILTER_EN', label: 'No Filter', emoji: '💥' }
+  { key: 'NOFILTER_FR', label: 'Sans Filtre [FR]', emoji: '🔥' },
+  { key: 'NOFILTER_EN', label: 'No Filter [EN]', emoji: '🔥' }
 ];
 
 function getPositionBadge(position: number) {

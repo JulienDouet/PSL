@@ -6,12 +6,12 @@ import { getRankProgress } from "@/lib/mmr";
 
 // Labels et emojis pour les catégories
 const CATEGORY_INFO: Record<string, { label: string; emoji: string }> = {
-  'GP_FR': { label: 'GP FR', emoji: '🇫🇷' },
-  'MS_EN': { label: 'MS EN', emoji: '🇬🇧' },
+  'GP_FR': { label: 'Grand Public [FR]', emoji: '🍿' },
+  'MS_EN': { label: 'Mainstream [EN]', emoji: '🍿' },
   'ANIME': { label: 'Anime', emoji: '🎌' },
   'FLAGS': { label: 'Drapeaux', emoji: '🚩' },
-  'NOFILTER_FR': { label: 'Sans Filtre', emoji: '🔥' },
-  'NOFILTER_EN': { label: 'No Filter', emoji: '💥' },
+  'NOFILTER_FR': { label: 'Sans Filtre [FR]', emoji: '🔥' },
+  'NOFILTER_EN': { label: 'No Filter [EN]', emoji: '🔥' },
   // Anciennes catégories
   'GP': { label: 'GP', emoji: '🌐' },
   'NOFILTER': { label: 'Sans Filtre', emoji: '🔥' }

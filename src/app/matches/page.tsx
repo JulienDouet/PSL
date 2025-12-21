@@ -27,12 +27,12 @@ function formatDuration(seconds: number): string {
 
 function getCategoryLabel(category: string): string {
   const labels: Record<string, string> = {
-    'GP_FR': '🇫🇷 GP FR',
-    'MS_EN': '🇬🇧 MS EN',
+    'GP_FR': '🍿 Grand Public [FR]',
+    'MS_EN': '🍿 Mainstream [EN]',
     'ANIME': '🎌 Anime',
     'FLAGS': '🚩 Drapeaux',
-    'NOFILTER_FR': '🔥 Sans Filtre',
-    'NOFILTER_EN': '💥 No Filter'
+    'NOFILTER_FR': '🔥 Sans Filtre [FR]',
+    'NOFILTER_EN': '🔥 No Filter [EN]'
   };
   return labels[category] || category;
 }

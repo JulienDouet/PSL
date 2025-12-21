@@ -28,8 +28,8 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
   GP_FR: {
     key: 'GP_FR',
     category: 'GP_FR',
-    label: 'GP FR',
-    emoji: '🇫🇷',
+    label: 'Grand Public [FR]',
+    emoji: '🍿',
     rules: { 
       dictionaryId: 'fr', 
       scoreGoal: 150, 
@@ -43,8 +43,8 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
   MS_EN: {
     key: 'MS_EN',
     category: 'MS_EN',
-    label: 'MS EN',
-    emoji: '🇬🇧',
+    label: 'Mainstream [EN]',
+    emoji: '🍿',
     rules: { 
       dictionaryId: 'en', 
       scoreGoal: 150, 
@@ -86,7 +86,7 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
   NOFILTER_FR: {
     key: 'NOFILTER_FR',
     category: 'NOFILTER_FR',
-    label: 'Sans Filtre FR',
+    label: 'Sans Filtre [FR]',
     emoji: '🔥',
     rules: { 
       dictionaryId: 'fr', 
@@ -98,8 +98,8 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
   NOFILTER_EN: {
     key: 'NOFILTER_EN',
     category: 'NOFILTER_EN',
-    label: 'No Filter EN',
-    emoji: '💥',
+    label: 'No Filter [EN]',
+    emoji: '🔥',
     rules: { 
       dictionaryId: 'en', 
       scoreGoal: 150, 
