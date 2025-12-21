@@ -90,23 +90,42 @@ export function SpeedRecords() {
                 </form>
             )}
 
-            {/* Length Buttons */}
+            {/* Length Controls */}
             {filterType === 'length' && (
-                <div className="flex gap-2 flex-wrap">
-                    {[1, 2, 3, 4, 5, 6].map((len) => (
-                        <Button
-                            key={len}
-                            variant={lengthFilter === len ? 'default' : 'outline'}
-                            onClick={() => setLengthFilter(len)}
-                            disabled={loading}
-                            className="w-12 h-12 rounded-full font-bold text-lg"
-                        >
-                            {len}
-                        </Button>
-                    ))}
-                    <span className="self-center text-sm text-muted-foreground ml-2">lettres</span>
+                <div className="flex items-center gap-4 w-full p-2">
+                    <Input
+                        type="number"
+                        min={1}
+                        max={40}
+                        value={lengthFilter || ''}
+                        onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            if (!isNaN(val) && val >= 1 && val <= 40) {
+                                setLengthFilter(val);
+                            } else if (e.target.value === '') {
+                                setLengthFilter(null);
+                            }
+                        }}
+                        placeholder="N"
+                        className="w-20 text-center font-mono font-bold"
+                    />
+                    <div className="relative flex-1 h-6 flex items-center">
+                        <input
+                            type="range"
+                            min="1"
+                            max="40"
+                            value={lengthFilter || 1}
+                            onChange={(e) => setLengthFilter(parseInt(e.target.value))}
+                            className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                        />
+                        {/* Optional: Add markers or tooltip if needed, but simple is good here */}
+                    </div>
+                    <span className="text-sm text-muted-foreground w-16 text-right">
+                        {lengthFilter ? `${lengthFilter} lettres` : '-'}
+                    </span>
                 </div>
             )}
+
         </CardContent>
       </Card>
 

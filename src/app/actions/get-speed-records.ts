@@ -40,6 +40,7 @@ export async function getSpeedRecords(options?: { query?: string, length?: numbe
       FROM "MatchAnswer" ma
       LEFT JOIN "User" u ON ma."userId" = u.id
       WHERE ma."userId" IS NOT NULL
+      AND ma."playerAnswer" IS NOT NULL
       AND LENGTH(ma."playerAnswer") = ${length}
       ORDER BY ma."elapsedTime" ASC
       LIMIT 50
@@ -52,7 +53,7 @@ export async function getSpeedRecords(options?: { query?: string, length?: numbe
       userName: r.userDisplayName || r.userName || 'Inconnu',
       userImage: r.userImage || null,
       time: r.elapsedTime,
-      answer: r.answer,
+      answer: r.playerAnswer, // On affiche ce que le joueur a tapé
       createdAt: new Date(r.createdAt)
     }));
   }
@@ -60,7 +61,10 @@ export async function getSpeedRecords(options?: { query?: string, length?: numbe
   // 3. Par défaut (Top 50 Global)
   // On prend les 50 meilleurs temps toutes réponses confondues
   const records = await prisma.matchAnswer.findMany({
-    where: { userId: { not: null } },
+    where: { 
+        userId: { not: null },
+        playerAnswer: { not: null } // Seulement les vraies réponses
+    },
     orderBy: { elapsedTime: 'asc' },
     take: 50,
     include: { user: true }
@@ -75,7 +79,7 @@ function mapRecords(records: any[]): SpeedRecord[] {
     userName: r.user?.name || r.user?.displayName || 'Inconnu',
     userImage: r.user?.image || null,
     time: r.elapsedTime,
-    answer: r.answer, 
+    answer: r.playerAnswer || r.answer, // Fallback au cas où (mais filtré avant)
     createdAt: r.createdAt
   }));
 }

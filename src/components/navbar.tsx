@@ -13,6 +13,7 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { t, language, setLanguage } = useTranslation();
 
   // Fermer le menu si on clique ailleurs
   useEffect(() => {
@@ -31,31 +32,44 @@ export function Navbar() {
     router.push("/");
   };
 
+  const toggleLanguage = () => {
+    setLanguage(language === 'fr' ? 'en' : 'fr');
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
           <Image src="/transparent logo.png" alt="PSL Logo" width={120} height={60} className="object-contain" />
         </Link>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
+          {/* Language Switcher */}
+          <button 
+            onClick={toggleLanguage} 
+            className="text-2xl hover:scale-110 transition-transform cursor-pointer"
+            title={language === 'fr' ? 'Switch to English' : 'Passer en Français'}
+          >
+            {language === 'fr' ? '🇫🇷' : '🇬🇧'}
+          </button>
+
           {isPending ? (
              <div className="flex items-center gap-2">
                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
              </div>
           ) : session ? (
             <>
-              <Link href="/leaderboard" className="text-muted-foreground hover:text-foreground transition-colors">
-                Classement
+              <Link href="/leaderboard" className="text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
+                {t.navbar.leaderboard}
               </Link>
-              <Link href="/matches" className="text-muted-foreground hover:text-foreground transition-colors">
-                Parties
+              <Link href="/matches" className="text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
+                {t.navbar.matches || "Matchs"}
               </Link>
               <Link href="/dashboard#play">
                 <Button size="sm" className="bg-gradient-psl hover:opacity-90 transition-opacity">
-                  🎮 Jouer
+                  🎮 {t.navbar.play}
                 </Button>
               </Link>
-              <a href="https://discord.gg/JGHRNy6qRn" target="_blank" rel="noopener noreferrer">
+              <a href="https://discord.gg/JGHRNy6qRn" target="_blank" rel="noopener noreferrer" className="hidden sm:block">
                 <Button size="sm" variant="outline" className="border-[#5865F2] text-[#5865F2] hover:bg-[#5865F2]/10">
                   Discord
                 </Button>
@@ -91,7 +105,7 @@ export function Navbar() {
                       className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-secondary transition-colors"
                     >
                       <User className="w-4 h-4" />
-                      Voir mon profil
+                      {t.navbar.profile}
                     </Link>
                     <Link
                       href={`/profile/${session.user.id}/edit`}
@@ -107,7 +121,7 @@ export function Navbar() {
                       className="flex items-center gap-2 px-4 py-2 text-sm w-full text-left hover:bg-secondary transition-colors text-red-400"
                     >
                       <LogOut className="w-4 h-4" />
-                      Se déconnecter
+                      {t.navbar.logout}
                     </button>
                   </div>
                 )}
@@ -116,14 +130,13 @@ export function Navbar() {
           ) : (
             <>
               <Link href="/leaderboard" className="text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
-                Classement
+                {t.navbar.leaderboard}
               </Link>
               <Link href="/login">
                 <Button variant="outline" className="border-primary/50 hover:border-primary hover:bg-primary/10">
-                  Connexion
+                  {t.navbar.login}
                 </Button>
               </Link>
-
             </>
           )}
         </div>
