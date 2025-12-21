@@ -71,6 +71,9 @@ interface LobbyTimer {
 }
 const lobbyTimers = new Map<Category, LobbyTimer>();
 
+// Heartbeat pour détecter les joueurs inactifs
+const userHeartbeats = new Map<string, Date>();
+
 // ==========================================
 // CONFIG
 // ==========================================
@@ -81,6 +84,7 @@ export const QUEUE_CONFIG = {
   LOBBY_TIMER_MS: 10_000, // 10 secondes d'attente avant match
   MATCH_TIMEOUT_MS: 90_000, // 90s (pour V2)
   QUEUE_TIMEOUT_MS: 5 * 60_000, // 5 min inactif = kick
+  HEARTBEAT_TIMEOUT_MS: 15_000, // 15 secondes sans heartbeat = joueur inactif
 };
 
 // ==========================================
@@ -376,4 +380,66 @@ export function killMatch(roomCode: string): { success: boolean; botPid?: number
   console.log(`🔴 [ADMIN] Match ${roomCode} tué par admin (botPid: ${botPid || 'N/A'})`);
   
   return { success: true, botPid };
+}
+
+// ==========================================
+// HEARTBEAT FUNCTIONS
+// ==========================================
+
+/**
+ * Met à jour le heartbeat d'un joueur.
+ * Appelé à chaque polling du frontend.
+ */
+export function heartbeat(userId: string): void {
+  userHeartbeats.set(userId, new Date());
+}
+
+/**
+ * Nettoie les joueurs inactifs (sans heartbeat récent).
+ * @returns Le nombre de joueurs supprimés
+ */
+export function cleanupInactiveUsers(): number {
+  const now = Date.now();
+  let removed = 0;
+
+  // Parcourir tous les joueurs en queue
+  for (const [userId, category] of userCategories.entries()) {
+    const lastBeat = userHeartbeats.get(userId);
+    
+    // Si pas de heartbeat ou heartbeat trop vieux
+    if (!lastBeat || (now - lastBeat.getTime()) > QUEUE_CONFIG.HEARTBEAT_TIMEOUT_MS) {
+      leaveQueue(userId);
+      userHeartbeats.delete(userId);
+      console.log(`💀 [HEARTBEAT] Joueur ${userId} retiré pour inactivité`);
+      removed++;
+    }
+  }
+
+  return removed;
+}
+
+/**
+ * Démarre le nettoyage automatique des joueurs inactifs.
+ * Appelé une fois au démarrage du serveur ou via un cron.
+ */
+let cleanupInterval: NodeJS.Timeout | null = null;
+
+export function startHeartbeatCleanup(): void {
+  if (cleanupInterval) return; // Déjà démarré
+  
+  cleanupInterval = setInterval(() => {
+    const removed = cleanupInactiveUsers();
+    if (removed > 0) {
+      console.log(`🧹 [HEARTBEAT] Cleanup: ${removed} joueur(s) inactif(s) retiré(s)`);
+    }
+  }, 5000); // Vérifier toutes les 5 secondes
+  
+  console.log('💓 [HEARTBEAT] Système de heartbeat démarré');
+}
+
+export function stopHeartbeatCleanup(): void {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
 }

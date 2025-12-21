@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
-import { getQueueStatus, getQueueCounts, canStartMatch, isLobbyTimerExpired, clearLobbyTimer, popPlayersForMatch, registerPendingMatch, cancelMatchingPlayers } from '@/lib/queue';
+import { getQueueStatus, getQueueCounts, canStartMatch, isLobbyTimerExpired, clearLobbyTimer, popPlayersForMatch, registerPendingMatch, cancelMatchingPlayers, heartbeat, startHeartbeatCleanup } from '@/lib/queue';
 import { getGameMode } from '@/lib/game-modes';
 import { spawn } from 'child_process';
 import path from 'path';
 import type { Category } from '@prisma/client';
+
+// Démarrer le système de heartbeat au chargement du module
+startHeartbeatCleanup();
 
 export async function GET(req: Request) {
   try {
@@ -16,6 +19,9 @@ export async function GET(req: Request) {
     if (!session?.user) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
+
+    // Heartbeat implicite à chaque polling
+    heartbeat(session.user.id);
 
     let status = getQueueStatus(session.user.id);
     const counts = getQueueCounts();

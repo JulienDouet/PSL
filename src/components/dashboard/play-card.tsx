@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Copy, ExternalLink, Check, Users, Loader2, X, ChevronDown } from 'lucide-react';
 import { GAME_MODE_LIST, DEFAULT_MODE, getGameMode, type GameModeKey } from '@/lib/game-modes';
 
-type QueueMode = 'idle' | 'searching' | 'matched' | 'manual';
+type QueueMode = 'idle' | 'searching' | 'matched';
 
 interface MatchInfo {
   roomCode: string;
@@ -17,7 +17,6 @@ export function PlayCard() {
   const [mode, setMode] = useState<QueueMode>('idle');
   const [selectedGameMode, setSelectedGameMode] = useState<GameModeKey>(DEFAULT_MODE);
   const [showModeSelector, setShowModeSelector] = useState(false);
-  const [manualRoomCode, setManualRoomCode] = useState('');
   const [queueCount, setQueueCount] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [matchInfo, setMatchInfo] = useState<MatchInfo | null>(null);
@@ -140,29 +139,6 @@ export function PlayCard() {
     setQueueCount(0);
   };
 
-  const handleJoinManualRoom = async () => {
-    if (manualRoomCode.length !== 4) return;
-    
-    try {
-      const res = await fetch('/api/match/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomCode: manualRoomCode.toUpperCase() })
-      });
-      
-      if (res.ok) {
-        alert(`Bot lancé sur ${manualRoomCode.toUpperCase()} !`);
-        setMode('idle');
-        setManualRoomCode('');
-      } else {
-        alert('Erreur: Impossible de lancer le bot');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Erreur réseau');
-    }
-  };
-
   const copyLink = () => {
     if (!matchInfo) return;
     const url = `https://jklm.fun/${matchInfo.roomCode}`;
@@ -231,13 +207,6 @@ export function PlayCard() {
               className="w-full h-14 text-lg bg-gradient-psl hover:opacity-90 transition-opacity glow-primary"
             >
               🔍 Rechercher ({currentGameMode.label})
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => setMode('manual')}
-              className="w-full"
-            >
-              📝 Rejoindre une room existante
             </Button>
           </>
         )}
@@ -333,37 +302,6 @@ export function PlayCard() {
             >
               Retour
             </Button>
-          </div>
-        )}
-
-        {/* MANUAL - Rejoindre une room manuelle */}
-        {mode === 'manual' && (
-          <div className="space-y-3 animate-in fade-in zoom-in duration-200">
-            <p className="text-sm font-medium text-center">Entrez le code JKLM</p>
-            <input
-              type="text"
-              maxLength={4}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm uppercase text-center font-mono tracking-widest text-lg"
-              placeholder="ABCD"
-              value={manualRoomCode}
-              onChange={(e) => setManualRoomCode(e.target.value.toUpperCase())}
-            />
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={() => setMode('idle')}
-              >
-                Retour
-              </Button>
-              <Button 
-                className="flex-1 bg-gradient-psl"
-                onClick={handleJoinManualRoom}
-                disabled={manualRoomCode.length !== 4}
-              >
-                GO !
-              </Button>
-            </div>
           </div>
         )}
 
