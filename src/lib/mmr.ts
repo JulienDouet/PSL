@@ -54,6 +54,7 @@ export function getScoreProximityFactor(score: number, winnerScore = 150): numbe
 export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResult[]): number {
   let totalChange = 0;
   let totalWeight = 0;
+  let sumOpponentMMR = 0;
   
   const opponents = allPlayers.filter(p => p.id !== player.id);
   
@@ -61,9 +62,10 @@ export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResul
   if (opponents.length === 0) return 0;
 
   for (const opponent of opponents) {
+    sumOpponentMMR += opponent.mmr;
+
     // 1. Poids du duel basé sur l'écart de niveau
-    const weight = getWeight(player.mmr, opponent.mmr);
-    totalWeight += weight;
+    let weight = getWeight(player.mmr, opponent.mmr);
     
     // 2. Probabilité de victoire attendue (Elo standard)
     const mmrDiff = opponent.mmr - player.mmr; 
@@ -78,9 +80,31 @@ export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResul
     } else {
         actual = 0.5; // Ex aequo
     }
-    
-    // 4. Contribution
-    totalChange += weight * MMR_CONFIG.K_FACTOR * (actual - expectedWin);
+
+    // ASYMMETRIC WEIGHTING & PUNISHMENT/REWARD:
+    // Si l'issue est "logique" (High bat Low), poids normal (calculé par decay).
+    // Si l'issue est "illogique" (Low bat High OU High perd contre Low), poids forcés et boostés.
+
+    // Cas 1: PÉNALITÉ (High perd contre Low)
+    if (actual === 0 && opponent.mmr < player.mmr) {
+        weight = 1.0;
+        const diff = player.mmr - opponent.mmr;
+        const multiplier = 1 + Math.pow(diff / 800, 2);
+        totalChange += weight * (MMR_CONFIG.K_FACTOR * multiplier) * (actual - expectedWin);
+    } 
+    // Cas 2: RÉCOMPENSE (Low bat High)
+    else if (actual === 1 && opponent.mmr > player.mmr) {
+        weight = 1.0;
+        const diff = opponent.mmr - player.mmr;
+        const multiplier = 1 + Math.pow(diff / 800, 2);
+        totalChange += weight * (MMR_CONFIG.K_FACTOR * multiplier) * (actual - expectedWin);
+    }
+    // Cas 3: Normal
+    else {
+        totalChange += weight * MMR_CONFIG.K_FACTOR * (actual - expectedWin);
+    }
+
+    totalWeight += weight;
   }
   
   // Normalisation
@@ -89,6 +113,7 @@ export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResul
       result = totalChange / totalWeight;
   }
   
+
   // Calibration: Boost si nouveau joueur
   if (player.gamesPlayed < MMR_CONFIG.CALIBRATION_GAMES) {
       result *= MMR_CONFIG.CALIBRATION_MULT;
@@ -96,7 +121,24 @@ export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResul
 
   // Appliquer le facteur de proximité de score (seulement si perte MMR)
   if (result < 0) {
-    const proximityFactor = getScoreProximityFactor(player.score);
+    let proximityFactor = getScoreProximityFactor(player.score);
+    
+    // PENALTY FOR FAVORITES:
+    // Si on était favori (MMR supérieur à la moyenne), on réduit la protection du score.
+    // Plus on est fort par rapport aux autres, moins on a d'excuse.
+    const avgOpponentMMR = sumOpponentMMR / opponents.length;
+    if (player.mmr > avgOpponentMMR) {
+        // Différence positive
+        const advantage = player.mmr - avgOpponentMMR;
+        // On réduit le facteur (le rapproche de 1.0)
+        // Ex: advantage 500 => lerp vers 1.0 à 100%
+        // Ex: advantage 0 => ne touche pas
+        const penaltyRatio = Math.min(1, advantage / 500); 
+        // proximityFactor de base est genre 0.5 (protection)
+        // On veut le rapprocher de 1.0 (pas de protection)
+        proximityFactor = proximityFactor + (1.0 - proximityFactor) * penaltyRatio;
+    }
+
     result *= proximityFactor;
   }
   
