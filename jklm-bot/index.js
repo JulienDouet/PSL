@@ -29,6 +29,7 @@ class JKLMBot {
     this.verifyCode = null;  // Code à attendre
     this.callbackUrl = null;
     this.customRules = null; // Règles personnalisées (dictionaryId, scoreGoal, challengeDuration)
+    this.category = 'GP';   // Catégorie du match (pour le callback)
   }
 
   generateUserToken() {
@@ -345,7 +346,8 @@ class JKLMBot {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 roomCode: this.roomCode,
-                scores: this.gameResults 
+                scores: this.gameResults,
+                category: this.category
             })
         }).then(res => {
             console.log(`✅ Callback statut: ${res.status}`);
@@ -547,6 +549,12 @@ async function main() {
         } catch (e) {
           console.error('❌ Erreur parsing --rules:', e);
         }
+        i++;
+      }
+    } else if (args[i] === '--category') {
+      if (args[i + 1]) {
+        bot.category = args[i + 1];
+        console.log('📂 Catégorie:', bot.category);
         i++;
       }
     } else if (args[i].startsWith('http')) {

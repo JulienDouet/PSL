@@ -4,7 +4,7 @@
 
 import type { Category } from '@prisma/client';
 
-export type GameModeKey = 'GP_FR' | 'MS_EN' | 'ANIME' | 'FLAGS';
+export type GameModeKey = 'GP_FR' | 'MS_EN' | 'ANIME' | 'FLAGS' | 'NOFILTER_FR' | 'NOFILTER_EN';
 
 export interface GameMode {
   key: GameModeKey;
@@ -44,7 +44,21 @@ export const GAME_MODES: Record<GameModeKey, GameMode> = {
     key: 'FLAGS',
     category: 'FLAGS',
     label: 'Drapeaux',
-    emoji: '🏳️',
+    emoji: '🚩',
+    rules: { dictionaryId: 'en', scoreGoal: 150, challengeDuration: 12 }
+  },
+  NOFILTER_FR: {
+    key: 'NOFILTER_FR',
+    category: 'NOFILTER',
+    label: 'Sans Filtre FR',
+    emoji: '🔥',
+    rules: { dictionaryId: 'fr', scoreGoal: 150, challengeDuration: 12 }
+  },
+  NOFILTER_EN: {
+    key: 'NOFILTER_EN',
+    category: 'NOFILTER',
+    label: 'No Filter EN',
+    emoji: '💥',
     rules: { dictionaryId: 'en', scoreGoal: 150, challengeDuration: 12 }
   }
 };

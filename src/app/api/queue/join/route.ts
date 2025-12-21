@@ -136,7 +136,7 @@ async function createMatchWithBot(players: any[], category: Category, rules: { d
 
     const rulesJson = JSON.stringify(rules);
 
-    const child = spawn('node', [botScript, '--create', callbackUrl, '--players-json', playersJson, '--rules', rulesJson], {
+    const child = spawn('node', [botScript, '--create', callbackUrl, '--players-json', playersJson, '--rules', rulesJson, '--category', category], {
       detached: isDetached,
       stdio: ['ignore', 'pipe', 'pipe'],
       cwd: process.cwd()

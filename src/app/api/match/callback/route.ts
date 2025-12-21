@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import type { Category } from '@prisma/client';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     console.log('📥 [API] Callback reçu du bot:', JSON.stringify(body, null, 2));
 
-    const { roomCode, scores } = body;
+    const { roomCode, scores, category: rawCategory } = body;
+    const category: Category = rawCategory || 'GP';
 
     // Validation basique
     if (!roomCode || !scores || !Array.isArray(scores)) {
@@ -21,7 +23,7 @@ export async function POST(req: Request) {
             status: 'COMPLETED',
             startedAt: new Date(Date.now() - 1000 * 60 * 5), // Approx 5 min ago
             endedAt: new Date(),
-            category: 'GP', // Par défaut
+            category,
         }
     });
 
@@ -105,12 +107,31 @@ export async function POST(req: Request) {
         });
 
         // Mise à jour User (Global MMR)
-        // TODO: Gérer UserCategoryMMR plus tard
         await prisma.user.update({
             where: { id: user.id },
             data: {
                 gamesPlayed: { increment: 1 },
                 mmr: { increment: mmrChange }
+            }
+        });
+
+        // Mise à jour UserCategoryMMR (MMR par catégorie)
+        await prisma.userCategoryMMR.upsert({
+            where: {
+                userId_category: {
+                    userId: user.id,
+                    category
+                }
+            },
+            create: {
+                userId: user.id,
+                category,
+                mmr: 1000 + mmrChange,
+                gamesPlayed: 1
+            },
+            update: {
+                mmr: { increment: mmrChange },
+                gamesPlayed: { increment: 1 }
             }
         });
     }

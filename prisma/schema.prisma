@@ -104,12 +104,13 @@ model UserCategoryMMR {
 }
 
 enum Category {
-  GP      // Grand Public
-  ANIME   // Anime/Manga
-  FLAGS   // Drapeaux
-  MUSIC   // Musique
-  MOVIES  // Films
-  GAMES   // Jeux Vidéo
+  GP        // Grand Public / Mainstream
+  ANIME     // Anime/Manga
+  FLAGS     // Drapeaux
+  MUSIC     // Musique
+  MOVIES    // Films
+  GAMES     // Jeux Vidéo
+  NOFILTER  // Sans Filtre / No Filter
 }
 
 // ============================================
