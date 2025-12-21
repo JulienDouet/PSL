@@ -84,16 +84,19 @@ export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResul
     // ASYMMETRIC WEIGHTING & PUNISHMENT/REWARD:
     // Si l'issue est "logique" (High bat Low), poids normal (calculé par decay).
     // Si l'issue est "illogique" (Low bat High OU High perd contre Low), poids forcés et boostés.
+    // SEULEMENT si l'écart est significatif (> 200 points)
+
+    const UPSET_THRESHOLD = 200;
 
     // Cas 1: PÉNALITÉ (High perd contre Low)
-    if (actual === 0 && opponent.mmr < player.mmr) {
+    if (actual === 0 && opponent.mmr < (player.mmr - UPSET_THRESHOLD)) {
         weight = 1.0;
         const diff = player.mmr - opponent.mmr;
         const multiplier = 1 + Math.pow(diff / 800, 2);
         totalChange += weight * (MMR_CONFIG.K_FACTOR * multiplier) * (actual - expectedWin);
     } 
     // Cas 2: RÉCOMPENSE (Low bat High)
-    else if (actual === 1 && opponent.mmr > player.mmr) {
+    else if (actual === 1 && opponent.mmr > (player.mmr + UPSET_THRESHOLD)) {
         weight = 1.0;
         const diff = opponent.mmr - player.mmr;
         const multiplier = 1 + Math.pow(diff / 800, 2);
