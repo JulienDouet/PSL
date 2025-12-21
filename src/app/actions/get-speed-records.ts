@@ -76,7 +76,7 @@ function mapRecords(records: any[]): SpeedRecord[] {
   return records.map(r => ({
     id: r.id,
     userId: r.userId!,
-    userName: r.user?.name || r.user?.displayName || 'Inconnu',
+    userName: r.user?.displayName || r.user?.name || 'Inconnu',
     userImage: r.user?.image || null,
     time: r.elapsedTime,
     answer: r.playerAnswer || r.answer, // Fallback au cas où (mais filtré avant)
