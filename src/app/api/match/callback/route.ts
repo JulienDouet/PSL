@@ -56,7 +56,15 @@ export async function POST(req: Request) {
                     providerId: authService,
                     accountId: authId
                 },
-                include: { user: true }
+                include: { 
+                    user: {
+                        include: {
+                            categoryMMRs: {
+                                where: { category }
+                            }
+                        }
+                    } 
+                }
             });
             
             if (account?.user) {
@@ -75,7 +83,15 @@ export async function POST(req: Request) {
                     providerId: authService,
                     accountId: authId
                 },
-                include: { user: true }
+                include: { 
+                    user: {
+                        include: {
+                            categoryMMRs: {
+                                where: { category }
+                            }
+                        }
+                    } 
+                }
             });
             
             if (account?.user) {
@@ -94,6 +110,11 @@ export async function POST(req: Request) {
                         { displayName: { equals: nick, mode: 'insensitive' } },
                         { name: { equals: nick, mode: 'insensitive' } }
                     ]
+                },
+                include: {
+                    categoryMMRs: {
+                        where: { category }
+                    }
                 }
             });
             if (user) {
@@ -102,12 +123,19 @@ export async function POST(req: Request) {
         }
         
         if (user) {
+            // Récupérer le MMR de la catégorie (ou 1000 par défaut)
+            const catMMRData = (user as any).categoryMMRs?.[0];
+            const currentMMR = catMMRData?.mmr ?? 1000;
+            const gamesPlayed = catMMRData?.gamesPlayed ?? 0;
+
+            console.log(`👤 ${user.name} - MMR ${category}: ${currentMMR} (${gamesPlayed} games)`);
+
             playersForCalculation.push({
                 id: user.id,
-                mmr: user.mmr,
+                mmr: currentMMR,
                 score: scoreData.score,
                 placement: scoreData.placement,
-                gamesPlayed: user.gamesPlayed
+                gamesPlayed: gamesPlayed
             });
             userMap.set(user.id, user);
             nicknameToUser.set(scoreData.nickname, user.id);
@@ -132,8 +160,10 @@ export async function POST(req: Request) {
     for (const playerStats of playersForCalculation) {
         const mmrChange = calculateMMRChange(playerStats, playersForCalculation);
         const user = userMap.get(playerStats.id)!;
+        const oldMMR = playerStats.mmr;
+        const newMMR = oldMMR + mmrChange;
         
-        console.log(`📈 ${user.name}: ${user.mmr} -> ${user.mmr + mmrChange} (${mmrChange > 0 ? '+' : ''}${mmrChange})`);
+        console.log(`📈 ${user.name} (${category}): ${oldMMR} -> ${newMMR} (${mmrChange > 0 ? '+' : ''}${mmrChange})`);
 
         // Sauvegarde MatchPlayer
         await prisma.matchPlayer.create({
@@ -142,18 +172,17 @@ export async function POST(req: Request) {
                 userId: user.id,
                 placement: playerStats.placement,
                 points: playerStats.score,
-                mmrBefore: user.mmr,
-                mmrAfter: user.mmr + mmrChange,
+                mmrBefore: oldMMR,
+                mmrAfter: newMMR,
                 mmrChange: mmrChange
             }
         });
 
-        // Mise à jour User (Global MMR)
+        // Mise à jour User (Juste gamesPlayed global, plus de MMR global)
         await prisma.user.update({
             where: { id: user.id },
             data: {
-                gamesPlayed: { increment: 1 },
-                mmr: { increment: mmrChange }
+                gamesPlayed: { increment: 1 }
             }
         });
 
