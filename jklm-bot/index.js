@@ -221,6 +221,23 @@ class JKLMBot {
          if (this.expectedPlayers.length > 0) {
              console.log('🔒 Verrouillage des règles (en attente de joueurs)...');
              this.gameSocket.emit('setRulesLocked', false); // false = menu ouvert = bloque le jeu
+             
+             // Timer de 60s pour forcer le démarrage même si certains joueurs manquent
+             this.lobbyTimeout = setTimeout(() => {
+                 if (!this.allPlayersJoined && this.gameSocket?.connected && this.isLeader) {
+                     const connectedCount = this.countConnectedExpectedPlayers();
+                     const totalExpected = this.expectedPlayers.length;
+                     console.log(`⏰ [TIMEOUT] Démarrage forcé après 60s (${connectedCount}/${totalExpected} joueurs présents)`);
+                     this.sendChat(`⏰ Timeout ! Démarrage avec ${connectedCount}/${totalExpected} joueurs...`);
+                     
+                     this.allPlayersJoined = true; // Empêcher le démarrage normal
+                     this.applyRules();
+                     console.log('🔓 Déverrouillage des règles (timeout)...');
+                     this.gameSocket.emit('setRulesLocked', true);
+                     console.log('📤 Envoi startRoundNow (timeout)...');
+                     this.gameSocket.emit('startRoundNow');
+                 }
+             }, 60_000); // 60 secondes
          }
          
          // Appliquer les règles PSL après un court délai
@@ -546,6 +563,12 @@ class JKLMBot {
     if (missing.length === 0) {
       this.allPlayersJoined = true;
       console.log('✅ Tous les joueurs attendus ont rejoint!');
+      
+      // Annuler le timeout de démarrage forcé
+      if (this.lobbyTimeout) {
+        clearTimeout(this.lobbyTimeout);
+        this.lobbyTimeout = null;
+      }
       
       // Déverrouiller les règles et lancer la partie
       setTimeout(() => {
