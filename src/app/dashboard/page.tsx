@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRankProgress } from "@/lib/mmr";
 import { PlayCard } from "@/components/dashboard/play-card";
+import { DashboardCategoryMMR } from "@/components/dashboard/category-mmr";
 import { Navbar } from "@/components/navbar";
 
 export default async function DashboardPage() {
@@ -161,6 +162,9 @@ export default async function DashboardPage() {
             <div className="space-y-6">
               {/* Play Card */}
               <PlayCard />
+
+              {/* MMR par mode */}
+              <DashboardCategoryMMR />
 
               {/* Quick Links */}
               <Card className="bg-card border-border/50">

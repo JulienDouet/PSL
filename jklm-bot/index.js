@@ -296,7 +296,7 @@ class JKLMBot {
           this.sendChat(`✅ ${nick} connecté ! (${connectedCount}/${totalExpected} joueurs)`);
         } else {
           // Joueur non inscrit
-          this.sendChat(`👋 Bienvenue ${nick} ! Rejoins psl-ranked.app pour participer à la ligue ranked`);
+          this.sendChat(`👋 Bienvenue ${nick} ! Rejoins www.psl-ranked.app pour participer à la ligue ranked`);
         }
       }
 
