@@ -124,6 +124,20 @@ export default async function DashboardPage() {
               {/* Play Card */}
               <PlayCard />
 
+              {/* Discord Notification Card */}
+              <Card className="bg-[#5865F2]/10 border-[#5865F2]/20">
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="bg-[#5865F2] text-white p-2 rounded-full shrink-0">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M18.942 5.556a16.299 16.299 0 0 0-4.126-1.297c-.178.321-.385.754-.529 1.097a15.08 15.08 0 0 0-4.575 0 2.44 2.44 0 0 0-.533-1.097A16.288 16.288 0 0 0 5.055 5.556a16.097 16.097 0 0 0-3.078 12.012 16.155 16.155 0 0 0 4.978 2.503 12.028 12.028 0 0 0 1.077-1.776 10.74 10.74 0 0 1-1.579-.753.868.868 0 0 1 .159-.395c3.153 1.458 6.57 1.458 9.684 0 .052.138.106.27.163.4.455.24.914.475 1.385.717a12.163 12.163 0 0 0 1.282 1.803 16.134 16.134 0 0 0 4.97-2.5 16.103 16.103 0 0 0-3.069-12.012zM8.618 13.905c-1.124 0-2.052-1.036-2.052-2.304 0-1.268.914-2.304 2.052-2.304 1.151 0 2.079 1.036 2.079 2.304 0 1.268-.914 2.304-2.079 2.304zm6.756 0c-1.124 0-2.052-1.036-2.052-2.304 0-1.268.914-2.304 2.052-2.304 1.151 0 2.079 1.036 2.079 2.304 0 1.268-.928 2.304-2.079 2.304z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <div className="text-sm">
+                    Rejoins le <a href="https://discord.gg/JGHRNy6qRn" target="_blank" rel="noopener noreferrer" className="font-bold text-[#5865F2] hover:underline">Discord</a> pour être notifié quand quelqu&apos;un recherche une partie !
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Quick Links */}
               <Card className="bg-card border-border/50">
                 <CardHeader>
