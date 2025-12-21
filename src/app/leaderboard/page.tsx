@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar } from "@/components/navbar";
 import { GAME_MODE_LIST, type GameModeKey } from '@/lib/game-modes';
+import { SpeedRecords } from "@/components/leaderboard/speed-records";
+import { useTranslation } from "@/lib/i18n/context";
 
 // Types pour le leaderboard
 interface LeaderboardEntry {
@@ -22,16 +24,6 @@ interface LeaderboardEntry {
   };
 }
 
-// Catégories pour le leaderboard (correspondant aux modes de jeu)
-const LEADERBOARD_CATEGORIES = [
-  { key: 'GP_FR', label: 'Grand Public [FR]', emoji: '🍿' },
-  { key: 'MS_EN', label: 'Mainstream [EN]', emoji: '🍿' },
-  { key: 'ANIME', label: 'Anime', emoji: '🎌' },
-  { key: 'FLAGS', label: 'Drapeaux', emoji: '🚩' },
-  { key: 'NOFILTER_FR', label: 'Sans Filtre [FR]', emoji: '🔥' },
-  { key: 'NOFILTER_EN', label: 'No Filter [EN]', emoji: '🔥' }
-];
-
 function getPositionBadge(position: number) {
   if (position === 1) return "🥇";
   if (position === 2) return "🥈";
@@ -39,13 +31,22 @@ function getPositionBadge(position: number) {
   return `#${position}`;
 }
 
-import { SpeedRecords } from "@/components/leaderboard/speed-records";
-
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<'mmr' | 'speed'>('mmr');
   const [activeCategory, setActiveCategory] = useState('GP_FR');
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
+
+  // Catégories pour le leaderboard (correspondant aux modes de jeu)
+  const LEADERBOARD_CATEGORIES = [
+    { key: 'GP_FR', emoji: '🍿' },
+    { key: 'MS_EN', emoji: '🍿' },
+    { key: 'ANIME', emoji: '🎌' },
+    { key: 'FLAGS', emoji: '🚩' },
+    { key: 'NOFILTER_FR', emoji: '🔥' },
+    { key: 'NOFILTER_EN', emoji: '🔥' }
+  ];
 
   // Fetch leaderboard only when needed
   useEffect(() => {
@@ -79,10 +80,10 @@ export default function LeaderboardPage() {
           {/* Header */}
           <div className="text-center mb-6">
             <h1 className="text-4xl font-bold mb-2">
-              🏆 <span className="text-gradient">Classement</span>
+              🏆 <span className="text-gradient">{t.leaderboard.title}</span>
             </h1>
             <p className="text-muted-foreground">
-              Saison Décembre 2025
+              {t.leaderboard.subtitle}
             </p>
           </div>
 
@@ -96,7 +97,7 @@ export default function LeaderboardPage() {
                     : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
                 }`}
             >
-                📊 Classement MMR
+                {t.leaderboard.tabs.mmr}
             </button>
             <button
                 onClick={() => setActiveTab('speed')}
@@ -106,7 +107,7 @@ export default function LeaderboardPage() {
                     : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
                 }`}
             >
-                ⚡ Records de Vitesse
+                {t.leaderboard.tabs.speed}
             </button>
           </div>
 
@@ -126,7 +127,7 @@ export default function LeaderboardPage() {
                         }`}
                     >
                         <span>{cat.emoji}</span>
-                        <span>{cat.label}</span>
+                        <span>{t.categories[cat.key as keyof typeof t.categories]}</span>
                     </button>
                     ))}
                 </div>
@@ -135,7 +136,7 @@ export default function LeaderboardPage() {
                 {loading && (
                     <div className="text-center py-12">
                     <div className="inline-block animate-spin text-4xl">🔄</div>
-                    <p className="text-muted-foreground mt-2">Chargement...</p>
+                    <p className="text-muted-foreground mt-2">{t.common.loading}</p>
                     </div>
                 )}
 
@@ -160,7 +161,7 @@ export default function LeaderboardPage() {
                         <div className="text-3xl font-bold text-gradient">{top3[0].mmr}</div>
                         <div className="text-sm text-muted-foreground">MMR</div>
                         <div className="mt-2 text-xs px-2 py-1 rounded-full bg-primary/20 text-primary inline-block">
-                            🏆 Grand Maître
+                            🏆 {t.ranks.master}
                         </div>
                         </CardContent>
                     </Card>
@@ -181,22 +182,22 @@ export default function LeaderboardPage() {
                 {!loading && (
                     <Card className="bg-card border-border/50">
                     <CardHeader>
-                        <CardTitle>Top 100 - {LEADERBOARD_CATEGORIES.find(c => c.key === activeCategory)?.label}</CardTitle>
+                        <CardTitle>Top 100 - {t.categories[activeCategory as keyof typeof t.categories]}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {leaderboard.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
-                            Aucun joueur classé dans cette catégorie. Joue des parties pour apparaître ici !
+                            {t.leaderboard.no_players}
                         </div>
                         ) : (
                         <div className="space-y-2">
                             {/* Header */}
                             <div className="grid grid-cols-12 gap-2 px-4 py-2 text-sm text-muted-foreground font-medium">
-                            <div className="col-span-1">#</div>
-                            <div className="col-span-5">Joueur</div>
-                            <div className="col-span-2 text-center">MMR</div>
-                            <div className="col-span-2 text-center">W/L</div>
-                            <div className="col-span-2 text-center">Winrate</div>
+                            <div className="col-span-1">{t.leaderboard.table.rank}</div>
+                            <div className="col-span-5">{t.leaderboard.table.player}</div>
+                            <div className="col-span-2 text-center">{t.leaderboard.table.mmr}</div>
+                            <div className="col-span-2 text-center">{t.leaderboard.table.wl}</div>
+                            <div className="col-span-2 text-center">{t.leaderboard.table.winrate}</div>
                             </div>
 
                             {/* Rows */}
@@ -259,11 +260,11 @@ export default function LeaderboardPage() {
       <footer className="py-8 px-4 border-t border-border/50">
         <div className="container mx-auto flex items-center justify-center gap-4 text-muted-foreground">
           <Link href="/" className="hover:text-foreground transition-colors">
-            Accueil
+            {t.common.home}
           </Link>
-
         </div>
       </footer>
     </div>
   );
 }
+

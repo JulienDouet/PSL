@@ -7,22 +7,73 @@ export const fr = {
     back: "Retour",
     save: "Sauvegarder",
     cancel: "Annuler",
-    date_format: "dd/MM/yyyy", // Format pour date-fns ou Intl si besoin
+    home: "Accueil",
+    pts: "pts",
   },
   navbar: {
     dashboard: "Tableau de bord",
     leaderboard: "Classement",
-    matches: "Matchs", // Ajouté si présent
+    matches: "Parties",
     play: "Jouer",
-    profile: "Profil",
+    profile: "Mon profil",
+    edit_profile: "Modifier mon profil",
     login: "Connexion",
     logout: "Déconnexion",
     admin: "Admin"
   },
+  landing: {
+    badge: "🏆 Premier système de ranked pour Popsauce",
+    title: "PopSauce League",
+    subtitle: "Rejoins la compétition, grimpe dans le classement et deviens le meilleur joueur Popsauce français.",
+    cta_join: "🎮 Rejoindre la Ligue",
+    cta_leaderboard: "📊 Voir le classement",
+    why_psl: "Pourquoi PSL ?",
+    feature_mmr_title: "Système MMR",
+    feature_mmr_desc: "Un système ELO compétitif qui récompense ta performance. Chaque victoire compte !",
+    feature_stats_title: "Stats Détaillées",
+    feature_stats_desc: "Analyse tes performances, ton historique et tes points forts pour progresser.",
+    feature_seasons_title: "Saisons Mensuelles",
+    feature_seasons_desc: "Chaque mois, un nouveau départ. Gagne des badges exclusifs et affiche ton rang.",
+    ranks_title: "Grimpe dans les Rangs",
+    ranks_subtitle: "De Bronze à Grand Maître, prouve ta valeur et atteins le sommet du classement.",
+    ready_title: "Prêt à jouer ?",
+    ready_subtitle: "Connecte-toi avec Discord ou Twitch et lance ta première recherche de partie.",
+    cta_start: "🎮 Commencer maintenant",
+    footer_leaderboard: "Classement",
+    footer_legal: "Mentions légales",
+    footer_privacy: "Confidentialité",
+    footer_terms: "CGU",
+  },
+  ranks: {
+    bronze: "Bronze",
+    silver: "Argent",
+    gold: "Or",
+    platinum: "Platine",
+    diamond: "Diamant",
+    master: "Maître",
+  },
+  login: {
+    title: "Rejoindre PSL",
+    subtitle: "Connecte-toi pour accéder au matchmaking ranked",
+    discord: "Continuer avec Discord",
+    twitch: "Continuer avec Twitch",
+    jklm_sync: "Synchronisation JKLM",
+    jklm_info: "Pour synchroniser votre compte à celui de JKLM.fun, utilisez le même mode de connexion. Pour les membres Staff JKLM, connectez-vous via Discord ou Twitch et allez dans les paramètres du profil pour faire la liaison.",
+  },
   dashboard: {
-    welcome: "Bon retour, {name} !",
-    rank: "Rang",
-    mmr: "MMR",
+    welcome: "Bienvenue, {name} !",
+    welcome_back: "Prêt à grimper dans le classement ?",
+    recent_matches: "🕐 Dernières parties",
+    no_matches: "Aucune partie jouée pour l'instant",
+    first_match: "Lance ta première recherche !",
+    discord_notif: "Rejoins le Discord pour être notifié quand quelqu'un recherche une partie !",
+    shortcuts: "⚡ Raccourcis",
+    shortcut_leaderboard: "🏆 Voir le classement",
+    shortcut_profile: "👤 Mon profil",
+    placement: {
+      first: "🥇 1er",
+      other: "#{n}",
+    },
     play_card: {
       title: "Recherche de partie",
       subtitle: "{count} joueurs en ligne",
@@ -32,46 +83,47 @@ export const fr = {
       in_queue: "{count} en recherche"
     },
     discord_card: {
-        title: "Rejoins la communauté",
-        desc: "Discute avec les autres joueurs, trouve des adversaires et suis les annonces officielles sur notre Discord.",
-        button: "Rejoindre le Discord"
+      title: "Rejoins la communauté",
+      desc: "Discute avec les autres joueurs, trouve des adversaires et suis les annonces officielles sur notre Discord.",
+      button: "Rejoindre le Discord"
     },
     category_mmr: {
-        title: "Progression par Catégorie",
-        games: "{count} parties",
-        unranked: "Non classé"
+      title: "Progression par Catégorie",
+      games: "{count} parties",
+      unranked: "Non classé"
     }
   },
   leaderboard: {
     title: "Classement",
     subtitle: "Saison Décembre 2025",
     tabs: {
-        mmr: "Classement MMR",
-        speed: "Records de Vitesse"
+      mmr: "📊 Classement MMR",
+      speed: "⚡ Records de Vitesse"
     },
     table: {
-        rank: "#",
-        player: "Joueur",
-        mmr: "MMR",
-        wl: "V/D",
-        winrate: "Winrate"
+      rank: "#",
+      player: "Joueur",
+      mmr: "MMR",
+      wl: "V/D",
+      winrate: "Winrate"
     },
     speed: {
-        title: "Records de Vitesse",
-        search_title: "Filtres de recherche",
-        search_placeholder_text: "Grandes réponses (ex: a, le...)",
-        search_placeholder_generic: "Rechercher une réponse",
-        filter_text: "Par Mot",
-        filter_length: "Par Taille",
-        letters: "lettres",
-        table: {
-            rank: "#",
-            player: "Joueur",
-            answer: "Réponse",
-            time: "Temps",
-            date: "Date"
-        },
-        no_records: "Aucun record trouvé."
+      title: "Records de Vitesse",
+      search_title: "Filtres de recherche",
+      filter_text: "Par Mot",
+      filter_length: "Par Taille",
+      letters: "lettres",
+      table: {
+        rank: "#",
+        player: "Joueur",
+        answer: "Réponse",
+        time: "Temps",
+        date: "Date"
+      },
+      no_records: "Aucun record trouvé.",
+      global_top: "Top 50 - Global",
+      search_top: "Top 50 - \"{query}\"",
+      length_top: "Top 50 - {n} Lettres",
     },
     no_players: "Aucun joueur classé dans cette catégorie. Joue des parties pour apparaître ici !"
   },
@@ -85,5 +137,26 @@ export const fr = {
     MUSIC: "Musique",
     MOVIES: "Films",
     GAMES: "Jeux Vidéo"
+  },
+  profile: {
+    stats: "Statistiques",
+    matches: "Parties",
+    category_stats: "Stats par Catégorie",
+    edit: "Modifier le profil",
+    rank: "Rang",
+    games_played: "Parties jouées",
+    wins: "Victoires",
+    losses: "Défaites",
+    winrate: "Taux de victoire",
+  },
+  matches: {
+    title: "Historique des parties",
+    no_matches: "Aucune partie pour le moment.",
+    category: "Catégorie",
+    players: "Joueurs",
+    result: "Résultat",
+    date: "Date",
+    placement: "Place",
+    mmr_change: "Δ MMR",
   }
 }

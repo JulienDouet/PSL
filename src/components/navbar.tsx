@@ -44,13 +44,18 @@ export function Navbar() {
           <Image src="/transparent logo.png" alt="PSL Logo" width={120} height={60} className="object-contain" />
         </Link>
         <div className="flex items-center gap-4 sm:gap-6">
-          {/* Language Switcher */}
+          {/* Language Switcher - Pill Toggle */}
           <button 
             onClick={toggleLanguage} 
-            className="text-2xl hover:scale-110 transition-transform cursor-pointer"
+            className="flex items-center gap-1 px-2 py-1 rounded-full bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer border border-border/50"
             title={language === 'fr' ? 'Switch to English' : 'Passer en Français'}
           >
-            {language === 'fr' ? '🇫🇷' : '🇬🇧'}
+            <span className={`px-1.5 py-0.5 rounded-full text-sm transition-all ${language === 'fr' ? 'bg-primary text-primary-foreground' : ''}`}>
+              🇫🇷
+            </span>
+            <span className={`px-1.5 py-0.5 rounded-full text-sm transition-all ${language === 'en' ? 'bg-primary text-primary-foreground' : ''}`}>
+              🇬🇧
+            </span>
           </button>
 
           {isPending ? (
@@ -114,7 +119,7 @@ export function Navbar() {
                       className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-secondary transition-colors"
                     >
                       <Settings className="w-4 h-4" />
-                      Modifier mon profil
+                      {t.navbar.edit_profile}
                     </Link>
                     <hr className="my-1 border-border" />
                     <button

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSpeedRecords, type SpeedRecord } from '@/app/actions/get-speed-records';
 import { Loader2, Search, Timer } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslation } from "@/lib/i18n/context";
 
 export function SpeedRecords() {
   const [filterType, setFilterType] = useState<'text' | 'length'>('text');
@@ -14,7 +15,7 @@ export function SpeedRecords() {
   const [lengthFilter, setLengthFilter] = useState<number | null>(null);
   const [records, setRecords] = useState<SpeedRecord[]>([]);
   const [loading, setLoading] = useState(false);
-  // Remove hasSearched to show content by default
+  const { t } = useTranslation();
   
   // Load default records on mount
   useEffect(() => {
@@ -46,13 +47,20 @@ export function SpeedRecords() {
     fetchRecords({ query: searchTerm });
   }
 
+  // Dynamic title
+  const getTitle = () => {
+    if (filterType === 'text' && searchTerm) return `Top 50 - "${searchTerm}"`;
+    if (filterType === 'length' && lengthFilter) return `Top 50 - ${lengthFilter} ${t.leaderboard.speed.letters}`;
+    return t.leaderboard.speed.global_top;
+  };
+
   return (
     <div className="space-y-6">
       <Card className="bg-card border-border/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Timer className="w-5 h-5 text-primary" />
-            Filtres de recherche
+            {t.leaderboard.speed.search_title}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -60,17 +68,17 @@ export function SpeedRecords() {
             <div className="flex gap-4 mb-4">
                 <Button 
                     variant={filterType === 'text' ? 'default' : 'outline'}
-                    onClick={() => { setFilterType('text'); setSearchTerm(''); fetchRecords(); }} // Reset to default when switching
+                    onClick={() => { setFilterType('text'); setSearchTerm(''); fetchRecords(); }}
                     size="sm"
                 >
-                    Par Mot
+                    {t.leaderboard.speed.filter_text}
                 </Button>
                 <Button 
                     variant={filterType === 'length' ? 'default' : 'outline'}
                     onClick={() => { setFilterType('length'); setLengthFilter(null); fetchRecords(); }}
                     size="sm"
                 >
-                    Par Taille
+                    {t.leaderboard.speed.filter_length}
                 </Button>
             </div>
 
@@ -78,14 +86,14 @@ export function SpeedRecords() {
             {filterType === 'text' && (
                 <form onSubmit={handleSearch} className="flex gap-2">
                     <Input
-                    placeholder="Grandes réponses (ex: a, le...)"
+                    placeholder="naruto, bts, ..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="max-w-md"
                     />
                     <Button type="submit" disabled={loading}>
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                    <span className="ml-2">Rechercher</span>
+                    <span className="ml-2">{t.common.search}</span>
                     </Button>
                 </form>
             )}
@@ -118,10 +126,9 @@ export function SpeedRecords() {
                             onChange={(e) => setLengthFilter(parseInt(e.target.value))}
                             className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
                         />
-                        {/* Optional: Add markers or tooltip if needed, but simple is good here */}
                     </div>
-                    <span className="text-sm text-muted-foreground w-16 text-right">
-                        {lengthFilter ? `${lengthFilter} lettres` : '-'}
+                    <span className="text-sm text-muted-foreground w-20 text-right">
+                        {lengthFilter ? `${lengthFilter} ${t.leaderboard.speed.letters}` : '-'}
                     </span>
                 </div>
             )}
@@ -131,27 +138,23 @@ export function SpeedRecords() {
 
       <Card className="bg-card border-border/50">
         <CardHeader>
-            <CardTitle>
-                {filterType === 'text' && searchTerm ? `Top 50 - "${searchTerm}"` : 
-                 filterType === 'length' && lengthFilter ? `Top 50 - ${lengthFilter} Lettres` : 
-                 "Top 50 - Global"}
-            </CardTitle>
+            <CardTitle>{getTitle()}</CardTitle>
         </CardHeader>
         <CardContent>
         {records.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-                {loading ? 'Chargement...' : 'Aucun record trouvé.'}
+                {loading ? t.common.loading : t.leaderboard.speed.no_records}
             </div>
         ) : (
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead className="text-muted-foreground border-b border-border/50">
                         <tr>
-                            <th className="px-4 py-3 text-left w-16">#</th>
-                            <th className="px-4 py-3 text-left">Joueur</th>
-                            <th className="px-4 py-3 text-left">Réponse</th>
-                            <th className="px-4 py-3 text-right">Temps</th>
-                            <th className="px-4 py-3 text-right">Date</th>
+                            <th className="px-4 py-3 text-left w-16">{t.leaderboard.speed.table.rank}</th>
+                            <th className="px-4 py-3 text-left">{t.leaderboard.speed.table.player}</th>
+                            <th className="px-4 py-3 text-left">{t.leaderboard.speed.table.answer}</th>
+                            <th className="px-4 py-3 text-right">{t.leaderboard.speed.table.time}</th>
+                            <th className="px-4 py-3 text-right">{t.leaderboard.speed.table.date}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -190,3 +193,4 @@ export function SpeedRecords() {
     </div>
   );
 }
+

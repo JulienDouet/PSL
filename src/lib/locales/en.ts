@@ -7,71 +7,123 @@ export const en = {
     back: "Back",
     save: "Save",
     cancel: "Cancel",
-    date_format: "MM/dd/yyyy",
+    home: "Home",
+    pts: "pts",
   },
   navbar: {
     dashboard: "Dashboard",
     leaderboard: "Leaderboard",
     matches: "Matches",
     play: "Play",
-    profile: "Profile",
+    profile: "My Profile",
+    edit_profile: "Edit Profile",
     login: "Login",
     logout: "Logout",
     admin: "Admin"
   },
+  landing: {
+    badge: "🏆 First ranked system for Popsauce",
+    title: "PopSauce League",
+    subtitle: "Join the competition, climb the leaderboard and become the best Popsauce player.",
+    cta_join: "🎮 Join the League",
+    cta_leaderboard: "📊 View Leaderboard",
+    why_psl: "Why PSL?",
+    feature_mmr_title: "MMR System",
+    feature_mmr_desc: "A competitive ELO system that rewards your performance. Every victory counts!",
+    feature_stats_title: "Detailed Stats",
+    feature_stats_desc: "Analyze your performance, history and strengths to improve.",
+    feature_seasons_title: "Monthly Seasons",
+    feature_seasons_desc: "Each month, a fresh start. Earn exclusive badges and show off your rank.",
+    ranks_title: "Climb the Ranks",
+    ranks_subtitle: "From Bronze to Grand Master, prove your worth and reach the top of the leaderboard.",
+    ready_title: "Ready to play?",
+    ready_subtitle: "Log in with Discord or Twitch and start your first match search.",
+    cta_start: "🎮 Start Now",
+    footer_leaderboard: "Leaderboard",
+    footer_legal: "Legal Notice",
+    footer_privacy: "Privacy Policy",
+    footer_terms: "Terms of Service",
+  },
+  ranks: {
+    bronze: "Bronze",
+    silver: "Silver",
+    gold: "Gold",
+    platinum: "Platinum",
+    diamond: "Diamond",
+    master: "Master",
+  },
+  login: {
+    title: "Join PSL",
+    subtitle: "Log in to access ranked matchmaking",
+    discord: "Continue with Discord",
+    twitch: "Continue with Twitch",
+    jklm_sync: "JKLM Sync",
+    jklm_info: "To sync your account with JKLM.fun, use the same login method. For JKLM Staff members, log in via Discord or Twitch and go to profile settings to link your account.",
+  },
   dashboard: {
-    welcome: "Welcome back, {name}!",
-    rank: "Rank",
-    mmr: "MMR",
+    welcome: "Welcome, {name}!",
+    welcome_back: "Ready to climb the leaderboard?",
+    recent_matches: "🕐 Recent Matches",
+    no_matches: "No matches played yet",
+    first_match: "Start your first search!",
+    discord_notif: "Join Discord to get notified when someone is searching for a match!",
+    shortcuts: "⚡ Shortcuts",
+    shortcut_leaderboard: "🏆 View Leaderboard",
+    shortcut_profile: "👤 My Profile",
+    placement: {
+      first: "🥇 1st",
+      other: "#{n}",
+    },
     play_card: {
       title: "Find a Match",
       subtitle: "{count} players online",
       waiting: "Searching...",
       join: "Join Queue",
       cancel: "Cancel",
-      in_queue: "{count} inside"
+      in_queue: "{count} searching"
     },
     discord_card: {
-        title: "Join the Community",
-        desc: "Chat with other players, find opponents, and follow official announcements on our Discord.",
-        button: "Join Discord"
+      title: "Join the Community",
+      desc: "Chat with other players, find opponents and follow official announcements on our Discord.",
+      button: "Join Discord"
     },
     category_mmr: {
-        title: "Category Progress",
-        games: "{count} games",
-        unranked: "Unranked"
+      title: "Category Progress",
+      games: "{count} games",
+      unranked: "Unranked"
     }
   },
   leaderboard: {
     title: "Leaderboard",
     subtitle: "Season December 2025",
     tabs: {
-        mmr: "MMR Ranking",
-        speed: "Speed Records"
+      mmr: "📊 MMR Ranking",
+      speed: "⚡ Speed Records"
     },
     table: {
-        rank: "#",
-        player: "Player",
-        mmr: "MMR",
-        wl: "W/L",
-        winrate: "Winrate"
+      rank: "#",
+      player: "Player",
+      mmr: "MMR",
+      wl: "W/L",
+      winrate: "Winrate"
     },
     speed: {
-        title: "Speed Records",
-        search_title: "Search Filters",
-        search_placeholder_text: "Answers (e.g., naruto...)",
-        search_placeholder_generic: "Search for an answer",
-        filter_text: "By Word",
-        filter_length: "By Length",
-        letters: "letters",
-        table: {
-            rank: "#",
-            player: "Player",
-            answer: "Answer",
-            time: "Time",
-            date: "Date"
-        },
-        no_records: "No records found."
+      title: "Speed Records",
+      search_title: "Search Filters",
+      filter_text: "By Word",
+      filter_length: "By Length",
+      letters: "letters",
+      table: {
+        rank: "#",
+        player: "Player",
+        answer: "Answer",
+        time: "Time",
+        date: "Date"
+      },
+      no_records: "No records found.",
+      global_top: "Top 50 - Global",
+      search_top: "Top 50 - \"{query}\"",
+      length_top: "Top 50 - {n} Letters",
     },
     no_players: "No ranked players in this category yet. Play games to appear here!"
   },
@@ -85,5 +137,26 @@ export const en = {
     MUSIC: "Music",
     MOVIES: "Movies",
     GAMES: "Video Games"
+  },
+  profile: {
+    stats: "Statistics",
+    matches: "Matches",
+    category_stats: "Category Stats",
+    edit: "Edit Profile",
+    rank: "Rank",
+    games_played: "Games Played",
+    wins: "Wins",
+    losses: "Losses",
+    winrate: "Win Rate",
+  },
+  matches: {
+    title: "Match History",
+    no_matches: "No matches yet.",
+    category: "Category",
+    players: "Players",
+    result: "Result",
+    date: "Date",
+    placement: "Place",
+    mmr_change: "Δ MMR",
   }
 }
