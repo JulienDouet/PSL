@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, ExternalLink, Check, Users, Loader2, X } from 'lucide-react';
+import { Copy, ExternalLink, Check, Users, Loader2, X, ChevronDown } from 'lucide-react';
+import { GAME_MODE_LIST, DEFAULT_MODE, getGameMode, type GameModeKey } from '@/lib/game-modes';
 
 type QueueMode = 'idle' | 'searching' | 'matched' | 'manual';
 
@@ -14,11 +15,27 @@ interface MatchInfo {
 
 export function PlayCard() {
   const [mode, setMode] = useState<QueueMode>('idle');
+  const [selectedGameMode, setSelectedGameMode] = useState<GameModeKey>(DEFAULT_MODE);
+  const [showModeSelector, setShowModeSelector] = useState(false);
   const [manualRoomCode, setManualRoomCode] = useState('');
   const [queueCount, setQueueCount] = useState(0);
   const [matchInfo, setMatchInfo] = useState<MatchInfo | null>(null);
   const [copied, setCopied] = useState(false);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const modeSelectorRef = useRef<HTMLDivElement>(null);
+
+  const currentGameMode = getGameMode(selectedGameMode);
+
+  // Fermer le sélecteur de mode si on clique ailleurs
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (modeSelectorRef.current && !modeSelectorRef.current.contains(event.target as Node)) {
+        setShowModeSelector(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Polling pour vérifier le statut de la queue
   useEffect(() => {
@@ -63,11 +80,15 @@ export function PlayCard() {
 
   const handleJoinQueue = async () => {
     setMode('searching');
+    setShowModeSelector(false);
     try {
       const res = await fetch('/api/queue/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category: 'GP' }) // Grand Public par défaut
+        body: JSON.stringify({ 
+          mode: selectedGameMode,
+          category: currentGameMode.category 
+        })
       });
       
       if (res.ok) {
@@ -154,11 +175,48 @@ export function PlayCard() {
         {/* IDLE - Boutons principaux */}
         {mode === 'idle' && (
           <>
+            {/* Sélecteur de mode */}
+            <div className="relative" ref={modeSelectorRef}>
+              <button
+                type="button"
+                onClick={() => setShowModeSelector(!showModeSelector)}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{currentGameMode.emoji}</span>
+                  <span className="font-medium">{currentGameMode.label}</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {showModeSelector && (
+                <div className="absolute z-10 w-full mt-1 py-1 bg-card border border-border rounded-lg shadow-lg animate-in fade-in zoom-in-95 duration-150">
+                  {GAME_MODE_LIST.map((gm) => (
+                    <button
+                      key={gm.key}
+                      type="button"
+                      onClick={() => {
+                        setSelectedGameMode(gm.key);
+                        setShowModeSelector(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-secondary transition-colors ${
+                        selectedGameMode === gm.key ? 'bg-primary/10 text-primary' : ''
+                      }`}
+                    >
+                      <span className="text-lg">{gm.emoji}</span>
+                      <span>{gm.label}</span>
+                      {selectedGameMode === gm.key && <Check className="w-4 h-4 ml-auto" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <Button 
               onClick={handleJoinQueue}
               className="w-full h-14 text-lg bg-gradient-psl hover:opacity-90 transition-opacity glow-primary"
             >
-              🔍 Rechercher une partie
+              🔍 Rechercher ({currentGameMode.label})
             </Button>
             <Button 
               variant="outline"

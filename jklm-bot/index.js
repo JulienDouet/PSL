@@ -28,6 +28,7 @@ class JKLMBot {
     this.verifyMode = false; // Mode vérification JKLM
     this.verifyCode = null;  // Code à attendre
     this.callbackUrl = null;
+    this.customRules = null; // Règles personnalisées (dictionaryId, scoreGoal, challengeDuration)
   }
 
   generateUserToken() {
@@ -218,13 +219,15 @@ class JKLMBot {
              this.gameSocket.emit('setRulesLocked', false); // false = menu ouvert = bloque le jeu
          }
          
-         // Appliquer les règles PSL par défaut après un court délai
+         // Appliquer les règles PSL après un court délai
          setTimeout(() => {
-           console.log('⚙️ Application des règles PSL...');
+           console.log('⚙️ Application des règles...');
+           const rules = this.customRules || { scoreGoal: 150, challengeDuration: 12, dictionaryId: 'fr' };
+           console.log('📋 Règles:', JSON.stringify(rules));
            this.gameSocket.emit('setRules', { 
-             scoreGoal: 150,
-             challengeDuration: 12,
-             dictionaryId: 'fr'
+             scoreGoal: rules.scoreGoal || 150,
+             challengeDuration: rules.challengeDuration || 12,
+             dictionaryId: rules.dictionaryId || 'fr'
            });
          }, 500);
          
@@ -534,6 +537,16 @@ async function main() {
       verifyMode = true;
       if (args[i + 1] && !args[i + 1].startsWith('-') && !args[i + 1].startsWith('http')) {
         verifyCode = args[i + 1];
+        i++;
+      }
+    } else if (args[i] === '--rules') {
+      if (args[i + 1]) {
+        try {
+          bot.customRules = JSON.parse(args[i + 1]);
+          console.log('📋 Règles personnalisées:', bot.customRules);
+        } catch (e) {
+          console.error('❌ Erreur parsing --rules:', e);
+        }
         i++;
       }
     } else if (args[i].startsWith('http')) {

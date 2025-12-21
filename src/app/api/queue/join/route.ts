@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { joinQueue, canStartMatch, popPlayersForMatch, registerPendingMatch, getQueueStatus } from '@/lib/queue';
+import { getGameMode, type GameModeKey } from '@/lib/game-modes';
 import { spawn } from 'child_process';
 import path from 'path';
 import type { Category } from '@prisma/client';
@@ -19,7 +20,9 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const category: Category = body.category || 'GP';
+    const modeKey: GameModeKey = body.mode || 'GP_FR';
+    const gameMode = getGameMode(modeKey);
+    const category: Category = body.category || gameMode.category;
 
     const user = session.user as any;
 
@@ -79,7 +82,7 @@ export async function POST(req: Request) {
       
       if (players.length >= 2) {
         // Lancer le bot et créer la room
-        const roomCode = await createMatchWithBot(players, category);
+        const roomCode = await createMatchWithBot(players, category, gameMode.rules);
         
         if (roomCode) {
           // Enregistrer le match en attente
@@ -108,7 +111,7 @@ export async function POST(req: Request) {
   }
 }
 
-async function createMatchWithBot(players: any[], category: Category): Promise<string | null> {
+async function createMatchWithBot(players: any[], category: Category, rules: { dictionaryId: string; scoreGoal?: number; challengeDuration?: number }): Promise<string | null> {
   return new Promise((resolve) => {
     const botScript = path.join(process.cwd(), 'jklm-bot/index.js');
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -131,7 +134,9 @@ async function createMatchWithBot(players: any[], category: Category): Promise<s
       isDetached = process.env.BOT_DETACHED === 'true';
     }
 
-    const child = spawn('node', [botScript, '--create', callbackUrl, '--players-json', playersJson], {
+    const rulesJson = JSON.stringify(rules);
+
+    const child = spawn('node', [botScript, '--create', callbackUrl, '--players-json', playersJson, '--rules', rulesJson], {
       detached: isDetached,
       stdio: ['ignore', 'pipe', 'pipe'],
       cwd: process.cwd()
