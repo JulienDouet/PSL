@@ -24,7 +24,7 @@ export interface GameMode {
   };
 }
 
-const FIXED_SCORE_GOAL = 50;
+const FIXED_SCORE_GOAL = 150;
 
 export const GAME_MODES: Record<GameModeKey, GameMode> = {
   GP_FR: {

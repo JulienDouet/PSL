@@ -758,7 +758,7 @@ async function main() {
           'NOFILTER_EN': 'NF [EN]'
         };
         const catLabel = categoryNames[bot.category] || bot.category || 'GP';
-        roomName = `[PSL Bot Ranked] - ${catLabel}`;
+        roomName = `PSL Bot - ${catLabel}`;
       }
       console.log(`🏗️ Mode création automatique (${roomName})...`);
       const result = await bot.createRoom({ name: roomName, isPublic: true });
