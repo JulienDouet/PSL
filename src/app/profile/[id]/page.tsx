@@ -85,22 +85,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   <h1 className="text-3xl font-bold mb-1">
                     <span className="text-gradient">{displayName}</span>
                   </h1>
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    <span className="text-2xl">{rankInfo.currentRank.icon}</span>
-                    {isCalibrating ? (
-                      <span>En calibration ({gamesPlayed}/5)</span>
-                    ) : (
-                      <span style={{ color: rankInfo.currentRank.color }}>
-                        {rankInfo.currentRank.displayName}
-                      </span>
-                    )}
+                  <div className="text-muted-foreground">
+                    Joueur PSL
                   </div>
-                </div>
-
-                {/* MMR Display (Global) */}
-                <div className="text-right">
-                  <div className="text-4xl font-bold text-gradient">{mmr}</div>
-                  <div className="text-sm text-muted-foreground">MMR Global</div>
                 </div>
               </div>
             </CardContent>

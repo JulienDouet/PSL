@@ -55,81 +55,9 @@ export default async function DashboardPage() {
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Left Column - MMR & Stats */}
             <div className="lg:col-span-2 space-y-6">
-              {/* MMR Card */}
-              <Card className="bg-card border-border/50 card-glow">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <span className="text-2xl">{rankInfo.currentRank.icon}</span>
-                    {isCalibrating ? (
-                      <span>En Calibration</span>
-                    ) : (
-                      <span>{rankInfo.currentRank.displayName}</span>
-                    )}
-                  </CardTitle>
-                  <CardDescription>
-                    {isCalibrating
-                      ? `${5 - userStats.gamesPlayed} parties restantes`
-                      : `#${userStats.leaderboardPosition} au classement`}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-end gap-4 mb-4">
-                    <div className="text-5xl font-bold text-gradient">
-                      {userStats.mmr}
-                    </div>
-                    <div className="text-muted-foreground mb-1">MMR</div>
-                  </div>
-
-                  {/* Progress bar */}
-                  {rankInfo.nextRank && !isCalibrating && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span style={{ color: rankInfo.currentRank.color }}>
-                          {rankInfo.currentRank.icon} {rankInfo.currentRank.displayName}
-                        </span>
-                        <span className="text-muted-foreground">
-                          {rankInfo.remaining} MMR → {rankInfo.nextRank.displayName}
-                        </span>
-                      </div>
-                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-psl transition-all duration-500"
-                          style={{ width: `${rankInfo.progress * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Season Stats */}
-              <Card className="bg-card border-border/50">
-                <CardHeader>
-                  <CardTitle>📊 Cette saison</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center p-4 rounded-lg bg-secondary/50">
-                      <div className="text-2xl font-bold">{userStats.gamesPlayed}</div>
-                      <div className="text-sm text-muted-foreground">Parties</div>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-secondary/50">
-                      <div className="text-2xl font-bold text-green-400">{userStats.wins}</div>
-                      <div className="text-sm text-muted-foreground">Victoires</div>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-secondary/50">
-                      <div className="text-2xl font-bold">{userStats.winRate}%</div>
-                      <div className="text-sm text-muted-foreground">Winrate</div>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-secondary/50">
-                      <div className="text-2xl font-bold text-primary">
-                        {userStats.currentStreak > 0 ? `${userStats.currentStreak}W` : "-"}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Streak</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              
+              {/* MMR Par Catégorie (Nouveau composant principal) */}
+              <DashboardCategoryMMR />
 
               {/* Recent Matches */}
               <Card className="bg-card border-border/50">
@@ -162,9 +90,6 @@ export default async function DashboardPage() {
             <div className="space-y-6">
               {/* Play Card */}
               <PlayCard />
-
-              {/* MMR par mode */}
-              <DashboardCategoryMMR />
 
               {/* Quick Links */}
               <Card className="bg-card border-border/50">

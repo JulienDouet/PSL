@@ -42,27 +42,38 @@ interface CategoryStatsProps {
 }
 
 export function CategoryStats({ categoryMMRs, matchPlayers, globalMMR, globalGamesPlayed }: CategoryStatsProps) {
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  // Catégories avec des données - triées par parties jouées
+  const categoriesWithData = categoryMMRs
+    .filter(c => c.gamesPlayed > 0)
+    .sort((a, b) => b.gamesPlayed - a.gamesPlayed);
 
-  // Catégories avec des données
-  const categoriesWithData = categoryMMRs.filter(c => c.gamesPlayed > 0);
+  // Sélectionner par défaut la catégorie la plus jouée, ou null si aucune
+  const [activeCategory, setActiveCategory] = useState<string | null>(
+    categoriesWithData.length > 0 ? categoriesWithData[0].category : null
+  );
+
+  // Si aucune catégorie, on affiche rien ou un message
+  if (categoriesWithData.length === 0) {
+    return (
+      <Card className="bg-card border-border/50 text-center py-12">
+        <CardContent>
+          <div className="text-4xl mb-4">🎮</div>
+          <h3 className="text-xl font-bold mb-2">Aucune partie classée</h3>
+          <p className="text-muted-foreground">Joue ta première partie pour apparaître ici !</p>
+        </CardContent>
+      </Card>
+    );
+  }
   
-  // Si aucune catégorie spécifique, afficher global
-  const showingGlobal = activeCategory === null;
+  // Stats pour la catégorie active (garantie d'exister ici sauf bug)
+  const activeStats = categoryMMRs.find(c => c.category === activeCategory) || categoriesWithData[0];
   
-  // Stats pour la catégorie active
-  const activeStats = activeCategory 
-    ? categoryMMRs.find(c => c.category === activeCategory)
-    : null;
-  
-  const displayMMR = activeStats?.mmr ?? globalMMR;
-  const displayGames = activeStats?.gamesPlayed ?? globalGamesPlayed;
+  const displayMMR = activeStats.mmr;
+  const displayGames = activeStats.gamesPlayed;
   const rankInfo = getRankProgress(displayMMR);
   
-  // Matchs filtrés par catégorie
-  const filteredMatches = activeCategory
-    ? matchPlayers.filter(mp => mp.match.category === activeCategory)
-    : matchPlayers;
+  // Matchs filtrés par catégorie active
+  const filteredMatches = matchPlayers.filter(mp => mp.match.category === activeCategory);
 
   // Calculer stats
   const wins = filteredMatches.filter(mp => mp.placement === 1).length;
@@ -73,16 +84,6 @@ export function CategoryStats({ categoryMMRs, matchPlayers, globalMMR, globalGam
     <div className="space-y-4">
       {/* Onglets de catégorie */}
       <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setActiveCategory(null)}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            showingGlobal 
-              ? 'bg-primary text-primary-foreground' 
-              : 'bg-secondary hover:bg-secondary/80'
-          }`}
-        >
-          🌐 Global
-        </button>
         {categoriesWithData.map(cat => {
           const info = CATEGORY_INFO[cat.category] || { label: cat.category, emoji: '🎮' };
           return (
