@@ -515,22 +515,28 @@ class JKLMBot {
     });
     
     if (this.callbackUrl) {
-        console.log(`📤 Envoi des résultats au callback: ${this.callbackUrl}`);
+        const callbackBody = { 
+            roomCode: this.roomCode,
+            scores: this.gameResults,
+            answers: this.matchAnswers,
+            category: this.category
+        };
+        console.log(`📤 [CALLBACK] Envoi des résultats au callback: ${this.callbackUrl}`);
+        console.log(`📤 [CALLBACK] Body:`, JSON.stringify(callbackBody, null, 2));
+        
         fetch(this.callbackUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                roomCode: this.roomCode,
-                scores: this.gameResults,
-                answers: this.matchAnswers,
-                category: this.category
-            })
-        }).then(res => {
-            console.log(`✅ Callback statut: ${res.status}`);
+            body: JSON.stringify(callbackBody)
+        }).then(async res => {
+            const responseText = await res.text();
+            console.log(`✅ [CALLBACK] Statut: ${res.status}`);
+            console.log(`✅ [CALLBACK] Réponse:`, responseText.substring(0, 500));
             this.disconnect();
             process.exit(0);
         }).catch(err => {
-            console.error('❌ Erreur callback:', err);
+            console.error('❌ [CALLBACK] Erreur:', err.message);
+            console.error('❌ [CALLBACK] Stack:', err.stack);
             this.disconnect();
             process.exit(1);
         });
@@ -567,22 +573,28 @@ class JKLMBot {
     
     // Envoyer le callback d'annulation
     if (this.callbackUrl) {
-      console.log(`📤 Envoi du callback d'annulation: ${this.callbackUrl}`);
+      const cancelBody = {
+        roomCode: this.roomCode,
+        cancelled: true,
+        reason: reason,
+        category: this.category
+      };
+      console.log(`📤 [CANCEL] Envoi du callback d'annulation: ${this.callbackUrl}`);
+      console.log(`📤 [CANCEL] Body:`, JSON.stringify(cancelBody, null, 2));
+      
       fetch(this.callbackUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomCode: this.roomCode,
-          cancelled: true,
-          reason: reason,
-          category: this.category
-        })
-      }).then(res => {
-        console.log(`✅ Callback annulation statut: ${res.status}`);
+        body: JSON.stringify(cancelBody)
+      }).then(async res => {
+        const responseText = await res.text();
+        console.log(`✅ [CANCEL] Callback statut: ${res.status}`);
+        console.log(`✅ [CANCEL] Réponse:`, responseText.substring(0, 500));
         this.disconnect();
         process.exit(0);
       }).catch(err => {
-        console.error('❌ Erreur callback annulation:', err);
+        console.error('❌ [CANCEL] Erreur callback:', err.message);
+        console.error('❌ [CANCEL] Stack:', err.stack);
         this.disconnect();
         process.exit(1);
       });

@@ -344,10 +344,18 @@ export function cancelMatchingPlayers(players: QueueEntry[], category: Category)
  */
 export function clearMatch(roomCode: string): void {
   const match = pendingMatches.get(roomCode);
-  if (!match) return;
+  if (!match) {
+    console.log(`⚠️ [QUEUE] clearMatch: match ${roomCode} non trouvé`);
+    return;
+  }
 
-  match.players.forEach(p => userMatches.delete(p.userId));
+  console.log(`🧹 [QUEUE] Nettoyage du match ${roomCode} (${match.players.length} joueurs, catégorie: ${match.category})`);
+  match.players.forEach(p => {
+    console.log(`   👤 Suppression du lien: ${p.nickname} (${p.userId})`);
+    userMatches.delete(p.userId);
+  });
   pendingMatches.delete(roomCode);
+  console.log(`✅ [QUEUE] Match ${roomCode} nettoyé avec succès`);
 }
 
 /**
