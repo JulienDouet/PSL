@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { getQueueStatus, getQueueCounts, getQueuePlayers, canStartMatch, isLobbyTimerExpired, clearLobbyTimer, popPlayersForMatch, registerPendingMatch, cancelMatchingPlayers, heartbeat, startHeartbeatCleanup } from '@/lib/queue';
+import { getQueueStatus, getQueueCounts, getQueuePlayers, canStartMatch, isLobbyTimerExpired, clearLobbyTimer, popPlayersForMatch, registerPendingMatch, cancelMatchingPlayers, heartbeat, startHeartbeatCleanup, QUEUE_CONFIG } from '@/lib/queue';
 import { getGameMode } from '@/lib/game-modes';
 import { spawn } from 'child_process';
 import path from 'path';
@@ -65,12 +65,20 @@ export async function GET(req: Request) {
       // Match créé - enrichir les joueurs du match
       const category = status.match.category;
       const enrichedPlayers = await enrichMatchPlayers(status.match.players, category);
+      
+      // Calculer le temps restant avant timeout du match (90s par défaut)
+      const matchCreatedAt = new Date(status.match.createdAt);
+      const elapsedMs = Date.now() - matchCreatedAt.getTime();
+      const timeoutRemainingMs = QUEUE_CONFIG.MATCH_TIMEOUT_MS - elapsedMs;
+      const matchTimeoutRemaining = Math.max(0, Math.ceil(timeoutRemainingMs / 1000));
+      
       enrichedStatus = {
         ...enrichedStatus,
         match: {
           ...status.match,
           players: enrichedPlayers
-        }
+        },
+        matchTimeoutRemaining // Secondes restantes pour rejoindre le match
       };
     } else if (status.inQueue && status.category && status.countdown !== null) {
       // En queue avec countdown actif - renvoyer les joueurs en attente avec leurs stats

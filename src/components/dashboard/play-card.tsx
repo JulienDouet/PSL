@@ -8,8 +8,8 @@ import { GAME_MODE_LIST, DEFAULT_MODE, getGameMode, type GameModeKey } from '@/l
 import { useTranslation } from "@/lib/i18n/context";
 import { useDashboardRefresh } from '@/lib/dashboard-context';
 
-// 4 états : idle → searching → found → lobby
-type QueueMode = 'idle' | 'searching' | 'found' | 'lobby';
+// 5 états : idle → searching → found → lobby → missed (si timeout)
+type QueueMode = 'idle' | 'searching' | 'found' | 'lobby' | 'missed';
 
 interface EnrichedPlayer {
   nickname: string;
@@ -34,6 +34,7 @@ export function PlayCard() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [matchInfo, setMatchInfo] = useState<MatchInfo | null>(null);
   const [queuePlayers, setQueuePlayers] = useState<EnrichedPlayer[]>([]);
+  const [matchTimeoutRemaining, setMatchTimeoutRemaining] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [queueCounts, setQueueCounts] = useState<Record<string, number>>({});
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -168,11 +169,25 @@ export function PlayCard() {
                 }, 2500);
               }
             } else if (mode === 'lobby') {
+              // Mettre à jour le timeout restant
+              if (data.matchTimeoutRemaining !== undefined) {
+                setMatchTimeoutRemaining(data.matchTimeoutRemaining);
+                
+                // Si timeout expiré, passer en mode "missed"
+                if (data.matchTimeoutRemaining <= 0) {
+                  console.log('⏰ Timeout expiré - Match loupé!');
+                  setMode('missed');
+                  stopPolling();
+                  return;
+                }
+              }
+              
               // Vérifier si le match est toujours actif
               if (!data.match && !data.inQueue) {
                 console.log('🏁 Match terminé, retour à idle');
                 setMode('idle');
                 setMatchInfo(null);
+                setMatchTimeoutRemaining(null);
                 stopPolling();
                 triggerRefresh();
               }
@@ -522,10 +537,20 @@ export function PlayCard() {
         {/* LOBBY - Avant-Match détaillé */}
         {mode === 'lobby' && matchInfo && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Header catégorie */}
+            {/* Header catégorie + Timeout */}
             <div className="text-center pb-2 border-b border-border/50">
               <span className="text-2xl">{currentGameMode.emoji}</span>
               <h3 className="font-bold text-lg">{currentGameMode.label}</h3>
+              
+              {/* Countdown timeout pour rejoindre */}
+              {matchTimeoutRemaining !== null && matchTimeoutRemaining > 0 && (
+                <div className={`mt-2 text-sm font-medium ${
+                  matchTimeoutRemaining <= 20 ? 'text-red-400 animate-pulse' : 
+                  matchTimeoutRemaining <= 45 ? 'text-amber-400' : 'text-muted-foreground'
+                }`}>
+                  ⏱️ Rejoins le lobby dans {matchTimeoutRemaining}s
+                </div>
+              )}
             </div>
 
             {/* Liste des joueurs */}
@@ -628,6 +653,34 @@ export function PlayCard() {
                 {t.common.back}
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* MISSED - Match loupé */}
+        {mode === 'missed' && (
+          <div className="space-y-4 animate-in fade-in zoom-in duration-300">
+            <div className="text-center py-6">
+              <div className="text-5xl mb-4">😞</div>
+              <h3 className="text-xl font-bold text-red-400">Match loupé !</h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                Tu n'as pas rejoint le lobby à temps.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Le match a commencé sans toi.
+              </p>
+            </div>
+            
+            <Button 
+              className="w-full bg-gradient-psl"
+              onClick={() => {
+                setMode('idle');
+                setMatchInfo(null);
+                setMatchTimeoutRemaining(null);
+                triggerRefresh();
+              }}
+            >
+              🔍 Rechercher un nouveau match
+            </Button>
           </div>
         )}
       </CardContent>
