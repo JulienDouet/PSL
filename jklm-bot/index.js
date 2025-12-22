@@ -210,8 +210,8 @@ class JKLMBot {
                 // Joueur non inscrit - l'informer immédiatement (langue selon dictionaryId)
                 const isEnglish = this.customRules?.dictionaryId === 'en';
                 const welcomeMsg = isEnglish 
-                  ? `📊 ${nick}, this is a PSL ranked match. Sign up at psl-ranked.app for your points to count!`
-                  : `📊 ${nick}, cette partie est un match classé PSL. Inscris-toi sur psl-ranked.app pour que tes points comptent !`;
+                  ? `📊 ${nick}, this is a PSL ranked match. Sign up at www.psl-ranked.app for your points to count! Join our Discord: discord.gg/JGHRNy6qRn`
+                  : `📊 ${nick}, cette partie est un match classé PSL. Inscris-toi sur www.psl-ranked.app pour que tes points comptent ! Rejoins le Discord : discord.gg/JGHRNy6qRn`;
                 this.sendChat(welcomeMsg);
               }
             }
@@ -246,10 +246,12 @@ class JKLMBot {
 
     // Écouter les events du jeu
     this.gameSocket.on('setup', (data) => {
-      console.log('📋 Setup reçu!');
+      console.log('📋 [SETUP] Setup reçu!');
+      console.log(`📋 [SETUP] selfPeerId: ${data.selfPeerId}`);
+      console.log(`📋 [SETUP] selfRoles: ${JSON.stringify(data.selfRoles)}`);
       this.selfPeerId = data.selfPeerId;
       this.isLeader = data.selfRoles && data.selfRoles.includes('leader');
-      
+      console.log(`📋 [SETUP] isLeader déterminé: ${this.isLeader}`);
       // IMPORTANT: On ne rejoint PAS la manche pour rester spectateur
       // this.gameSocket.emit('joinRound');
 
@@ -375,7 +377,11 @@ class JKLMBot {
         
         if (isExpected) {
           // Joueur inscrit et attendu - afficher le compteur de progression
-          this.sendChat(`✅ ${nick} a rejoint la partie ! (${connectedCount}/${totalExpected})`);
+          const isEnglish = this.customRules?.dictionaryId === 'en';
+          const joinedMsg = isEnglish
+            ? `✅ ${nick} joined the game! (${connectedCount}/${totalExpected})`
+            : `✅ ${nick} a rejoint la partie ! (${connectedCount}/${totalExpected})`;
+          this.sendChat(joinedMsg);
         }
         // Note: le message de bienvenue pour les non-inscrits est envoyé dans chatterAdded (lobby join)
       }
@@ -459,7 +465,11 @@ class JKLMBot {
     this.gameSocket.on('setMilestone', (milestone) => {
       if (milestone.lastRound?.winner) {
         console.log(`🏆 GAGNANT: ${milestone.lastRound.winner.nickname}`);
-        this.sendChat(`👑 VICTOIRE DE ${milestone.lastRound.winner.nickname} !`);
+        const isEnglish = this.customRules?.dictionaryId === 'en';
+        const victoryMsg = isEnglish
+          ? `👑 ${milestone.lastRound.winner.nickname} WINS!`
+          : `👑 VICTOIRE DE ${milestone.lastRound.winner.nickname} !`;
+        this.sendChat(victoryMsg);
         this.compileResults();
       }
     });
@@ -485,7 +495,8 @@ class JKLMBot {
     console.log('\n📊 RÉSULTATS:');
     
     // Afficher les scores dans le chat
-    this.sendChat('🏆 RÉSULTATS FINAUX:');
+    const isEnglish = this.customRules?.dictionaryId === 'en';
+    this.sendChat(isEnglish ? '🏆 FINAL RESULTS:' : '🏆 RÉSULTATS FINAUX:');
     
     sorted.forEach((p, i) => {
       console.log(`  ${i + 1}. ${p.nickname}: ${p.score} pts`, p.auth ? `(${p.auth.service}:${p.auth.id})` : '');
@@ -506,22 +517,28 @@ class JKLMBot {
     });
     
     if (this.callbackUrl) {
-        console.log(`📤 Envoi des résultats au callback: ${this.callbackUrl}`);
+        const callbackBody = { 
+            roomCode: this.roomCode,
+            scores: this.gameResults,
+            answers: this.matchAnswers,
+            category: this.category
+        };
+        console.log(`📤 [CALLBACK] Envoi des résultats au callback: ${this.callbackUrl}`);
+        console.log(`📤 [CALLBACK] Body:`, JSON.stringify(callbackBody, null, 2));
+        
         fetch(this.callbackUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                roomCode: this.roomCode,
-                scores: this.gameResults,
-                answers: this.matchAnswers,
-                category: this.category
-            })
-        }).then(res => {
-            console.log(`✅ Callback statut: ${res.status}`);
+            body: JSON.stringify(callbackBody)
+        }).then(async res => {
+            const responseText = await res.text();
+            console.log(`✅ [CALLBACK] Statut: ${res.status}`);
+            console.log(`✅ [CALLBACK] Réponse:`, responseText.substring(0, 500));
             this.disconnect();
             process.exit(0);
         }).catch(err => {
-            console.error('❌ Erreur callback:', err);
+            console.error('❌ [CALLBACK] Erreur:', err.message);
+            console.error('❌ [CALLBACK] Stack:', err.stack);
             this.disconnect();
             process.exit(1);
         });
@@ -558,22 +575,28 @@ class JKLMBot {
     
     // Envoyer le callback d'annulation
     if (this.callbackUrl) {
-      console.log(`📤 Envoi du callback d'annulation: ${this.callbackUrl}`);
+      const cancelBody = {
+        roomCode: this.roomCode,
+        cancelled: true,
+        reason: reason,
+        category: this.category
+      };
+      console.log(`📤 [CANCEL] Envoi du callback d'annulation: ${this.callbackUrl}`);
+      console.log(`📤 [CANCEL] Body:`, JSON.stringify(cancelBody, null, 2));
+      
       fetch(this.callbackUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomCode: this.roomCode,
-          cancelled: true,
-          reason: reason,
-          category: this.category
-        })
-      }).then(res => {
-        console.log(`✅ Callback annulation statut: ${res.status}`);
+        body: JSON.stringify(cancelBody)
+      }).then(async res => {
+        const responseText = await res.text();
+        console.log(`✅ [CANCEL] Callback statut: ${res.status}`);
+        console.log(`✅ [CANCEL] Réponse:`, responseText.substring(0, 500));
         this.disconnect();
         process.exit(0);
       }).catch(err => {
-        console.error('❌ Erreur callback annulation:', err);
+        console.error('❌ [CANCEL] Erreur callback:', err.message);
+        console.error('❌ [CANCEL] Stack:', err.stack);
         this.disconnect();
         process.exit(1);
       });
@@ -669,32 +692,30 @@ class JKLMBot {
   checkExpectedPlayers() {
     if (this.expectedPlayers.length === 0 || this.allPlayersJoined) return;
 
-    // Construire la liste des joueurs présents avec leur auth
-    // On utilise auth.id car c'est l'ID Discord stocké dans la BD
-    const joinedPlayers = [...this.players.values()].map(p => ({
-      service: p.auth?.service?.toLowerCase() || 'unknown',
-      id: p.auth?.id || null,
-      username: p.auth?.username?.toLowerCase() || p.nickname.toLowerCase()
-    }));
+    // Utiliser findExpectedPlayer pour une logique de matching cohérente
+    // avec countConnectedExpectedPlayers
+    const joinedPlayers = [...this.players.values()];
+    
+    console.log(`🔍 [CHECK] Joueurs présents dans la partie:`);
+    joinedPlayers.forEach(p => console.log(`  - ${p.nickname} (auth: ${p.auth ? p.auth.service + ':' + p.auth.id : 'none'})`));
 
-    console.log(`🔍 Joueurs présents:`);
-    joinedPlayers.forEach(p => console.log(`  - ${p.service}:${p.username} (id: ${p.id})`));
+    // Trouver les joueurs attendus qui ne sont pas encore matchés
+    const missing = this.expectedPlayers.filter(exp => {
+      // Chercher parmi les joueurs présents un qui match cet expected player
+      const found = joinedPlayers.some(jp => {
+        const matched = this.findExpectedPlayer(jp.nickname, jp.auth);
+        // Si ce joueur match, vérifier que c'est LE MEME expected player
+        if (!matched) return false;
+        return matched.id === exp.id && matched.service === exp.service;
+      });
+      return !found;
+    });
 
-    // Vérifier quels joueurs attendus sont manquants
-    // On match sur service + id OU service + username (pour flexibilité)
-    const missing = this.expectedPlayers.filter(exp => 
-      !joinedPlayers.some(jp => {
-        if (jp.service !== exp.service) return false;
-        // Matcher par ID si disponible, sinon par username
-        if (exp.id && jp.id) return jp.id === exp.id;
-        return jp.username === exp.username?.toLowerCase();
-      })
-    );
-
-    console.log(`🔍 Attendus: ${this.expectedPlayers.length}, présents: ${joinedPlayers.length}, manquants: ${missing.length}`);
+    const connectedCount = this.expectedPlayers.length - missing.length;
+    console.log(`🔍 [CHECK] Attendus: ${this.expectedPlayers.length}, matchés: ${connectedCount}, manquants: ${missing.length}`);
     if (missing.length > 0) {
-      console.log(`⏳ Manquants:`);
-      missing.forEach(p => console.log(`  -Service: ${p.service}, ID: ${p.id}, Username: "${p.username}"`));
+      console.log(`⏳ [CHECK] Manquants:`);
+      missing.forEach(p => console.log(`  - Service: ${p.service}, ID: ${p.id}, Username: "${p.username}"`));
     }
 
     if (missing.length === 0) {
@@ -718,13 +739,25 @@ class JKLMBot {
       // Déverrouiller les règles et lancer la partie
       setTimeout(() => {
         if (this.gameSocket?.connected) {
+          console.log(`🎮 [START] Tentative de démarrage... isLeader=${this.isLeader}, gameSocket.connected=${this.gameSocket?.connected}`);
+          
           if (this.isLeader) {
             // Note: les règles ont déjà été appliquées au setup, pas besoin de les ré-appliquer
-            console.log('🔓 Déverrouillage des règles...');
+            console.log('🔓 [START] Déverrouillage des règles (isLeader=true)...');
             this.gameSocket.emit('setRulesLocked', true); // true = menu fermé = permet le jeu
+            
+            console.log('📤 [START] Envoi startRoundNow (tous joueurs présents, isLeader=true)...');
+            this.gameSocket.emit('startRoundNow');
+          } else {
+            // Si on n'est pas leader, on ne peut pas démarrer - log l'erreur
+            console.error('❌ [START] IMPOSSIBLE de démarrer: le bot n\'est PAS leader!');
+            console.error('❌ [START] selfRoles probablement pas "leader". Vérifier la création de room.');
+            // Essayer quand même au cas où
+            console.log('📤 [START] Tentative de startRoundNow malgré tout...');
+            this.gameSocket.emit('startRoundNow');
           }
-          console.log('📤 Envoi startRoundNow (tous joueurs présents)...');
-          this.gameSocket.emit('startRoundNow');
+        } else {
+          console.error('❌ [START] gameSocket déconnecté, impossible de démarrer!');
         }
       }, 2000);
     }

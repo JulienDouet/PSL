@@ -84,9 +84,9 @@ export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResul
     // ASYMMETRIC WEIGHTING & PUNISHMENT/REWARD:
     // Si l'issue est "logique" (High bat Low), poids normal (calculé par decay).
     // Si l'issue est "illogique" (Low bat High OU High perd contre Low), poids forcés et boostés.
-    // SEULEMENT si l'écart est significatif (> 200 points)
-
-    const UPSET_THRESHOLD = 200;
+    // SEULEMENT si l'écart est significatif (> 100 points)
+    // Bonus pour avoir battu un joueur mieux classé
+    const UPSET_THRESHOLD = 100;
 
     // Cas 1: PÉNALITÉ (High perd contre Low)
     if (actual === 0 && opponent.mmr < (player.mmr - UPSET_THRESHOLD)) {
@@ -175,12 +175,12 @@ export interface Rank {
 }
 
 export const RANKS: Rank[] = [
-  { name: 'Bronze', displayName: 'Bronze', min: 0, max: 999, icon: '🟤', color: '#CD7F32' },
-  { name: 'Silver', displayName: 'Argent', min: 1000, max: 1299, icon: '⚪', color: '#C0C0C0' },
-  { name: 'Gold', displayName: 'Or', min: 1300, max: 1599, icon: '🟡', color: '#FFD700' },
-  { name: 'Platinum', displayName: 'Platine', min: 1600, max: 1899, icon: '🔵', color: '#00CED1' },
-  { name: 'Diamond', displayName: 'Diamant', min: 1900, max: 2199, icon: '💎', color: '#B9F2FF' },
-  { name: 'Master', displayName: 'Maître', min: 2200, max: Infinity, icon: '👑', color: '#9B59B6' },
+  { name: 'Bronze', displayName: 'Bronze', min: 0, max: 899, icon: '🟤', color: '#CD7F32' },
+  { name: 'Silver', displayName: 'Argent', min: 900, max: 1049, icon: '⚪', color: '#C0C0C0' },
+  { name: 'Gold', displayName: 'Or', min: 1050, max: 1199, icon: '🟡', color: '#FFD700' },
+  { name: 'Platinum', displayName: 'Platine', min: 1200, max: 1399, icon: '🔵', color: '#00CED1' },
+  { name: 'Diamond', displayName: 'Diamant', min: 1400, max: 1599, icon: '💎', color: '#B9F2FF' },
+  { name: 'Master', displayName: 'Maître', min: 1600, max: Infinity, icon: '👑', color: '#9B59B6' },
 ];
 
 export interface RankProgress {
