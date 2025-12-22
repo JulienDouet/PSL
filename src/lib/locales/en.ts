@@ -81,6 +81,7 @@ export const en = {
       subtitle: "{count} players online",
       waiting: "Searching...",
       join: "Join Queue",
+      play: "Play",
       cancel: "Cancel",
       in_queue: "{count} searching"
     },

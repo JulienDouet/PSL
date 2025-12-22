@@ -23,7 +23,6 @@ export function DashboardRefreshProvider({ children }: { children: ReactNode }) 
   const [queueMode, setQueueMode] = useState<QueueExpansionMode>('idle');
 
   const triggerRefresh = useCallback(() => {
-    console.log('🔄 [Dashboard] Triggering refresh...');
     setRefreshKey(prev => prev + 1);
   }, []);
 

@@ -124,7 +124,7 @@ export function PlayCard() {
     fetchCounts();
     
     if (mode === 'idle') {
-      const interval = setInterval(fetchCounts, 1000);
+      const interval = setInterval(fetchCounts, 5000); // 5s au lieu de 1s
       return () => clearInterval(interval);
     }
   }, [mode]);
@@ -175,7 +175,6 @@ export function PlayCard() {
                 
                 // Si timeout expiré, passer en mode "missed"
                 if (data.matchTimeoutRemaining <= 0) {
-                  console.log('⏰ Timeout expiré - Match loupé!');
                   setMode('missed');
                   stopPolling();
                   return;
@@ -184,7 +183,6 @@ export function PlayCard() {
               
               // Vérifier si le match est toujours actif
               if (!data.match && !data.inQueue) {
-                console.log('🏁 Match terminé, retour à idle');
                 setMode('idle');
                 setMatchInfo(null);
                 setMatchTimeoutRemaining(null);
@@ -199,7 +197,7 @@ export function PlayCard() {
       };
 
       poll();
-      const interval = mode === 'searching' ? 500 : 2000;
+      const interval = mode === 'searching' ? 2000 : 5000; // 2s en recherche, 5s en lobby
       pollingRef.current = setInterval(poll, interval);
     }
 
@@ -640,7 +638,7 @@ export function PlayCard() {
                   onClick={() => window.open(`https://jklm.fun/${matchInfo.roomCode}`, '_blank')}
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
-                  {t.dashboard.play_card.join}
+                  {t.dashboard.play_card.play}
                 </Button>
               </div>
               

@@ -123,15 +123,12 @@ export function joinQueue(entry: QueueEntry, category: Category): QueueStatus {
   queue.push(entry);
   userCategories.set(entry.userId, category);
 
-  console.log(`🎮 [QUEUE] ${entry.nickname} rejoint la queue ${category} (${queue.length} joueurs)`);
-
   // Démarrer le timer de lobby si on atteint le minimum et timer pas encore actif
   if (queue.length >= QUEUE_CONFIG.MIN_PLAYERS && !lobbyTimers.has(category)) {
     lobbyTimers.set(category, {
       startedAt: new Date(),
       category
     });
-    console.log(`⏱️ [QUEUE] Timer de lobby démarré pour ${category} (${QUEUE_CONFIG.LOBBY_TIMER_MS / 1000}s)`);
     
     // Notifier Discord que le match va bientôt commencer (PAS de cooldown)
     notifyDiscordMatchReady(category, queue.length);
@@ -158,8 +155,6 @@ export function leaveQueue(userId: string): boolean {
 
   const [removed] = queue.splice(index, 1);
   userCategories.delete(userId);
-
-  console.log(`👋 [QUEUE] ${removed.nickname} quitte la queue ${category} (${queue.length} restants)`);
 
   return true;
 }
@@ -246,7 +241,6 @@ export function isLobbyTimerExpired(category: Category): boolean {
  */
 export function clearLobbyTimer(category: Category): void {
   lobbyTimers.delete(category);
-  console.log(`🧹 [QUEUE] Timer de lobby nettoyé pour ${category}`);
 }
 
 /**
@@ -284,8 +278,6 @@ export function popPlayersForMatch(category: Category): QueueEntry[] {
   };
   players.forEach(p => matchingPlayers.set(p.userId, matchingState));
 
-  console.log(`🎮 [QUEUE] Match créé avec ${players.length} joueurs pour ${category} (${matchingId})`);
-
   return players;
 }
 
@@ -310,8 +302,6 @@ export function registerPendingMatch(roomCode: string, players: QueueEntry[], ca
     userMatches.set(p.userId, roomCode);
   });
 
-  console.log(`✅ [QUEUE] Match confirmé: ${roomCode} pour ${players.length} joueurs (botPid: ${botPid || 'N/A'})`);
-
   return match;
 }
 
@@ -332,11 +322,9 @@ export function cancelMatchingPlayers(players: QueueEntry[], category: Category)
   const queue = queues.get(category)!;
   
   players.forEach(p => {
-    queue.unshift(p); // Ajouter au début de la queue (priorité)
+    queue.unshift(p);
     userCategories.set(p.userId, category);
   });
-  
-  console.log(`🔄 [QUEUE] ${players.length} joueurs remis en queue ${category}`);
 }
 
 /**
@@ -345,17 +333,13 @@ export function cancelMatchingPlayers(players: QueueEntry[], category: Category)
 export function clearMatch(roomCode: string): void {
   const match = pendingMatches.get(roomCode);
   if (!match) {
-    console.log(`⚠️ [QUEUE] clearMatch: match ${roomCode} non trouvé`);
     return;
   }
 
-  console.log(`🧹 [QUEUE] Nettoyage du match ${roomCode} (${match.players.length} joueurs, catégorie: ${match.category})`);
   match.players.forEach(p => {
-    console.log(`   👤 Suppression du lien: ${p.nickname} (${p.userId})`);
     userMatches.delete(p.userId);
   });
   pendingMatches.delete(roomCode);
-  console.log(`✅ [QUEUE] Match ${roomCode} nettoyé avec succès`);
 }
 
 /**
@@ -438,7 +422,6 @@ export function cleanupInactiveUsers(): number {
     if (!lastBeat || (now - lastBeat.getTime()) > QUEUE_CONFIG.HEARTBEAT_TIMEOUT_MS) {
       leaveQueue(userId);
       userHeartbeats.delete(userId);
-      console.log(`💀 [HEARTBEAT] Joueur ${userId} retiré pour inactivité`);
       removed++;
     }
   }
@@ -456,13 +439,8 @@ export function startHeartbeatCleanup(): void {
   if (cleanupInterval) return; // Déjà démarré
   
   cleanupInterval = setInterval(() => {
-    const removed = cleanupInactiveUsers();
-    if (removed > 0) {
-      console.log(`🧹 [HEARTBEAT] Cleanup: ${removed} joueur(s) inactif(s) retiré(s)`);
-    }
-  }, 5000); // Vérifier toutes les 5 secondes
-  
-  console.log('💓 [HEARTBEAT] Système de heartbeat démarré');
+    cleanupInactiveUsers();
+  }, 5000);
 }
 
 export function stopHeartbeatCleanup(): void {
@@ -486,8 +464,6 @@ async function notifyDiscordJoin(category: Category, playerName: string): Promis
   const now = new Date();
   
   if (lastPing && (now.getTime() - lastPing.getTime()) < QUEUE_CONFIG.DISCORD_JOIN_COOLDOWN_MS) {
-    const remainingMs = QUEUE_CONFIG.DISCORD_JOIN_COOLDOWN_MS - (now.getTime() - lastPing.getTime());
-    console.log(`⏳ [DISCORD] Cooldown actif pour ${category}: ${Math.ceil(remainingMs / 1000)}s restantes`);
     return;
   }
   
@@ -510,7 +486,6 @@ async function sendDiscordNotification(category: Category, playerName: string, t
   const webhookUrl = process.env.DISCORD_BOT_WEBHOOK_URL;
   
   if (!webhookUrl) {
-    console.log('⚠️ [DISCORD] DISCORD_BOT_WEBHOOK_URL non configuré');
     return;
   }
   
@@ -530,10 +505,8 @@ async function sendDiscordNotification(category: Category, playerName: string, t
       })
     });
     
-    if (response.ok) {
-      console.log(`✅ [DISCORD] Notification ${type} envoyée pour ${category} (${playerName})`);
-    } else {
-      console.error(`❌ [DISCORD] Erreur webhook: ${response.status}`);
+    if (!response.ok) {
+      console.error(`[DISCORD] Erreur webhook: ${response.status}`);
     }
   } catch (err) {
     console.error('❌ [DISCORD] Erreur notification:', err);

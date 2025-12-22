@@ -113,7 +113,7 @@ export default function MatchesPage() {
     setLoading(true);
     if (activeTab === 'live') {
       fetchActiveMatches().then(() => setLoading(false));
-      const interval = setInterval(fetchActiveMatches, 5000);
+      const interval = setInterval(fetchActiveMatches, 15000); // 15s au lieu de 5s
       return () => clearInterval(interval);
     } else {
       fetchRecentMatches().then(() => setLoading(false));

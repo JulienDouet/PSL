@@ -81,6 +81,7 @@ export const fr = {
       subtitle: "{count} joueurs en ligne",
       waiting: "En recherche...",
       join: "Rejoindre la file",
+      play: "Rejoindre la partie",
       cancel: "Annuler",
       in_queue: "{count} en recherche"
     },
