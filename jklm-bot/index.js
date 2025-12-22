@@ -181,10 +181,11 @@ class JKLMBot {
 
           // Écouter les messages chat (pour mode vérification)
           this.roomSocket.on('chat', (sender, message) => {
-            // Le premier argument 'sender' est un objet: { nickname: 'Pseudo', ... }
+            // Le premier argument 'sender' est un objet: { nickname: 'Pseudo', auth: { service, username, id }, ... }
+            console.log('💬 [CHAT] Sender:', JSON.stringify(sender));
             const nick = (typeof sender === 'object' && sender) ? sender.nickname : sender;
             console.log(`💬 [CHAT] ${nick}: ${message}`);
-            this.handleChatMessage(nick, message);
+            this.handleChatMessage(sender, message);
           });
 
           // Écouter quand un joueur rejoint le LOBBY (pas le jeu)
@@ -737,17 +738,28 @@ class JKLMBot {
     console.log(`🔐 Mode vérification: en attente du code ${code}`);
   }
 
-  handleChatMessage(nickname, message) {
+  handleChatMessage(sender, message) {
     if (!this.verifyMode || !this.verifyCode) return;
 
     // Vérifier si le message contient le code attendu
     if (message.includes(this.verifyCode)) {
+      // Extraire les infos du sender
+      const nickname = (typeof sender === 'object' && sender) ? sender.nickname : sender;
+      const auth = (typeof sender === 'object' && sender) ? sender.auth : null;
+      
+      // Pour les comptes JKLM staff, auth.username est le username permanent ("Hyceman on JKLM.FUN")
+      // Alors que nickname est juste le pseudo d'affichage (peut changer)
+      const permanentUsername = auth?.service === 'jklm' && auth?.username ? auth.username : null;
+      
       console.log(`✅ Code ${this.verifyCode} trouvé de ${nickname}!`);
-      this.sendVerificationCallback(nickname);
+      console.log(`   auth: ${JSON.stringify(auth)}`);
+      console.log(`   username permanent: ${permanentUsername || 'N/A'}`);
+      
+      this.sendVerificationCallback(nickname, permanentUsername);
     }
   }
 
-  async sendVerificationCallback(nickname) {
+  async sendVerificationCallback(nickname, permanentUsername) {
     if (!this.callbackUrl) return;
 
     try {
@@ -757,12 +769,13 @@ class JKLMBot {
         body: JSON.stringify({
           code: this.verifyCode,
           nickname,
+          permanentUsername, // Nouveau champ: username permanent pour JKLM staff
           roomCode: this.roomCode
         })
       });
 
       if (response.ok) {
-        console.log(`✅ Vérification réussie pour ${nickname}!`);
+        console.log(`✅ Vérification réussie pour ${nickname} (permanent: ${permanentUsername || 'N/A'})!`);
         // Envoyer un message de confirmation
         this.roomSocket?.emit('chat', `✅ ${nickname}, ton compte JKLM est maintenant lié à PSL !`);
         // Attendre un peu puis quitter
