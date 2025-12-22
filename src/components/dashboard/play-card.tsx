@@ -41,7 +41,26 @@ export function PlayCard() {
 
   const currentGameMode = getGameMode(selectedGameMode);
   const { t } = useTranslation();
-  const { triggerRefresh } = useDashboardRefresh();
+  const { triggerRefresh, setQueueMode } = useDashboardRefresh();
+
+  // Synchroniser l'état local avec le context global (pour l'animation d'expansion)
+  useEffect(() => {
+    // Mapper l'état local vers le mode d'expansion
+    if (mode === 'idle') {
+      setQueueMode('idle');
+    } else if (mode === 'searching') {
+      // Si on a des joueurs en queue (countdown actif), c'est "countdown"
+      if (queuePlayers.length >= 2) {
+        setQueueMode('countdown');
+      } else {
+        setQueueMode('searching');
+      }
+    } else if (mode === 'found') {
+      setQueueMode('found');
+    } else if (mode === 'lobby') {
+      setQueueMode('lobby');
+    }
+  }, [mode, queuePlayers.length, setQueueMode]);
 
   // Demander la permission pour les notifications au montage
   useEffect(() => {
