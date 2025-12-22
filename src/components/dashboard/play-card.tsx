@@ -226,12 +226,32 @@ export function PlayCard() {
               if (data.matchTimeoutRemaining !== undefined) {
                 setMatchTimeoutRemaining(data.matchTimeoutRemaining);
                 
-                // Si timeout expiré ET le match existe toujours, passer en mode "missed"
-                // Cela signifie que le joueur n'a pas rejoint à temps
+                // Si timeout expiré, vérifier s'il y a des résultats récents
+                // (le joueur a peut-être rejoint et terminé la partie)
                 if (data.matchTimeoutRemaining <= 0) {
-                  setMode('missed');
-                  stopPolling();
-                  return;
+                  try {
+                    const resultRes = await fetch('/api/user/latest-result');
+                    if (resultRes.ok) {
+                      const resultData = await resultRes.json();
+                      if (resultData.result) {
+                        // Résultat trouvé ! La partie est terminée
+                        setMatchResult(resultData.result);
+                        setMode('results');
+                        setMatchInfo(null);
+                        setMatchTimeoutRemaining(null);
+                        matchFoundRef.current = null;
+                        stopPolling();
+                        triggerRefresh();
+                        return;
+                      }
+                    }
+                  } catch (err) {
+                    console.error('Error fetching results on timeout:', err);
+                  }
+                  
+                  // Pas de résultat mais le match existe toujours
+                  // → Le joueur est probablement en train de jouer, on continue de poll
+                  // Le mode "missed" ne s'affichera que si le match disparaît sans résultat
                 }
               }
             }
