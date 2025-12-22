@@ -262,15 +262,59 @@ class JKLMBot {
              this.gameSocket.emit('setRulesLocked', false); // false = menu ouvert = bloque le jeu
              
              // Timer de 60s pour forcer le démarrage même si certains joueurs manquent
+             // Avec messages d'avertissement à 30s et 50s
+             const isEnglish = this.customRules?.dictionaryId === 'en';
+             
+             // Message à 30 secondes
+             this.warningTimeout30 = setTimeout(() => {
+                 if (!this.allPlayersJoined && this.gameSocket?.connected) {
+                     const connectedCount = this.countConnectedExpectedPlayers();
+                     const totalExpected = this.expectedPlayers.length;
+                     const msg = isEnglish
+                       ? `⏳ 30 seconds remaining... (${connectedCount}/${totalExpected} players)`
+                       : `⏳ 30 secondes restantes... (${connectedCount}/${totalExpected} joueurs)`;
+                     this.sendChat(msg);
+                 }
+             }, 30_000);
+             
+             // Message à 50 secondes (10s avant fin)
+             this.warningTimeout50 = setTimeout(() => {
+                 if (!this.allPlayersJoined && this.gameSocket?.connected) {
+                     const connectedCount = this.countConnectedExpectedPlayers();
+                     const totalExpected = this.expectedPlayers.length;
+                     const msg = isEnglish
+                       ? `⚠️ 10 seconds remaining! (${connectedCount}/${totalExpected} players)`
+                       : `⚠️ 10 secondes restantes ! (${connectedCount}/${totalExpected} joueurs)`;
+                     this.sendChat(msg);
+                 }
+             }, 50_000);
+             
+             // Timeout final à 60 secondes
              this.lobbyTimeout = setTimeout(() => {
                  if (!this.allPlayersJoined && this.gameSocket?.connected && this.isLeader) {
                      const connectedCount = this.countConnectedExpectedPlayers();
                      const totalExpected = this.expectedPlayers.length;
+                     
+                     // Vérifier qu'il y a au moins 2 joueurs pour démarrer
+                     if (connectedCount < 2) {
+                         console.log(`❌ [TIMEOUT] Match annulé - seulement ${connectedCount} joueur(s) présent(s)`);
+                         const cancelMsg = isEnglish
+                           ? `❌ Match cancelled - not enough players (${connectedCount}/${totalExpected})`
+                           : `❌ Match annulé - pas assez de joueurs (${connectedCount}/${totalExpected})`;
+                         this.sendChat(cancelMsg);
+                         
+                         // Envoyer le callback d'annulation
+                         this.cancelMatch('timeout_not_enough_players');
+                         return;
+                     }
+                     
                      console.log(`⏰ [TIMEOUT] Démarrage forcé après 60s (${connectedCount}/${totalExpected} joueurs présents)`);
-                     this.sendChat(`⏰ Timeout ! Démarrage avec ${connectedCount}/${totalExpected} joueurs...`);
+                     const startMsg = isEnglish
+                       ? `⏰ Timeout! Starting with ${connectedCount}/${totalExpected} players...`
+                       : `⏰ Timeout ! Démarrage avec ${connectedCount}/${totalExpected} joueurs...`;
+                     this.sendChat(startMsg);
                      
                      this.allPlayersJoined = true; // Empêcher le démarrage normal
-                     // Note: les règles ont déjà été appliquées au setup, pas besoin de les ré-appliquer
                      console.log('🔓 Déverrouillage des règles (timeout)...');
                      this.gameSocket.emit('setRulesLocked', true);
                      console.log('📤 Envoi startRoundNow (timeout)...');
@@ -494,6 +538,51 @@ class JKLMBot {
     this.gameSocket?.disconnect();
   }
 
+  cancelMatch(reason) {
+    console.log(`❌ Annulation du match: ${reason}`);
+    
+    // Annuler tous les timers
+    if (this.lobbyTimeout) {
+      clearTimeout(this.lobbyTimeout);
+      this.lobbyTimeout = null;
+    }
+    if (this.warningTimeout30) {
+      clearTimeout(this.warningTimeout30);
+      this.warningTimeout30 = null;
+    }
+    if (this.warningTimeout50) {
+      clearTimeout(this.warningTimeout50);
+      this.warningTimeout50 = null;
+    }
+    
+    // Envoyer le callback d'annulation
+    if (this.callbackUrl) {
+      console.log(`📤 Envoi du callback d'annulation: ${this.callbackUrl}`);
+      fetch(this.callbackUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomCode: this.roomCode,
+          cancelled: true,
+          reason: reason,
+          category: this.category
+        })
+      }).then(res => {
+        console.log(`✅ Callback annulation statut: ${res.status}`);
+        this.disconnect();
+        process.exit(0);
+      }).catch(err => {
+        console.error('❌ Erreur callback annulation:', err);
+        this.disconnect();
+        process.exit(1);
+      });
+    } else {
+      console.log('⚠️ Pas de callback URL configurée.');
+      this.disconnect();
+      process.exit(0);
+    }
+  }
+
   setExpectedPlayers(players) {
     // players = [{ service: 'discord', id: '...' }, { service: 'jklm', username: '...' }]
     this.expectedPlayers = players.map(p => ({
@@ -611,10 +700,18 @@ class JKLMBot {
       this.allPlayersJoined = true;
       console.log('✅ Tous les joueurs attendus ont rejoint!');
       
-      // Annuler le timeout de démarrage forcé
+      // Annuler tous les timeouts
       if (this.lobbyTimeout) {
         clearTimeout(this.lobbyTimeout);
         this.lobbyTimeout = null;
+      }
+      if (this.warningTimeout30) {
+        clearTimeout(this.warningTimeout30);
+        this.warningTimeout30 = null;
+      }
+      if (this.warningTimeout50) {
+        clearTimeout(this.warningTimeout50);
+        this.warningTimeout50 = null;
       }
       
       // Déverrouiller les règles et lancer la partie
