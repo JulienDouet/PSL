@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import { getQueueStatus, getQueueCounts, canStartMatch, isLobbyTimerExpired, clearLobbyTimer, popPlayersForMatch, registerPendingMatch, cancelMatchingPlayers, heartbeat, startHeartbeatCleanup } from '@/lib/queue';
 import { getGameMode } from '@/lib/game-modes';
 import { spawn } from 'child_process';
@@ -57,14 +58,93 @@ export async function GET(req: Request) {
       status = getQueueStatus(session.user.id);
     }
 
-    return NextResponse.json({
-      ...status,
-      queueCounts: counts
-    });
+    // Enrichir les données des joueurs si un match existe
+    let enrichedStatus = { ...status, queueCounts: counts };
+    if (status.match && status.match.players.length > 0) {
+      const category = status.match.category;
+      const enrichedPlayers = await enrichMatchPlayers(status.match.players, category);
+      enrichedStatus = {
+        ...enrichedStatus,
+        match: {
+          ...status.match,
+          players: enrichedPlayers
+        }
+      };
+    }
+
+    return NextResponse.json(enrichedStatus);
   } catch (err) {
     console.error('❌ [QUEUE] Error getting status:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
+}
+
+// Enrichir les joueurs avec leurs stats pour le lobby pré-match
+interface EnrichedPlayer {
+  nickname: string;
+  mmr: number;
+  gamesPlayed: number;
+  winrate: number; // 0-100
+  rank: number; // Position au leaderboard (1 = N°1)
+  isTopRanked: boolean; // True si N°1 de la catégorie
+}
+
+async function enrichMatchPlayers(players: any[], category: Category): Promise<EnrichedPlayer[]> {
+  // Récupérer tous les userIds
+  const userIds = players.map(p => p.userId);
+  
+  // Récupérer les stats de catégorie pour ces joueurs
+  const categoryStats = await prisma.userCategoryMMR.findMany({
+    where: {
+      userId: { in: userIds },
+      category: category
+    }
+  });
+  
+  // Récupérer le nombre de wins par joueur dans cette catégorie
+  const winsData = await prisma.matchPlayer.groupBy({
+    by: ['userId'],
+    where: {
+      userId: { in: userIds },
+      placement: 1,
+      match: { category: category }
+    },
+    _count: { id: true }
+  });
+  const winsMap = new Map(winsData.map(w => [w.userId, w._count.id]));
+  
+  // Calculer les positions au leaderboard pour cette catégorie
+  // On récupère tous les joueurs avec plus de 0 parties, triés par MMR décroissant
+  const leaderboard = await prisma.userCategoryMMR.findMany({
+    where: {
+      category: category,
+      gamesPlayed: { gt: 0 }
+    },
+    orderBy: { mmr: 'desc' },
+    select: { userId: true }
+  });
+  const rankMap = new Map(leaderboard.map((entry, idx) => [entry.userId, idx + 1]));
+  
+  // Le N°1 de la catégorie
+  const topRankedUserId = leaderboard.length > 0 ? leaderboard[0].userId : null;
+  
+  // Construire les données enrichies
+  return players.map(p => {
+    const stats = categoryStats.find(s => s.userId === p.userId);
+    const gamesPlayed = stats?.gamesPlayed || 0;
+    const wins = winsMap.get(p.userId) || 0;
+    const winrate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
+    const rank = rankMap.get(p.userId) || 999;
+    
+    return {
+      nickname: p.nickname,
+      mmr: p.mmr,
+      gamesPlayed,
+      winrate,
+      rank,
+      isTopRanked: p.userId === topRankedUserId
+    };
+  });
 }
 
 async function createMatchWithBot(players: any[], category: Category, rules: { dictionaryId: string; scoreGoal?: number; challengeDuration?: number; tagOps?: any[] }): Promise<{ roomCode: string; botPid?: number } | null> {

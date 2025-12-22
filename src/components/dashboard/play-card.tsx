@@ -3,16 +3,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, ExternalLink, Check, Users, Loader2, X, ChevronDown } from 'lucide-react';
+import { Copy, ExternalLink, Check, Users, X, ChevronDown, Crown, Target, Flame, Scale } from 'lucide-react';
 import { GAME_MODE_LIST, DEFAULT_MODE, getGameMode, type GameModeKey } from '@/lib/game-modes';
 import { useTranslation } from "@/lib/i18n/context";
 import { useDashboardRefresh } from '@/lib/dashboard-context';
 
-type QueueMode = 'idle' | 'searching' | 'matched';
+// 4 états : idle → searching → found → lobby
+type QueueMode = 'idle' | 'searching' | 'found' | 'lobby';
+
+interface EnrichedPlayer {
+  nickname: string;
+  mmr: number;
+  gamesPlayed: number;
+  winrate: number;
+  rank: number;
+  isTopRanked: boolean;
+}
 
 interface MatchInfo {
   roomCode: string;
-  players: { nickname: string; mmr: number }[];
+  players: EnrichedPlayer[];
+  category: string;
 }
 
 export function PlayCard() {
@@ -46,8 +57,8 @@ export function PlayCard() {
       const notification = new Notification('🎮 Match trouvé !', {
         body: `Room ${roomCode} - Clique pour rejoindre`,
         icon: '/logo.png',
-        tag: 'psl-match', // Évite les doublons
-        requireInteraction: true // Reste affiché jusqu'à interaction
+        tag: 'psl-match',
+        requireInteraction: true
       });
       
       notification.onclick = () => {
@@ -60,7 +71,7 @@ export function PlayCard() {
     try {
       const audio = new Audio('/sounds/match-found.mp3');
       audio.volume = 0.5;
-      audio.play().catch(() => {}); // Ignorer si bloqué par le navigateur
+      audio.play().catch(() => {});
     } catch (e) {}
   };
 
@@ -89,10 +100,8 @@ export function PlayCard() {
       } catch (err) {}
     };
     
-    // Fetch immédiat
     fetchCounts();
     
-    // Polling toutes les 5 secondes en mode idle
     if (mode === 'idle') {
       const interval = setInterval(fetchCounts, 1000);
       return () => clearInterval(interval);
@@ -101,14 +110,13 @@ export function PlayCard() {
 
   // Polling pour vérifier le statut de la queue et du match
   useEffect(() => {
-    if (mode === 'searching' || mode === 'matched') {
+    if (mode === 'searching' || mode === 'lobby') {
       const poll = async () => {
         try {
           const res = await fetch('/api/queue/status');
           if (res.ok) {
             const data = await res.json();
             
-            // Mettre à jour les counts globaux
             if (data.queueCounts) {
               setQueueCounts(data.queueCounts);
             }
@@ -118,25 +126,27 @@ export function PlayCard() {
               setCountdown(data.countdown || null);
               
               if (data.match) {
-                // Match trouvé !
+                // Match trouvé ! Passer en phase "found" (flash)
                 setMatchInfo({
                   roomCode: data.match.roomCode,
-                  players: data.match.players || []
+                  players: data.match.players || [],
+                  category: data.match.category || selectedGameMode
                 });
-                setMode('matched');
-                
-                // Envoyer notification navigateur
+                setMode('found');
                 sendMatchNotification(data.match.roomCode);
+                
+                // Après 2.5s, passer en lobby
+                setTimeout(() => {
+                  setMode('lobby');
+                }, 2500);
               }
-            } else if (mode === 'matched') {
-              // En mode matched, vérifier si le match est toujours actif
+            } else if (mode === 'lobby') {
+              // Vérifier si le match est toujours actif
               if (!data.match && !data.inQueue) {
-                // Le match est terminé (plus dans pendingMatches)
                 console.log('🏁 Match terminé, retour à idle');
                 setMode('idle');
                 setMatchInfo(null);
                 stopPolling();
-                // Déclencher le refresh du dashboard (MMR + historique)
                 triggerRefresh();
               }
             }
@@ -146,9 +156,7 @@ export function PlayCard() {
         }
       };
 
-      // Premier appel immédiat
       poll();
-      // Puis toutes les 1 seconde (searching) ou 3 secondes (matched)
       const interval = mode === 'searching' ? 500 : 2000;
       pollingRef.current = setInterval(poll, interval);
     }
@@ -180,12 +188,14 @@ export function PlayCard() {
         const data = await res.json();
         
         if (data.status === 'matched') {
-          // Match instantané (assez de joueurs déjà en queue)
           setMatchInfo({
             roomCode: data.roomCode,
-            players: data.players || []
+            players: data.players || [],
+            category: data.category || selectedGameMode
           });
-          setMode('matched');
+          setMode('found');
+          sendMatchNotification(data.roomCode);
+          setTimeout(() => setMode('lobby'), 2500);
         } else {
           setQueueCount(data.count || 1);
         }
@@ -209,6 +219,7 @@ export function PlayCard() {
     }
     setMode('idle');
     setQueueCount(0);
+    setMatchInfo(null);
   };
 
   const copyLink = () => {
@@ -219,18 +230,36 @@ export function PlayCard() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleBackToIdle = () => {
-    handleLeaveQueue();
-    setMatchInfo(null);
+  // Calcul de l'indicateur de niveau relatif (pour le 1er joueur = toi vs les autres)
+  const getLevelIndicator = (myMmr: number, opponentMmr: number) => {
+    const diff = myMmr - opponentMmr;
+    if (diff > 50) return { type: 'favorite', icon: <Flame className="w-4 h-4" />, label: 'Favori', color: 'text-orange-400' };
+    if (diff < -50) return { type: 'challenge', icon: <Target className="w-4 h-4" />, label: 'Défi', color: 'text-purple-400' };
+    return { type: 'balanced', icon: <Scale className="w-4 h-4" />, label: 'Équilibré', color: 'text-blue-400' };
+  };
+
+  // Card classes dynamiques basées sur le mode
+  const getCardClasses = () => {
+    const base = "bg-card transition-all duration-500";
+    switch (mode) {
+      case 'found':
+        return `${base} border-primary card-glow animate-pulse scale-105`;
+      case 'lobby':
+        return `${base} border-primary/50 card-glow`;
+      default:
+        return `${base} border-primary/30 card-glow`;
+    }
   };
 
   return (
-    <Card className="bg-card border-primary/30 card-glow">
+    <Card className={getCardClasses()}>
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">🎮 {t.navbar.play}</CardTitle>
-        <CardDescription>
-          {t.dashboard.play_card.title}
-        </CardDescription>
+        {mode === 'idle' && (
+          <CardDescription>
+            {t.dashboard.play_card.title}
+          </CardDescription>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         
@@ -296,7 +325,6 @@ export function PlayCard() {
                         key={gm.key} 
                         onClick={() => {
                           setSelectedGameMode(gm.key);
-                          // Petite attente pour que le state soit mis à jour avant handleJoinQueue
                           setTimeout(() => {
                             setMode('searching');
                             fetch('/api/queue/join', {
@@ -305,9 +333,10 @@ export function PlayCard() {
                               body: JSON.stringify({ mode: gm.key, category: gm.category })
                             }).then(res => res.json()).then(data => {
                               if (data.status === 'matched') {
-                                setMatchInfo({ roomCode: data.roomCode, players: data.players || [] });
-                                setMode('matched');
+                                setMatchInfo({ roomCode: data.roomCode, players: data.players || [], category: data.category || gm.key });
+                                setMode('found');
                                 sendMatchNotification(data.roomCode);
+                                setTimeout(() => setMode('lobby'), 2500);
                               } else {
                                 setQueueCount(data.count || 1);
                               }
@@ -318,7 +347,6 @@ export function PlayCard() {
                         title={`Rejoindre ${gm.label}`}
                       >
                         {gm.emoji}
-                        {/* Badge FR/EN pour les catégories qui partagent le même emoji */}
                         {(gm.key === 'GP_FR' || gm.key === 'NOFILTER_FR') && (
                           <span className="text-[10px] font-bold text-blue-400">FR</span>
                         )}
@@ -340,8 +368,8 @@ export function PlayCard() {
           <div className="space-y-4 animate-in fade-in zoom-in duration-300">
             <div className="text-center py-4">
               <div className="relative inline-block">
-                <div className="text-5xl mb-3">🔍</div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-pulse" />
+                <div className="text-5xl mb-3 animate-bounce">🔍</div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-ping" />
               </div>
               <p className="text-lg font-medium">{t.dashboard.play_card.waiting}</p>
               <div className="flex items-center justify-center gap-2 mt-2 text-muted-foreground">
@@ -377,59 +405,132 @@ export function PlayCard() {
           </div>
         )}
 
-        {/* MATCHED - Match trouvé ! */}
-        {mode === 'matched' && matchInfo && (
-          <div className="space-y-4 animate-in fade-in zoom-in duration-300">
-            <div className="text-center">
-              <p className="text-lg font-medium text-green-400 mb-2">🎉 Match trouvé !</p>
-              <div className="bg-background border border-primary/50 text-2xl font-mono p-3 rounded-lg flex items-center justify-center gap-3">
-                <span>{matchInfo.roomCode}</span>
-              </div>
+        {/* FOUND - Flash "Match Trouvé !" */}
+        {mode === 'found' && matchInfo && (
+          <div className="py-8 text-center animate-in zoom-in-110 fade-in duration-300">
+            <div className="relative">
+              <div className="text-6xl mb-4 animate-bounce">⚡</div>
+              <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-pulse" />
+            </div>
+            <h2 className="text-3xl font-black text-primary animate-pulse">
+              MATCH TROUVÉ !
+            </h2>
+            <p className="text-muted-foreground mt-2">Préparation du lobby...</p>
+          </div>
+        )}
+
+        {/* LOBBY - Avant-Match détaillé */}
+        {mode === 'lobby' && matchInfo && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Header catégorie */}
+            <div className="text-center pb-2 border-b border-border/50">
+              <span className="text-2xl">{currentGameMode.emoji}</span>
+              <h3 className="font-bold text-lg">{currentGameMode.label}</h3>
             </div>
 
-            {matchInfo.players.length > 0 && (
-              <div className="bg-secondary/30 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground mb-2">Joueurs ({matchInfo.players.length})</p>
-                <div className="flex flex-wrap gap-2">
-                  {matchInfo.players.map((p, i) => (
-                    <span key={i} className="px-2 py-1 bg-background rounded text-sm">
-                      {p.nickname}
-                    </span>
-                  ))}
+            {/* Liste des joueurs */}
+            <div className="space-y-3">
+              {matchInfo.players.map((player, idx) => {
+                const isFirst = idx === 0;
+                const myMmr = matchInfo.players[0]?.mmr || 1000;
+                const levelIndicator = !isFirst ? getLevelIndicator(myMmr, player.mmr) : null;
+                
+                return (
+                  <div 
+                    key={idx}
+                    className={`relative p-3 rounded-lg transition-all ${
+                      player.isTopRanked 
+                        ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border-2 border-amber-400/50 shadow-lg shadow-amber-400/20' 
+                        : isFirst 
+                          ? 'bg-primary/10 border border-primary/30'
+                          : 'bg-secondary/30'
+                    }`}
+                  >
+                    {/* Badge N°1 */}
+                    {player.isTopRanked && (
+                      <div className="absolute -top-2 -right-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-black text-xs font-black px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                        <Crown className="w-3 h-3" /> N°1
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {/* Avatar placeholder */}
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
+                          player.isTopRanked ? 'bg-amber-400/30' : 'bg-background'
+                        }`}>
+                          {isFirst ? '👤' : '🎮'}
+                        </div>
+                        <div>
+                          <div className="font-bold flex items-center gap-2">
+                            {player.nickname}
+                            {isFirst && <span className="text-xs text-muted-foreground">(toi)</span>}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {player.gamesPlayed} parties • {player.winrate}% WR
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-right">
+                        <div className="font-bold text-lg">{player.mmr}</div>
+                        <div className="text-xs text-muted-foreground">
+                          #{player.rank} classement
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Indicateur de niveau relatif (seulement pour adversaires) */}
+                    {levelIndicator && (
+                      <div className={`mt-2 flex items-center gap-1 text-xs ${levelIndicator.color}`}>
+                        {levelIndicator.icon}
+                        <span>{levelIndicator.label}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Room Code & Actions */}
+            <div className="pt-4 border-t border-border/50 space-y-3">
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground mb-1">Code Room</p>
+                <div className="text-3xl font-mono font-black tracking-wider text-primary">
+                  {matchInfo.roomCode}
                 </div>
               </div>
-            )}
-
-            <div className="flex gap-2">
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={copyLink}
+                >
+                  {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                  {copied ? t.common.copied : t.common.copy}
+                </Button>
+                <Button 
+                  className="flex-1 bg-gradient-psl"
+                  onClick={() => window.open(`https://jklm.fun/${matchInfo.roomCode}`, '_blank')}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  {t.dashboard.play_card.join}
+                </Button>
+              </div>
+              
               <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={copyLink}
+                variant="ghost" 
+                size="sm"
+                className="w-full text-muted-foreground hover:text-white"
+                onClick={handleLeaveQueue}
               >
-                {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
-                {copied ? t.common.copied : t.common.copy}
-              </Button>
-              <Button 
-                className="flex-1 bg-gradient-psl"
-                onClick={() => window.open(`https://jklm.fun/${matchInfo.roomCode}`, '_blank')}
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                {t.dashboard.play_card.join}
+                {t.common.back}
               </Button>
             </div>
-            
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="w-full text-muted-foreground hover:text-white"
-              onClick={handleBackToIdle}
-            >
-              {t.common.back}
-            </Button>
           </div>
         )}
       </CardContent>
     </Card>
   );
 }
-
