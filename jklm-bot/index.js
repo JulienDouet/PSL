@@ -210,8 +210,8 @@ class JKLMBot {
                 // Joueur non inscrit - l'informer immédiatement (langue selon dictionaryId)
                 const isEnglish = this.customRules?.dictionaryId === 'en';
                 const welcomeMsg = isEnglish 
-                  ? `📊 ${nick}, this is a PSL ranked match. Sign up at psl-ranked.app for your points to count!`
-                  : `📊 ${nick}, cette partie est un match classé PSL. Inscris-toi sur psl-ranked.app pour que tes points comptent !`;
+                  ? `📊 ${nick}, this is a PSL ranked match. Sign up at psl-ranked.app for your points to count! Join our Discord: discord.gg/JGHRNy6qRn`
+                  : `📊 ${nick}, cette partie est un match classé PSL. Inscris-toi sur psl-ranked.app pour que tes points comptent ! Rejoins le Discord : discord.gg/JGHRNy6qRn`;
                 this.sendChat(welcomeMsg);
               }
             }
@@ -375,7 +375,11 @@ class JKLMBot {
         
         if (isExpected) {
           // Joueur inscrit et attendu - afficher le compteur de progression
-          this.sendChat(`✅ ${nick} a rejoint la partie ! (${connectedCount}/${totalExpected})`);
+          const isEnglish = this.customRules?.dictionaryId === 'en';
+          const joinedMsg = isEnglish
+            ? `✅ ${nick} joined the game! (${connectedCount}/${totalExpected})`
+            : `✅ ${nick} a rejoint la partie ! (${connectedCount}/${totalExpected})`;
+          this.sendChat(joinedMsg);
         }
         // Note: le message de bienvenue pour les non-inscrits est envoyé dans chatterAdded (lobby join)
       }
@@ -459,7 +463,11 @@ class JKLMBot {
     this.gameSocket.on('setMilestone', (milestone) => {
       if (milestone.lastRound?.winner) {
         console.log(`🏆 GAGNANT: ${milestone.lastRound.winner.nickname}`);
-        this.sendChat(`👑 VICTOIRE DE ${milestone.lastRound.winner.nickname} !`);
+        const isEnglish = this.customRules?.dictionaryId === 'en';
+        const victoryMsg = isEnglish
+          ? `👑 ${milestone.lastRound.winner.nickname} WINS!`
+          : `👑 VICTOIRE DE ${milestone.lastRound.winner.nickname} !`;
+        this.sendChat(victoryMsg);
         this.compileResults();
       }
     });
@@ -485,7 +493,8 @@ class JKLMBot {
     console.log('\n📊 RÉSULTATS:');
     
     // Afficher les scores dans le chat
-    this.sendChat('🏆 RÉSULTATS FINAUX:');
+    const isEnglish = this.customRules?.dictionaryId === 'en';
+    this.sendChat(isEnglish ? '🏆 FINAL RESULTS:' : '🏆 RÉSULTATS FINAUX:');
     
     sorted.forEach((p, i) => {
       console.log(`  ${i + 1}. ${p.nickname}: ${p.score} pts`, p.auth ? `(${p.auth.service}:${p.auth.id})` : '');
