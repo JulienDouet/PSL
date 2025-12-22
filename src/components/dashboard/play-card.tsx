@@ -310,10 +310,18 @@ export function PlayCard() {
                             }).catch(() => setMode('idle'));
                           }, 0);
                         }}
-                        className="text-xs px-2 py-1 bg-background/50 rounded hover:bg-primary/30 hover:text-primary transition-colors cursor-pointer"
+                        className="text-xs px-2 py-1 bg-background/50 rounded hover:bg-primary/30 hover:text-primary transition-colors cursor-pointer flex items-center gap-1"
                         title={`Rejoindre ${gm.label}`}
                       >
-                        {gm.emoji} {count}
+                        {gm.emoji}
+                        {/* Badge FR/EN pour les catégories qui partagent le même emoji */}
+                        {(gm.key === 'GP_FR' || gm.key === 'NOFILTER_FR') && (
+                          <span className="text-[10px] font-bold text-blue-400">FR</span>
+                        )}
+                        {(gm.key === 'MS_EN' || gm.key === 'NOFILTER_EN') && (
+                          <span className="text-[10px] font-bold text-red-400">EN</span>
+                        )}
+                        {count}
                       </button>
                     );
                   })}
