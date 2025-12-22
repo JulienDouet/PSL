@@ -38,11 +38,9 @@ interface MatchPlayer {
 interface CategoryStatsProps {
   categoryMMRs: CategoryMMR[];
   matchPlayers: MatchPlayer[];
-  globalMMR: number;
-  globalGamesPlayed: number;
 }
 
-export function CategoryStats({ categoryMMRs, matchPlayers, globalMMR, globalGamesPlayed }: CategoryStatsProps) {
+export function CategoryStats({ categoryMMRs, matchPlayers }: CategoryStatsProps) {
   const { t } = useTranslation();
   
   // Catégories avec des données - triées par parties jouées
