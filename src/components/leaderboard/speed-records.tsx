@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,11 +16,39 @@ export function SpeedRecords() {
   const [records, setRecords] = useState<SpeedRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   
   // Load default records on mount
   useEffect(() => {
     fetchRecords();
   }, []);
+
+  // Debounced search when user types
+  useEffect(() => {
+    if (filterType !== 'text') return;
+    
+    // Clear previous timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    // If empty, fetch default records immediately
+    if (!searchTerm.trim()) {
+      fetchRecords();
+      return;
+    }
+    
+    // Debounce: wait 500ms after last keystroke
+    debounceRef.current = setTimeout(() => {
+      fetchRecords({ query: searchTerm });
+    }, 500);
+    
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [searchTerm, filterType]);
 
   // Fetch when length filter changes
   useEffect(() => {
@@ -39,12 +67,6 @@ export function SpeedRecords() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!searchTerm.trim()) return;
-    fetchRecords({ query: searchTerm });
   }
 
   // Dynamic title
@@ -82,20 +104,23 @@ export function SpeedRecords() {
                 </Button>
             </div>
 
-            {/* Input Search */}
+            {/* Input Search - Now with live search */}
             {filterType === 'text' && (
-                <form onSubmit={handleSearch} className="flex gap-2">
+                <div className="relative max-w-md">
                     <Input
-                    placeholder="naruto, bts, ..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="max-w-md"
+                        placeholder="naruto, bts, ..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pr-10"
                     />
-                    <Button type="submit" disabled={loading}>
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                    <span className="ml-2">{t.common.search}</span>
-                    </Button>
-                </form>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        {loading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Search className="w-4 h-4" />
+                        )}
+                    </div>
+                </div>
             )}
 
             {/* Length Controls */}
