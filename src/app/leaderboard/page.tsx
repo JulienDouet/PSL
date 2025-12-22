@@ -192,12 +192,12 @@ export default function LeaderboardPage() {
                         ) : (
                         <div className="space-y-2">
                             {/* Header */}
-                            <div className="grid grid-cols-12 gap-2 px-4 py-2 text-sm text-muted-foreground font-medium">
+                            <div className="grid grid-cols-8 md:grid-cols-12 gap-2 px-4 py-2 text-sm text-muted-foreground font-medium">
                             <div className="col-span-1">{t.leaderboard.table.rank}</div>
                             <div className="col-span-5">{t.leaderboard.table.player}</div>
                             <div className="col-span-2 text-center">{t.leaderboard.table.mmr}</div>
-                            <div className="col-span-2 text-center">{t.leaderboard.table.wl}</div>
-                            <div className="col-span-2 text-center">{t.leaderboard.table.winrate}</div>
+                            <div className="col-span-2 text-center hidden md:block">{t.leaderboard.table.wl}</div>
+                            <div className="col-span-2 text-center hidden md:block">{t.leaderboard.table.winrate}</div>
                             </div>
 
                             {/* Rows */}
@@ -210,7 +210,7 @@ export default function LeaderboardPage() {
                                 <Link
                                 key={player.id}
                                 href={`/profile/${player.id}`}
-                                className={`grid grid-cols-12 gap-2 px-4 py-3 rounded-lg transition-all hover:bg-secondary/50 ${
+                                className={`grid grid-cols-8 md:grid-cols-12 items-center gap-2 px-4 py-3 rounded-lg transition-all hover:bg-secondary/50 ${
                                     isTop3 ? "bg-primary/5 border border-primary/20" : "bg-secondary/20"
                                 }`}
                                 >
@@ -227,12 +227,12 @@ export default function LeaderboardPage() {
                                 <div className="col-span-2 text-center font-bold text-gradient">
                                     {player.mmr}
                                 </div>
-                                <div className="col-span-2 text-center">
+                                <div className="col-span-2 text-center hidden md:block">
                                     <span className="text-green-400">{player.wins}</span>
                                     <span className="text-muted-foreground">/</span>
                                     <span className="text-red-400">{player.losses}</span>
                                 </div>
-                                <div className="col-span-2 text-center">
+                                <div className="col-span-2 text-center hidden md:block">
                                     <span className={winRate >= 50 ? "text-green-400" : "text-red-400"}>
                                     {winRate}%
                                     </span>
