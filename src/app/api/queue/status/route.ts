@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { getQueueStatus, getQueueCounts, canStartMatch, isLobbyTimerExpired, clearLobbyTimer, popPlayersForMatch, registerPendingMatch, cancelMatchingPlayers, heartbeat, startHeartbeatCleanup } from '@/lib/queue';
+import { getQueueStatus, getQueueCounts, getQueuePlayers, canStartMatch, isLobbyTimerExpired, clearLobbyTimer, popPlayersForMatch, registerPendingMatch, cancelMatchingPlayers, heartbeat, startHeartbeatCleanup } from '@/lib/queue';
 import { getGameMode } from '@/lib/game-modes';
 import { spawn } from 'child_process';
 import path from 'path';
@@ -59,8 +59,10 @@ export async function GET(req: Request) {
     }
 
     // Enrichir les données des joueurs si un match existe
-    let enrichedStatus = { ...status, queueCounts: counts };
+    let enrichedStatus: any = { ...status, queueCounts: counts };
+    
     if (status.match && status.match.players.length > 0) {
+      // Match créé - enrichir les joueurs du match
       const category = status.match.category;
       const enrichedPlayers = await enrichMatchPlayers(status.match.players, category);
       enrichedStatus = {
@@ -70,6 +72,13 @@ export async function GET(req: Request) {
           players: enrichedPlayers
         }
       };
+    } else if (status.inQueue && status.category && status.countdown !== null) {
+      // En queue avec countdown actif - renvoyer les joueurs en attente avec leurs stats
+      const queuePlayers = getQueuePlayers(status.category);
+      if (queuePlayers.length >= 2) {
+        const enrichedQueuePlayers = await enrichMatchPlayers(queuePlayers, status.category);
+        enrichedStatus.queuePlayers = enrichedQueuePlayers;
+      }
     }
 
     return NextResponse.json(enrichedStatus);

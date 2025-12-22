@@ -363,6 +363,13 @@ export function getQueueCounts(): Record<Category, number> {
   return counts as Record<Category, number>;
 }
 
+/**
+ * Retourne les joueurs actuellement en queue pour une catégorie.
+ */
+export function getQueuePlayers(category: Category): QueueEntry[] {
+  return queues.get(category) || [];
+}
+
 // ==========================================
 // ADMIN FUNCTIONS
 // ==========================================

@@ -33,6 +33,7 @@ export function PlayCard() {
   const [queueCount, setQueueCount] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [matchInfo, setMatchInfo] = useState<MatchInfo | null>(null);
+  const [queuePlayers, setQueuePlayers] = useState<EnrichedPlayer[]>([]);
   const [copied, setCopied] = useState(false);
   const [queueCounts, setQueueCounts] = useState<Record<string, number>>({});
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -124,6 +125,13 @@ export function PlayCard() {
             if (mode === 'searching') {
               setQueueCount(data.count || 0);
               setCountdown(data.countdown || null);
+              
+              // Si des joueurs sont en queue avec countdown, les afficher
+              if (data.queuePlayers && data.queuePlayers.length >= 2) {
+                setQueuePlayers(data.queuePlayers);
+              } else {
+                setQueuePlayers([]);
+              }
               
               if (data.match) {
                 // Match trouvé ! Passer en phase "found" (flash)
@@ -366,33 +374,106 @@ export function PlayCard() {
         {/* SEARCHING - En recherche */}
         {mode === 'searching' && (
           <div className="space-y-4 animate-in fade-in zoom-in duration-300">
-            <div className="text-center py-4">
-              <div className="relative inline-block">
-                <div className="text-5xl mb-3 animate-bounce">🔍</div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-ping" />
-              </div>
-              <p className="text-lg font-medium">{t.dashboard.play_card.waiting}</p>
-              <div className="flex items-center justify-center gap-2 mt-2 text-muted-foreground">
-                <Users className="w-4 h-4" />
-                <span>{queueCount} {t.matches.live_players}</span>
-              </div>
+            {/* Header avec countdown */}
+            <div className="text-center py-2">
+              {countdown !== null && countdown > 0 ? (
+                <>
+                  <div className="text-4xl font-black text-primary animate-pulse">
+                    ⏱️ {countdown}s
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">Match imminent !</p>
+                </>
+              ) : queuePlayers.length >= 2 ? (
+                <>
+                  <div className="text-2xl mb-1">⭐</div>
+                  <p className="text-lg font-medium">Joueurs prêts !</p>
+                </>
+              ) : (
+                <>
+                  <div className="relative inline-block">
+                    <div className="text-4xl mb-2 animate-bounce">🔍</div>
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-ping" />
+                  </div>
+                  <p className="text-lg font-medium">{t.dashboard.play_card.waiting}</p>
+                  <div className="flex items-center justify-center gap-2 mt-1 text-muted-foreground">
+                    <Users className="w-4 h-4" />
+                    <span>{queueCount} {t.matches.live_players}</span>
+                  </div>
+                </>
+              )}
             </div>
             
-            <div className="bg-secondary/30 rounded-lg p-3 text-center">
-              {countdown !== null && countdown > 0 ? (
-                <p className="text-lg font-bold text-primary">
-                  ⏱️ Match dans {countdown}s...
-                </p>
-              ) : countdown === 0 ? (
-                <p className="text-lg font-bold text-green-400">
-                  🚀 Lancement du match...
-                </p>
-              ) : (
+            {/* Liste des joueurs en attente (affichée quand countdown actif) */}
+            {queuePlayers.length >= 2 && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                {queuePlayers.map((player, idx) => {
+                  const isFirst = idx === 0;
+                  const myMmr = queuePlayers[0]?.mmr || 1000;
+                  const levelIndicator = !isFirst ? getLevelIndicator(myMmr, player.mmr) : null;
+                  
+                  return (
+                    <div 
+                      key={idx}
+                      className={`relative p-2 rounded-lg transition-all ${
+                        player.isTopRanked 
+                          ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border border-amber-400/50' 
+                          : isFirst 
+                            ? 'bg-primary/10 border border-primary/30'
+                            : 'bg-secondary/30'
+                      }`}
+                    >
+                      {/* Badge N°1 */}
+                      {player.isTopRanked && (
+                        <div className="absolute -top-1 -right-1 bg-gradient-to-r from-amber-400 to-yellow-500 text-black text-[10px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                          <Crown className="w-2.5 h-2.5" /> N°1
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                            player.isTopRanked ? 'bg-amber-400/30' : 'bg-background'
+                          }`}>
+                            {isFirst ? '👤' : '🎮'}
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm flex items-center gap-1">
+                              {player.nickname}
+                              {isFirst && <span className="text-[10px] text-muted-foreground">(toi)</span>}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {player.gamesPlayed} parties • {player.winrate}% WR
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="text-right">
+                          <div className="font-bold text-sm">{player.mmr}</div>
+                          <div className="text-[10px] text-muted-foreground">#{player.rank}</div>
+                        </div>
+                      </div>
+                      
+                      {/* Indicateur de niveau */}
+                      {levelIndicator && (
+                        <div className={`mt-1 flex items-center gap-1 text-[10px] ${levelIndicator.color}`}>
+                          {levelIndicator.icon}
+                          <span>{levelIndicator.label}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* Message d'attente si pas assez de joueurs */}
+            {queuePlayers.length < 2 && (
+              <div className="bg-secondary/30 rounded-lg p-3 text-center">
                 <p className="text-sm text-muted-foreground">
                   La partie démarre dès que 2 joueurs sont prêts
                 </p>
-              )}
-            </div>
+              </div>
+            )}
 
             <Button 
               variant="outline"
