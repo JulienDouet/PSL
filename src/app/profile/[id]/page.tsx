@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar } from "@/components/navbar";
-import { getRankProgress } from "@/lib/mmr";
+
 import { CategoryStats } from "@/components/profile/category-stats";
 import { ProfileHeader } from "@/components/profile/profile-header";
 
@@ -39,10 +39,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   }
 
   const displayName = user.displayName || user.name || "Joueur";
-  const mmr = user.mmr || 1000;
-  const gamesPlayed = user.gamesPlayed || 0;
-  const rankInfo = getRankProgress(mmr);
-  const isCalibrating = gamesPlayed < 5;
+
 
   // Préparer les données pour le composant client
   const categoryMMRsData = user.categoryMMRs.map(c => ({
@@ -75,9 +72,8 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           <CategoryStats 
             categoryMMRs={categoryMMRsData}
             matchPlayers={matchPlayersData}
-            globalMMR={mmr}
-            globalGamesPlayed={gamesPlayed}
           />
+
         </div>
       </main>
     </div>

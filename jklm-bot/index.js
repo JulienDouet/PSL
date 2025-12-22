@@ -181,10 +181,11 @@ class JKLMBot {
 
           // Écouter les messages chat (pour mode vérification)
           this.roomSocket.on('chat', (sender, message) => {
-            // Le premier argument 'sender' est un objet: { nickname: 'Pseudo', ... }
+            // Le premier argument 'sender' est un objet: { nickname: 'Pseudo', auth: { service, username, id }, ... }
+            console.log('💬 [CHAT] Sender:', JSON.stringify(sender));
             const nick = (typeof sender === 'object' && sender) ? sender.nickname : sender;
             console.log(`💬 [CHAT] ${nick}: ${message}`);
-            this.handleChatMessage(nick, message);
+            this.handleChatMessage(sender, message);
           });
 
           // Écouter quand un joueur rejoint le LOBBY (pas le jeu)
@@ -206,8 +207,12 @@ class JKLMBot {
                 // Le message sera envoyé quand il rejoindra la partie (addPlayer)
                 console.log(`✅ [LOBBY] ${nick} est inscrit (en attente qu'il rejoigne la partie)`);
               } else {
-                // Joueur non inscrit - l'informer immédiatement
-                this.sendChat(`👋 Hey ${nick} ! Rejoins www.psl-ranked.app pour participer à la ligue ranked`);
+                // Joueur non inscrit - l'informer immédiatement (langue selon dictionaryId)
+                const isEnglish = this.customRules?.dictionaryId === 'en';
+                const welcomeMsg = isEnglish 
+                  ? `📊 ${nick}, this is a PSL ranked match. Sign up at www.psl-ranked.app for your points to count! Join our Discord: discord.gg/JGHRNy6qRn`
+                  : `📊 ${nick}, cette partie est un match classé PSL. Inscris-toi sur www.psl-ranked.app pour que tes points comptent ! Rejoins le Discord : discord.gg/JGHRNy6qRn`;
+                this.sendChat(welcomeMsg);
               }
             }
           });
@@ -241,10 +246,12 @@ class JKLMBot {
 
     // Écouter les events du jeu
     this.gameSocket.on('setup', (data) => {
-      console.log('📋 Setup reçu!');
+      console.log('📋 [SETUP] Setup reçu!');
+      console.log(`📋 [SETUP] selfPeerId: ${data.selfPeerId}`);
+      console.log(`📋 [SETUP] selfRoles: ${JSON.stringify(data.selfRoles)}`);
       this.selfPeerId = data.selfPeerId;
       this.isLeader = data.selfRoles && data.selfRoles.includes('leader');
-      
+      console.log(`📋 [SETUP] isLeader déterminé: ${this.isLeader}`);
       // IMPORTANT: On ne rejoint PAS la manche pour rester spectateur
       // this.gameSocket.emit('joinRound');
 
@@ -258,15 +265,59 @@ class JKLMBot {
              this.gameSocket.emit('setRulesLocked', false); // false = menu ouvert = bloque le jeu
              
              // Timer de 60s pour forcer le démarrage même si certains joueurs manquent
+             // Avec messages d'avertissement à 30s et 50s
+             const isEnglish = this.customRules?.dictionaryId === 'en';
+             
+             // Message à 30 secondes
+             this.warningTimeout30 = setTimeout(() => {
+                 if (!this.allPlayersJoined && this.gameSocket?.connected) {
+                     const connectedCount = this.countConnectedExpectedPlayers();
+                     const totalExpected = this.expectedPlayers.length;
+                     const msg = isEnglish
+                       ? `⏳ 30 seconds remaining... (${connectedCount}/${totalExpected} players)`
+                       : `⏳ 30 secondes restantes... (${connectedCount}/${totalExpected} joueurs)`;
+                     this.sendChat(msg);
+                 }
+             }, 30_000);
+             
+             // Message à 50 secondes (10s avant fin)
+             this.warningTimeout50 = setTimeout(() => {
+                 if (!this.allPlayersJoined && this.gameSocket?.connected) {
+                     const connectedCount = this.countConnectedExpectedPlayers();
+                     const totalExpected = this.expectedPlayers.length;
+                     const msg = isEnglish
+                       ? `⚠️ 10 seconds remaining! (${connectedCount}/${totalExpected} players)`
+                       : `⚠️ 10 secondes restantes ! (${connectedCount}/${totalExpected} joueurs)`;
+                     this.sendChat(msg);
+                 }
+             }, 50_000);
+             
+             // Timeout final à 60 secondes
              this.lobbyTimeout = setTimeout(() => {
                  if (!this.allPlayersJoined && this.gameSocket?.connected && this.isLeader) {
                      const connectedCount = this.countConnectedExpectedPlayers();
                      const totalExpected = this.expectedPlayers.length;
+                     
+                     // Vérifier qu'il y a au moins 2 joueurs pour démarrer
+                     if (connectedCount < 2) {
+                         console.log(`❌ [TIMEOUT] Match annulé - seulement ${connectedCount} joueur(s) présent(s)`);
+                         const cancelMsg = isEnglish
+                           ? `❌ Match cancelled - not enough players (${connectedCount}/${totalExpected})`
+                           : `❌ Match annulé - pas assez de joueurs (${connectedCount}/${totalExpected})`;
+                         this.sendChat(cancelMsg);
+                         
+                         // Envoyer le callback d'annulation
+                         this.cancelMatch('timeout_not_enough_players');
+                         return;
+                     }
+                     
                      console.log(`⏰ [TIMEOUT] Démarrage forcé après 60s (${connectedCount}/${totalExpected} joueurs présents)`);
-                     this.sendChat(`⏰ Timeout ! Démarrage avec ${connectedCount}/${totalExpected} joueurs...`);
+                     const startMsg = isEnglish
+                       ? `⏰ Timeout! Starting with ${connectedCount}/${totalExpected} players...`
+                       : `⏰ Timeout ! Démarrage avec ${connectedCount}/${totalExpected} joueurs...`;
+                     this.sendChat(startMsg);
                      
                      this.allPlayersJoined = true; // Empêcher le démarrage normal
-                     // Note: les règles ont déjà été appliquées au setup, pas besoin de les ré-appliquer
                      console.log('🔓 Déverrouillage des règles (timeout)...');
                      this.gameSocket.emit('setRulesLocked', true);
                      console.log('📤 Envoi startRoundNow (timeout)...');
@@ -326,7 +377,11 @@ class JKLMBot {
         
         if (isExpected) {
           // Joueur inscrit et attendu - afficher le compteur de progression
-          this.sendChat(`✅ ${nick} a rejoint la partie ! (${connectedCount}/${totalExpected})`);
+          const isEnglish = this.customRules?.dictionaryId === 'en';
+          const joinedMsg = isEnglish
+            ? `✅ ${nick} joined the game! (${connectedCount}/${totalExpected})`
+            : `✅ ${nick} a rejoint la partie ! (${connectedCount}/${totalExpected})`;
+          this.sendChat(joinedMsg);
         }
         // Note: le message de bienvenue pour les non-inscrits est envoyé dans chatterAdded (lobby join)
       }
@@ -410,7 +465,11 @@ class JKLMBot {
     this.gameSocket.on('setMilestone', (milestone) => {
       if (milestone.lastRound?.winner) {
         console.log(`🏆 GAGNANT: ${milestone.lastRound.winner.nickname}`);
-        this.sendChat(`👑 VICTOIRE DE ${milestone.lastRound.winner.nickname} !`);
+        const isEnglish = this.customRules?.dictionaryId === 'en';
+        const victoryMsg = isEnglish
+          ? `👑 ${milestone.lastRound.winner.nickname} WINS!`
+          : `👑 VICTOIRE DE ${milestone.lastRound.winner.nickname} !`;
+        this.sendChat(victoryMsg);
         this.compileResults();
       }
     });
@@ -436,7 +495,8 @@ class JKLMBot {
     console.log('\n📊 RÉSULTATS:');
     
     // Afficher les scores dans le chat
-    this.sendChat('🏆 RÉSULTATS FINAUX:');
+    const isEnglish = this.customRules?.dictionaryId === 'en';
+    this.sendChat(isEnglish ? '🏆 FINAL RESULTS:' : '🏆 RÉSULTATS FINAUX:');
     
     sorted.forEach((p, i) => {
       console.log(`  ${i + 1}. ${p.nickname}: ${p.score} pts`, p.auth ? `(${p.auth.service}:${p.auth.id})` : '');
@@ -457,22 +517,28 @@ class JKLMBot {
     });
     
     if (this.callbackUrl) {
-        console.log(`📤 Envoi des résultats au callback: ${this.callbackUrl}`);
+        const callbackBody = { 
+            roomCode: this.roomCode,
+            scores: this.gameResults,
+            answers: this.matchAnswers,
+            category: this.category
+        };
+        console.log(`📤 [CALLBACK] Envoi des résultats au callback: ${this.callbackUrl}`);
+        console.log(`📤 [CALLBACK] Body:`, JSON.stringify(callbackBody, null, 2));
+        
         fetch(this.callbackUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                roomCode: this.roomCode,
-                scores: this.gameResults,
-                answers: this.matchAnswers,
-                category: this.category
-            })
-        }).then(res => {
-            console.log(`✅ Callback statut: ${res.status}`);
+            body: JSON.stringify(callbackBody)
+        }).then(async res => {
+            const responseText = await res.text();
+            console.log(`✅ [CALLBACK] Statut: ${res.status}`);
+            console.log(`✅ [CALLBACK] Réponse:`, responseText.substring(0, 500));
             this.disconnect();
             process.exit(0);
         }).catch(err => {
-            console.error('❌ Erreur callback:', err);
+            console.error('❌ [CALLBACK] Erreur:', err.message);
+            console.error('❌ [CALLBACK] Stack:', err.stack);
             this.disconnect();
             process.exit(1);
         });
@@ -488,6 +554,57 @@ class JKLMBot {
   disconnect() {
     this.roomSocket?.disconnect();
     this.gameSocket?.disconnect();
+  }
+
+  cancelMatch(reason) {
+    console.log(`❌ Annulation du match: ${reason}`);
+    
+    // Annuler tous les timers
+    if (this.lobbyTimeout) {
+      clearTimeout(this.lobbyTimeout);
+      this.lobbyTimeout = null;
+    }
+    if (this.warningTimeout30) {
+      clearTimeout(this.warningTimeout30);
+      this.warningTimeout30 = null;
+    }
+    if (this.warningTimeout50) {
+      clearTimeout(this.warningTimeout50);
+      this.warningTimeout50 = null;
+    }
+    
+    // Envoyer le callback d'annulation
+    if (this.callbackUrl) {
+      const cancelBody = {
+        roomCode: this.roomCode,
+        cancelled: true,
+        reason: reason,
+        category: this.category
+      };
+      console.log(`📤 [CANCEL] Envoi du callback d'annulation: ${this.callbackUrl}`);
+      console.log(`📤 [CANCEL] Body:`, JSON.stringify(cancelBody, null, 2));
+      
+      fetch(this.callbackUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cancelBody)
+      }).then(async res => {
+        const responseText = await res.text();
+        console.log(`✅ [CANCEL] Callback statut: ${res.status}`);
+        console.log(`✅ [CANCEL] Réponse:`, responseText.substring(0, 500));
+        this.disconnect();
+        process.exit(0);
+      }).catch(err => {
+        console.error('❌ [CANCEL] Erreur callback:', err.message);
+        console.error('❌ [CANCEL] Stack:', err.stack);
+        this.disconnect();
+        process.exit(1);
+      });
+    } else {
+      console.log('⚠️ Pas de callback URL configurée.');
+      this.disconnect();
+      process.exit(0);
+    }
   }
 
   setExpectedPlayers(players) {
@@ -575,54 +692,72 @@ class JKLMBot {
   checkExpectedPlayers() {
     if (this.expectedPlayers.length === 0 || this.allPlayersJoined) return;
 
-    // Construire la liste des joueurs présents avec leur auth
-    // On utilise auth.id car c'est l'ID Discord stocké dans la BD
-    const joinedPlayers = [...this.players.values()].map(p => ({
-      service: p.auth?.service?.toLowerCase() || 'unknown',
-      id: p.auth?.id || null,
-      username: p.auth?.username?.toLowerCase() || p.nickname.toLowerCase()
-    }));
+    // Utiliser findExpectedPlayer pour une logique de matching cohérente
+    // avec countConnectedExpectedPlayers
+    const joinedPlayers = [...this.players.values()];
+    
+    console.log(`🔍 [CHECK] Joueurs présents dans la partie:`);
+    joinedPlayers.forEach(p => console.log(`  - ${p.nickname} (auth: ${p.auth ? p.auth.service + ':' + p.auth.id : 'none'})`));
 
-    console.log(`🔍 Joueurs présents:`);
-    joinedPlayers.forEach(p => console.log(`  - ${p.service}:${p.username} (id: ${p.id})`));
+    // Trouver les joueurs attendus qui ne sont pas encore matchés
+    const missing = this.expectedPlayers.filter(exp => {
+      // Chercher parmi les joueurs présents un qui match cet expected player
+      const found = joinedPlayers.some(jp => {
+        const matched = this.findExpectedPlayer(jp.nickname, jp.auth);
+        // Si ce joueur match, vérifier que c'est LE MEME expected player
+        if (!matched) return false;
+        return matched.id === exp.id && matched.service === exp.service;
+      });
+      return !found;
+    });
 
-    // Vérifier quels joueurs attendus sont manquants
-    // On match sur service + id OU service + username (pour flexibilité)
-    const missing = this.expectedPlayers.filter(exp => 
-      !joinedPlayers.some(jp => {
-        if (jp.service !== exp.service) return false;
-        // Matcher par ID si disponible, sinon par username
-        if (exp.id && jp.id) return jp.id === exp.id;
-        return jp.username === exp.username?.toLowerCase();
-      })
-    );
-
-    console.log(`🔍 Attendus: ${this.expectedPlayers.length}, présents: ${joinedPlayers.length}, manquants: ${missing.length}`);
+    const connectedCount = this.expectedPlayers.length - missing.length;
+    console.log(`🔍 [CHECK] Attendus: ${this.expectedPlayers.length}, matchés: ${connectedCount}, manquants: ${missing.length}`);
     if (missing.length > 0) {
-      console.log(`⏳ Manquants:`);
-      missing.forEach(p => console.log(`  -Service: ${p.service}, ID: ${p.id}, Username: "${p.username}"`));
+      console.log(`⏳ [CHECK] Manquants:`);
+      missing.forEach(p => console.log(`  - Service: ${p.service}, ID: ${p.id}, Username: "${p.username}"`));
     }
 
     if (missing.length === 0) {
       this.allPlayersJoined = true;
       console.log('✅ Tous les joueurs attendus ont rejoint!');
       
-      // Annuler le timeout de démarrage forcé
+      // Annuler tous les timeouts
       if (this.lobbyTimeout) {
         clearTimeout(this.lobbyTimeout);
         this.lobbyTimeout = null;
+      }
+      if (this.warningTimeout30) {
+        clearTimeout(this.warningTimeout30);
+        this.warningTimeout30 = null;
+      }
+      if (this.warningTimeout50) {
+        clearTimeout(this.warningTimeout50);
+        this.warningTimeout50 = null;
       }
       
       // Déverrouiller les règles et lancer la partie
       setTimeout(() => {
         if (this.gameSocket?.connected) {
+          console.log(`🎮 [START] Tentative de démarrage... isLeader=${this.isLeader}, gameSocket.connected=${this.gameSocket?.connected}`);
+          
           if (this.isLeader) {
             // Note: les règles ont déjà été appliquées au setup, pas besoin de les ré-appliquer
-            console.log('🔓 Déverrouillage des règles...');
+            console.log('🔓 [START] Déverrouillage des règles (isLeader=true)...');
             this.gameSocket.emit('setRulesLocked', true); // true = menu fermé = permet le jeu
+            
+            console.log('📤 [START] Envoi startRoundNow (tous joueurs présents, isLeader=true)...');
+            this.gameSocket.emit('startRoundNow');
+          } else {
+            // Si on n'est pas leader, on ne peut pas démarrer - log l'erreur
+            console.error('❌ [START] IMPOSSIBLE de démarrer: le bot n\'est PAS leader!');
+            console.error('❌ [START] selfRoles probablement pas "leader". Vérifier la création de room.');
+            // Essayer quand même au cas où
+            console.log('📤 [START] Tentative de startRoundNow malgré tout...');
+            this.gameSocket.emit('startRoundNow');
           }
-          console.log('📤 Envoi startRoundNow (tous joueurs présents)...');
-          this.gameSocket.emit('startRoundNow');
+        } else {
+          console.error('❌ [START] gameSocket déconnecté, impossible de démarrer!');
         }
       }, 2000);
     }
@@ -636,17 +771,28 @@ class JKLMBot {
     console.log(`🔐 Mode vérification: en attente du code ${code}`);
   }
 
-  handleChatMessage(nickname, message) {
+  handleChatMessage(sender, message) {
     if (!this.verifyMode || !this.verifyCode) return;
 
     // Vérifier si le message contient le code attendu
     if (message.includes(this.verifyCode)) {
+      // Extraire les infos du sender
+      const nickname = (typeof sender === 'object' && sender) ? sender.nickname : sender;
+      const auth = (typeof sender === 'object' && sender) ? sender.auth : null;
+      
+      // Pour les comptes JKLM staff, auth.username est le username permanent ("Hyceman on JKLM.FUN")
+      // Alors que nickname est juste le pseudo d'affichage (peut changer)
+      const permanentUsername = auth?.service === 'jklm' && auth?.username ? auth.username : null;
+      
       console.log(`✅ Code ${this.verifyCode} trouvé de ${nickname}!`);
-      this.sendVerificationCallback(nickname);
+      console.log(`   auth: ${JSON.stringify(auth)}`);
+      console.log(`   username permanent: ${permanentUsername || 'N/A'}`);
+      
+      this.sendVerificationCallback(nickname, permanentUsername);
     }
   }
 
-  async sendVerificationCallback(nickname) {
+  async sendVerificationCallback(nickname, permanentUsername) {
     if (!this.callbackUrl) return;
 
     try {
@@ -656,12 +802,13 @@ class JKLMBot {
         body: JSON.stringify({
           code: this.verifyCode,
           nickname,
+          permanentUsername, // Nouveau champ: username permanent pour JKLM staff
           roomCode: this.roomCode
         })
       });
 
       if (response.ok) {
-        console.log(`✅ Vérification réussie pour ${nickname}!`);
+        console.log(`✅ Vérification réussie pour ${nickname} (permanent: ${permanentUsername || 'N/A'})!`);
         // Envoyer un message de confirmation
         this.roomSocket?.emit('chat', `✅ ${nickname}, ton compte JKLM est maintenant lié à PSL !`);
         // Attendre un peu puis quitter

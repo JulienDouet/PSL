@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { PlayCard } from "@/components/dashboard/play-card";
 import { DashboardCategoryMMR } from "@/components/dashboard/category-mmr";
 import { DashboardClient, DashboardDiscordCard, DashboardShortcuts } from "@/components/dashboard/dashboard-client";
+import { DashboardWrapper } from "@/components/dashboard/dashboard-wrapper";
+import { XPBar } from "@/components/dashboard/xp-bar";
 import { Navbar } from "@/components/navbar";
 import { prisma } from "@/lib/prisma";
 
@@ -44,28 +46,32 @@ export default async function DashboardPage() {
 
       <main className="pt-24 pb-12 px-4">
         <div className="container mx-auto max-w-6xl">
-          
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Left Column - MMR & Stats */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Player Header + Recent Matches (Client) */}
-              <DashboardClient 
-                displayName={displayName} 
-                userId={user.id} 
-                recentMatches={matchesForClient} 
-              />
-              
-              {/* MMR Par Catégorie */}
-              <DashboardCategoryMMR />
-            </div>
+          <DashboardWrapper>
+            <div className="grid lg:grid-cols-3 gap-6">
+              {/* Left Column - MMR & Stats */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Player Header + Recent Matches (Client) */}
+                <DashboardClient 
+                  displayName={displayName} 
+                  userId={user.id} 
+                  recentMatches={matchesForClient} 
+                />
 
-            {/* Right Column - Play */}
-            <div className="space-y-6">
-              <PlayCard />
-              <DashboardDiscordCard />
-              <DashboardShortcuts userId={user.id} />
+                {/* XP Bar - Progression vers le prochain rang */}
+                <XPBar />
+                
+                {/* MMR Par Catégorie */}
+                <DashboardCategoryMMR />
+              </div>
+
+              {/* Right Column - Play */}
+              <div className="space-y-6">
+                <PlayCard />
+                <DashboardDiscordCard />
+                <DashboardShortcuts userId={user.id} />
+              </div>
             </div>
-          </div>
+          </DashboardWrapper>
         </div>
       </main>
     </div>
