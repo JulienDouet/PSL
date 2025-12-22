@@ -120,8 +120,11 @@ Analyse comparative entre le fichier PSL_BRAINSTORM.md et l'implémentation actu
 | Feature | Status |
 |---------|--------|
 | Fonction `getRankProgress()` | ✅ Implémenté (lib/mmr.ts) |
-| Barre de progression visuelle sur profil | ❌ Non affiché dans l'UI |
-| "50 MMR → Diamant" | ❌ Non affiché |
+| Barre de progression visuelle sur dashboard | ✅ Implémenté (components/dashboard/xp-bar.tsx) |
+| "X MMR → Rang suivant" | ✅ Implémenté |
+| Sélecteur de catégorie | ✅ Implémenté |
+| Animations (glow, shimmer) | ✅ Implémenté |
+
 
 ---
 

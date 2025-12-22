@@ -26,15 +26,23 @@ export async function POST(req: Request) {
 
     const user = session.user as any;
 
-    // Récupérer les infos complètes de l'utilisateur (verification + accounts)
+    // Récupérer les infos complètes de l'utilisateur (verification + accounts + categoryMMR)
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      include: { accounts: true }
+      include: { 
+        accounts: true,
+        categoryMMRs: {
+          where: { category }
+        }
+      }
     });
 
     if (!dbUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+
+    // Récupérer le MMR de la catégorie (ou 1000 par défaut)
+    const categoryMMR = dbUser.categoryMMRs[0]?.mmr ?? 1000;
 
     // Déterminer le service et ID pour JKLM
     let authService = 'jklm';
@@ -61,18 +69,19 @@ export async function POST(req: Request) {
       }
     }
 
-    console.log(`📥 [QUEUE] User ${user.id} auth: ${authService}:${authId}`);
+    console.log(`📥 [QUEUE] User ${user.id} auth: ${authService}:${authId} | MMR ${category}: ${categoryMMR}`);
 
-    // Ajouter à la queue
+    // Ajouter à la queue avec le MMR de la catégorie
     const entry = {
       userId: user.id,
       nickname: user.displayName || user.name || 'Player',
       authService,
       authId,
       authUsername,
-      mmr: user.mmr || 1000,
+      mmr: categoryMMR, // MMR de la catégorie, pas le global
       joinedAt: new Date()
     };
+
 
     const status = joinQueue(entry, category);
 

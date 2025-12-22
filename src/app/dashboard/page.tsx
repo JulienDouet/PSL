@@ -5,6 +5,7 @@ import { PlayCard } from "@/components/dashboard/play-card";
 import { DashboardCategoryMMR } from "@/components/dashboard/category-mmr";
 import { DashboardClient, DashboardDiscordCard, DashboardShortcuts } from "@/components/dashboard/dashboard-client";
 import { DashboardWrapper } from "@/components/dashboard/dashboard-wrapper";
+import { XPBar } from "@/components/dashboard/xp-bar";
 import { Navbar } from "@/components/navbar";
 import { prisma } from "@/lib/prisma";
 
@@ -55,6 +56,9 @@ export default async function DashboardPage() {
                   userId={user.id} 
                   recentMatches={matchesForClient} 
                 />
+
+                {/* XP Bar - Progression vers le prochain rang */}
+                <XPBar />
                 
                 {/* MMR Par Catégorie */}
                 <DashboardCategoryMMR />
