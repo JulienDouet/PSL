@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRankProgress } from "@/lib/mmr";
 import { useTranslation } from "@/lib/i18n/context";
+import { useDashboardRefresh } from '@/lib/dashboard-context';
 
 // Emojis pour les catégories
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -27,6 +28,7 @@ export function DashboardCategoryMMR() {
   const [categoryMMRs, setCategoryMMRs] = useState<CategoryMMR[]>([]);
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
+  const { refreshKey } = useDashboardRefresh();
 
   useEffect(() => {
     async function fetchCategoryMMRs() {
@@ -42,7 +44,7 @@ export function DashboardCategoryMMR() {
       setLoading(false);
     }
     fetchCategoryMMRs();
-  }, []);
+  }, [refreshKey]); // Re-fetch quand refreshKey change
 
   // Filtrer les catégories avec des parties jouées
   const categoriesWithData = categoryMMRs.filter(c => c.gamesPlayed > 0);

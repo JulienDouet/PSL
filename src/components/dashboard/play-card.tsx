@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Copy, ExternalLink, Check, Users, Loader2, X, ChevronDown } from 'lucide-react';
 import { GAME_MODE_LIST, DEFAULT_MODE, getGameMode, type GameModeKey } from '@/lib/game-modes';
 import { useTranslation } from "@/lib/i18n/context";
+import { useDashboardRefresh } from '@/lib/dashboard-context';
 
 type QueueMode = 'idle' | 'searching' | 'matched';
 
@@ -28,6 +29,7 @@ export function PlayCard() {
 
   const currentGameMode = getGameMode(selectedGameMode);
   const { t } = useTranslation();
+  const { triggerRefresh } = useDashboardRefresh();
 
   // Demander la permission pour les notifications au montage
   useEffect(() => {
@@ -134,6 +136,8 @@ export function PlayCard() {
                 setMode('idle');
                 setMatchInfo(null);
                 stopPolling();
+                // Déclencher le refresh du dashboard (MMR + historique)
+                triggerRefresh();
               }
             }
           }

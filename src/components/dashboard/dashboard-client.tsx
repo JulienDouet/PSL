@@ -1,9 +1,11 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/context";
+import { useDashboardRefresh } from '@/lib/dashboard-context';
 
 // Emojis pour les catégories
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -30,11 +32,31 @@ interface MatchPlayer {
 interface DashboardClientProps {
   displayName: string;
   userId: string;
-  recentMatches: MatchPlayer[];
+  recentMatches: MatchPlayer[]; // Initial data from server
 }
 
-export function DashboardClient({ displayName, userId, recentMatches }: DashboardClientProps) {
+export function DashboardClient({ displayName, userId, recentMatches: initialMatches }: DashboardClientProps) {
   const { t } = useTranslation();
+  const { refreshKey } = useDashboardRefresh();
+  const [recentMatches, setRecentMatches] = useState<MatchPlayer[]>(initialMatches);
+
+  // Re-fetch matches when refreshKey changes (after a match ends)
+  useEffect(() => {
+    if (refreshKey === 0) return; // Skip initial render
+    
+    async function fetchMatches() {
+      try {
+        const res = await fetch('/api/user/recent-matches');
+        if (res.ok) {
+          const data = await res.json();
+          setRecentMatches(data.matches || []);
+        }
+      } catch (err) {
+        console.error('Error fetching recent matches:', err);
+      }
+    }
+    fetchMatches();
+  }, [refreshKey]);
 
   return (
     <>
