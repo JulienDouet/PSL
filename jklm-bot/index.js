@@ -246,10 +246,12 @@ class JKLMBot {
 
     // Écouter les events du jeu
     this.gameSocket.on('setup', (data) => {
-      console.log('📋 Setup reçu!');
+      console.log('📋 [SETUP] Setup reçu!');
+      console.log(`📋 [SETUP] selfPeerId: ${data.selfPeerId}`);
+      console.log(`📋 [SETUP] selfRoles: ${JSON.stringify(data.selfRoles)}`);
       this.selfPeerId = data.selfPeerId;
       this.isLeader = data.selfRoles && data.selfRoles.includes('leader');
-      
+      console.log(`📋 [SETUP] isLeader déterminé: ${this.isLeader}`);
       // IMPORTANT: On ne rejoint PAS la manche pour rester spectateur
       // this.gameSocket.emit('joinRound');
 
@@ -739,13 +741,25 @@ class JKLMBot {
       // Déverrouiller les règles et lancer la partie
       setTimeout(() => {
         if (this.gameSocket?.connected) {
+          console.log(`🎮 [START] Tentative de démarrage... isLeader=${this.isLeader}, gameSocket.connected=${this.gameSocket?.connected}`);
+          
           if (this.isLeader) {
             // Note: les règles ont déjà été appliquées au setup, pas besoin de les ré-appliquer
-            console.log('🔓 Déverrouillage des règles...');
+            console.log('🔓 [START] Déverrouillage des règles (isLeader=true)...');
             this.gameSocket.emit('setRulesLocked', true); // true = menu fermé = permet le jeu
+            
+            console.log('📤 [START] Envoi startRoundNow (tous joueurs présents, isLeader=true)...');
+            this.gameSocket.emit('startRoundNow');
+          } else {
+            // Si on n'est pas leader, on ne peut pas démarrer - log l'erreur
+            console.error('❌ [START] IMPOSSIBLE de démarrer: le bot n\'est PAS leader!');
+            console.error('❌ [START] selfRoles probablement pas "leader". Vérifier la création de room.');
+            // Essayer quand même au cas où
+            console.log('📤 [START] Tentative de startRoundNow malgré tout...');
+            this.gameSocket.emit('startRoundNow');
           }
-          console.log('📤 Envoi startRoundNow (tous joueurs présents)...');
-          this.gameSocket.emit('startRoundNow');
+        } else {
+          console.error('❌ [START] gameSocket déconnecté, impossible de démarrer!');
         }
       }, 2000);
     }
