@@ -8,8 +8,8 @@ import { GAME_MODE_LIST, DEFAULT_MODE, getGameMode, type GameModeKey } from '@/l
 import { useTranslation } from "@/lib/i18n/context";
 import { useDashboardRefresh } from '@/lib/dashboard-context';
 
-// 5 états : idle → searching → found → lobby → missed (si timeout)
-type QueueMode = 'idle' | 'searching' | 'found' | 'lobby' | 'missed';
+// 6 états : idle → searching → found → lobby → missed (si timeout) / results (après match)
+type QueueMode = 'idle' | 'searching' | 'found' | 'lobby' | 'missed' | 'results';
 
 interface EnrichedPlayer {
   id: string; // userId
@@ -27,6 +27,16 @@ interface MatchInfo {
   category: string;
 }
 
+interface MatchResult {
+  matchId: string;
+  placement: number;
+  playersCount: number;
+  mmrBefore: number;
+  mmrAfter: number;
+  mmrChange: number;
+  category: string;
+}
+
 export function PlayCard() {
   const [mode, setMode] = useState<QueueMode>('idle');
   const [selectedGameMode, setSelectedGameMode] = useState<GameModeKey>(DEFAULT_MODE);
@@ -39,6 +49,7 @@ export function PlayCard() {
   const [copied, setCopied] = useState(false);
   const [queueCounts, setQueueCounts] = useState<Record<string, number>>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const modeSelectorRef = useRef<HTMLDivElement>(null);
   const matchFoundRef = useRef<string | null>(null); // Track which match we already processed
@@ -177,26 +188,51 @@ export function PlayCard() {
                 }, 2500);
               }
             } else if (mode === 'lobby') {
+              // IMPORTANT: Vérifier d'abord si le match existe encore
+              // Si le match n'existe plus, c'est que la partie a commencé ou s'est terminée
+              if (!data.match && !data.inQueue) {
+                // Fetch le dernier résultat pour afficher l'écran post-match
+                try {
+                  const resultRes = await fetch('/api/user/latest-result');
+                  if (resultRes.ok) {
+                    const resultData = await resultRes.json();
+                    if (resultData.result) {
+                      // Résultat récent trouvé → afficher l'écran results
+                      setMatchResult(resultData.result);
+                      setMode('results');
+                      setMatchInfo(null);
+                      setMatchTimeoutRemaining(null);
+                      matchFoundRef.current = null;
+                      stopPolling();
+                      triggerRefresh();
+                      return;
+                    }
+                  }
+                } catch (err) {
+                  console.error('Error fetching latest result:', err);
+                }
+                
+                // Pas de résultat récent → retour en idle
+                setMode('idle');
+                setMatchInfo(null);
+                setMatchTimeoutRemaining(null);
+                matchFoundRef.current = null;
+                stopPolling();
+                triggerRefresh();
+                return;
+              }
+              
               // Mettre à jour le timeout restant
               if (data.matchTimeoutRemaining !== undefined) {
                 setMatchTimeoutRemaining(data.matchTimeoutRemaining);
                 
-                // Si timeout expiré, passer en mode "missed"
+                // Si timeout expiré ET le match existe toujours, passer en mode "missed"
+                // Cela signifie que le joueur n'a pas rejoint à temps
                 if (data.matchTimeoutRemaining <= 0) {
                   setMode('missed');
                   stopPolling();
                   return;
                 }
-              }
-              
-              // Vérifier si le match est toujours actif
-              if (!data.match && !data.inQueue) {
-                setMode('idle');
-                setMatchInfo(null);
-                setMatchTimeoutRemaining(null);
-                matchFoundRef.current = null; // Reset pour permettre un nouveau match
-                stopPolling();
-                triggerRefresh();
               }
             }
           }
@@ -565,9 +601,10 @@ export function PlayCard() {
             {/* Liste des joueurs */}
             <div className="space-y-3">
               {matchInfo.players.map((player, idx) => {
-                const isFirst = idx === 0;
-                const myMmr = matchInfo.players[0]?.mmr || 1000;
-                const levelIndicator = !isFirst ? getLevelIndicator(myMmr, player.mmr) : null;
+                const isMe = currentUserId && player.id === currentUserId;
+                const myPlayer = matchInfo.players.find(p => p.id === currentUserId);
+                const myMmr = myPlayer?.mmr || 1000;
+                const levelIndicator = !isMe ? getLevelIndicator(myMmr, player.mmr) : null;
                 
                 return (
                   <div 
@@ -575,7 +612,7 @@ export function PlayCard() {
                     className={`relative p-3 rounded-lg transition-all ${
                       player.isTopRanked 
                         ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border-2 border-amber-400/50 shadow-lg shadow-amber-400/20' 
-                        : isFirst 
+                        : isMe 
                           ? 'bg-primary/10 border border-primary/30'
                           : 'bg-secondary/30'
                     }`}
@@ -593,12 +630,12 @@ export function PlayCard() {
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
                           player.isTopRanked ? 'bg-amber-400/30' : 'bg-background'
                         }`}>
-                          {isFirst ? '👤' : '🎮'}
+                          {isMe ? '👤' : '🎮'}
                         </div>
                         <div>
                           <div className="font-bold flex items-center gap-2">
                             {player.nickname}
-                            {isFirst && <span className="text-xs text-muted-foreground">(toi)</span>}
+                            {isMe && <span className="text-xs text-muted-foreground">(toi)</span>}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {player.gamesPlayed} parties • {player.winrate}% WR
@@ -690,6 +727,114 @@ export function PlayCard() {
             >
               🔍 Rechercher un nouveau match
             </Button>
+          </div>
+        )}
+
+        {/* RESULTS - Résultats post-match avec jauge MMR animée */}
+        {mode === 'results' && matchResult && (
+          <div className="space-y-6 animate-in fade-in zoom-in duration-500">
+            {/* Placement Header */}
+            <div className="text-center py-4">
+              <div className="text-6xl mb-3 animate-bounce">
+                {matchResult.placement === 1 ? '🥇' : 
+                 matchResult.placement === 2 ? '🥈' : 
+                 matchResult.placement === 3 ? '🥉' : '🎮'}
+              </div>
+              <h3 className={`text-2xl font-black ${
+                matchResult.placement === 1 ? 'text-amber-400' :
+                matchResult.mmrChange >= 0 ? 'text-green-400' : 'text-red-400'
+              }`}>
+                {matchResult.placement === 1 ? 'VICTOIRE !' :
+                 matchResult.placement === 2 ? 'Bien joué !' :
+                 matchResult.placement === 3 ? 'Pas mal !' : 'Partie terminée'}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {matchResult.placement === 1 ? '1er' : `${matchResult.placement}${matchResult.placement === 2 ? 'ème' : 'ème'}`} / {matchResult.playersCount} joueurs
+              </p>
+            </div>
+
+            {/* MMR Gauge */}
+            <div className="bg-secondary/30 rounded-xl p-4 space-y-3">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">MMR</span>
+                <span className={`font-bold text-lg ${
+                  matchResult.mmrChange > 0 ? 'text-green-400' : 
+                  matchResult.mmrChange < 0 ? 'text-red-400' : 'text-muted-foreground'
+                }`}>
+                  {matchResult.mmrChange > 0 ? '+' : ''}{matchResult.mmrChange}
+                  {matchResult.mmrChange > 0 && ' 🔥'}
+                  {matchResult.mmrChange < 0 && ' 📉'}
+                </span>
+              </div>
+              
+              {/* Animated Progress Bar */}
+              <div className="relative h-4 bg-background rounded-full overflow-hidden">
+                {/* Background track */}
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-900/50 to-cyan-900/50" />
+                
+                {/* Animated fill - uses CSS animation */}
+                <div 
+                  className={`absolute inset-y-0 left-0 rounded-full transition-all duration-1000 ease-out ${
+                    matchResult.mmrChange >= 0 
+                      ? 'bg-gradient-to-r from-purple-500 to-cyan-400' 
+                      : 'bg-gradient-to-r from-red-600 to-red-400'
+                  }`}
+                  style={{
+                    // Animate width based on MMR (scale 0-2000 for visual)
+                    width: `${Math.min(100, Math.max(5, (matchResult.mmrAfter / 2000) * 100))}%`,
+                    animation: 'mmrGrow 1s ease-out forwards',
+                  }}
+                />
+                
+                {/* Glow effect on change */}
+                {matchResult.mmrChange !== 0 && (
+                  <div 
+                    className={`absolute inset-y-0 rounded-full blur-sm animate-pulse ${
+                      matchResult.mmrChange > 0 ? 'bg-green-400/30' : 'bg-red-400/30'
+                    }`}
+                    style={{
+                      left: `${Math.min(95, Math.max(0, ((matchResult.mmrBefore) / 2000) * 100))}%`,
+                      width: `${Math.abs(matchResult.mmrChange) / 20}%`,
+                    }}
+                  />
+                )}
+              </div>
+              
+              {/* MMR Values */}
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground">
+                  {matchResult.mmrBefore}
+                </span>
+                <span className="text-primary font-bold text-base">
+                  → {matchResult.mmrAfter}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2 pt-2">
+              <Button 
+                className="w-full bg-gradient-psl hover:opacity-90 h-12"
+                onClick={() => {
+                  setMode('idle');
+                  setMatchResult(null);
+                  handleJoinQueue();
+                }}
+              >
+                🔍 Nouveau match
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="w-full text-muted-foreground hover:text-white"
+                onClick={() => {
+                  setMode('idle');
+                  setMatchResult(null);
+                }}
+              >
+                Retour
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>

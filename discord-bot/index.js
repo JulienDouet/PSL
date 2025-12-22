@@ -20,8 +20,8 @@ const CONFIG = {
     'ANIME': process.env.DISCORD_CHANNEL_ANIME || '1452084152588439572',
     'FLAGS': process.env.DISCORD_CHANNEL_FLAGS || '1452084191712903363',
     // Fallback pour les modes sans canal dédié
-    'NOFILTER_FR': process.env.DISCORD_CHANNEL_GP_FR || '1451974366505074819',
-    'NOFILTER_EN': process.env.DISCORD_CHANNEL_MS_EN || '1452082516503695411',
+    'NOFILTER_FR': process.env.DISCORD_CHANNEL_NF_FR || '1451974366505074819',
+    'NOFILTER_EN': process.env.DISCORD_CHANNEL_NF_EN || '1452082516503695411',
   },
   
   // Mapping catégorie → rôle Discord
@@ -31,8 +31,8 @@ const CONFIG = {
     'ANIME': process.env.DISCORD_ROLE_ANIME || '1452079098972340307',
     'FLAGS': process.env.DISCORD_ROLE_FLAGS || '1452079158300643371',
     // Fallback pour les modes sans rôle dédié
-    'NOFILTER_FR': process.env.DISCORD_ROLE_GP_FR || '1452078988154634360',
-    'NOFILTER_EN': process.env.DISCORD_ROLE_MS_EN || '1452079050183938099',
+    'NOFILTER_FR': process.env.DISCORD_ROLE_NF_FR || '1452078988154634360',
+    'NOFILTER_EN': process.env.DISCORD_ROLE_NF_EN || '1452079050183938099',
   },
   
   // Labels pour les messages

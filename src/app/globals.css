@@ -116,7 +116,15 @@
     @apply bg-background text-foreground antialiased;
   }
   /* Cursor pointer global pour tous les éléments cliquables */
-  button, [role="button"], a, input[type="submit"], input[type="button"], [type="checkbox"], [type="radio"], select, .cursor-pointer {
+  button,
+  [role="button"],
+  a,
+  input[type="submit"],
+  input[type="button"],
+  [type="checkbox"],
+  [type="radio"],
+  select,
+  .cursor-pointer {
     cursor: pointer;
   }
 }
@@ -183,3 +191,17 @@
   }
 }
 
+/* MMR Gauge Animation for post-match results */
+@keyframes mmrGrow {
+  from {
+    width: 0%;
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-mmr-grow {
+  animation: mmrGrow 1s ease-out forwards;
+}
