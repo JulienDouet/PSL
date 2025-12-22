@@ -692,32 +692,30 @@ class JKLMBot {
   checkExpectedPlayers() {
     if (this.expectedPlayers.length === 0 || this.allPlayersJoined) return;
 
-    // Construire la liste des joueurs présents avec leur auth
-    // On utilise auth.id car c'est l'ID Discord stocké dans la BD
-    const joinedPlayers = [...this.players.values()].map(p => ({
-      service: p.auth?.service?.toLowerCase() || 'unknown',
-      id: p.auth?.id || null,
-      username: p.auth?.username?.toLowerCase() || p.nickname.toLowerCase()
-    }));
+    // Utiliser findExpectedPlayer pour une logique de matching cohérente
+    // avec countConnectedExpectedPlayers
+    const joinedPlayers = [...this.players.values()];
+    
+    console.log(`🔍 [CHECK] Joueurs présents dans la partie:`);
+    joinedPlayers.forEach(p => console.log(`  - ${p.nickname} (auth: ${p.auth ? p.auth.service + ':' + p.auth.id : 'none'})`));
 
-    console.log(`🔍 Joueurs présents:`);
-    joinedPlayers.forEach(p => console.log(`  - ${p.service}:${p.username} (id: ${p.id})`));
+    // Trouver les joueurs attendus qui ne sont pas encore matchés
+    const missing = this.expectedPlayers.filter(exp => {
+      // Chercher parmi les joueurs présents un qui match cet expected player
+      const found = joinedPlayers.some(jp => {
+        const matched = this.findExpectedPlayer(jp.nickname, jp.auth);
+        // Si ce joueur match, vérifier que c'est LE MEME expected player
+        if (!matched) return false;
+        return matched.id === exp.id && matched.service === exp.service;
+      });
+      return !found;
+    });
 
-    // Vérifier quels joueurs attendus sont manquants
-    // On match sur service + id OU service + username (pour flexibilité)
-    const missing = this.expectedPlayers.filter(exp => 
-      !joinedPlayers.some(jp => {
-        if (jp.service !== exp.service) return false;
-        // Matcher par ID si disponible, sinon par username
-        if (exp.id && jp.id) return jp.id === exp.id;
-        return jp.username === exp.username?.toLowerCase();
-      })
-    );
-
-    console.log(`🔍 Attendus: ${this.expectedPlayers.length}, présents: ${joinedPlayers.length}, manquants: ${missing.length}`);
+    const connectedCount = this.expectedPlayers.length - missing.length;
+    console.log(`🔍 [CHECK] Attendus: ${this.expectedPlayers.length}, matchés: ${connectedCount}, manquants: ${missing.length}`);
     if (missing.length > 0) {
-      console.log(`⏳ Manquants:`);
-      missing.forEach(p => console.log(`  -Service: ${p.service}, ID: ${p.id}, Username: "${p.username}"`));
+      console.log(`⏳ [CHECK] Manquants:`);
+      missing.forEach(p => console.log(`  - Service: ${p.service}, ID: ${p.id}, Username: "${p.username}"`));
     }
 
     if (missing.length === 0) {
