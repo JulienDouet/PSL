@@ -210,8 +210,8 @@ class JKLMBot {
                 // Joueur non inscrit - l'informer immédiatement (langue selon dictionaryId)
                 const isEnglish = this.customRules?.dictionaryId === 'en';
                 const welcomeMsg = isEnglish 
-                  ? `📊 ${nick}, this is a PSL ranked match. Sign up at psl-ranked.app for your points to count! Join our Discord: discord.gg/JGHRNy6qRn`
-                  : `📊 ${nick}, cette partie est un match classé PSL. Inscris-toi sur psl-ranked.app pour que tes points comptent ! Rejoins le Discord : discord.gg/JGHRNy6qRn`;
+                  ? `📊 ${nick}, this is a PSL ranked match. Sign up at www.psl-ranked.app for your points to count! Join our Discord: www.discord.gg/JGHRNy6qRn`
+                  : `📊 ${nick}, cette partie est un match classé PSL. Inscris-toi sur www.psl-ranked.app pour que tes points comptent ! Rejoins le Discord : www.discord.gg/JGHRNy6qRn`;
                 this.sendChat(welcomeMsg);
               }
             }
