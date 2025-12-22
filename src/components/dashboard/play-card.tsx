@@ -542,11 +542,11 @@ export function PlayCard() {
               <span className="text-2xl">{currentGameMode.emoji}</span>
               <h3 className="font-bold text-lg">{currentGameMode.label}</h3>
               
-              {/* Countdown timeout pour rejoindre */}
+              {/* Countdown timeout pour rejoindre (60s total) */}
               {matchTimeoutRemaining !== null && matchTimeoutRemaining > 0 && (
                 <div className={`mt-2 text-sm font-medium ${
-                  matchTimeoutRemaining <= 20 ? 'text-red-400 animate-pulse' : 
-                  matchTimeoutRemaining <= 45 ? 'text-amber-400' : 'text-muted-foreground'
+                  matchTimeoutRemaining <= 15 ? 'text-red-400 animate-pulse' : 
+                  matchTimeoutRemaining <= 30 ? 'text-amber-400' : 'text-muted-foreground'
                 }`}>
                   ⏱️ Rejoins le lobby dans {matchTimeoutRemaining}s
                 </div>
