@@ -12,6 +12,7 @@ import { useDashboardRefresh } from '@/lib/dashboard-context';
 type QueueMode = 'idle' | 'searching' | 'found' | 'lobby' | 'missed';
 
 interface EnrichedPlayer {
+  id: string; // userId
   nickname: string;
   mmr: number;
   gamesPlayed: number;
@@ -37,8 +38,10 @@ export function PlayCard() {
   const [matchTimeoutRemaining, setMatchTimeoutRemaining] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [queueCounts, setQueueCounts] = useState<Record<string, number>>({});
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const modeSelectorRef = useRef<HTMLDivElement>(null);
+  const matchFoundRef = useRef<string | null>(null); // Track which match we already processed
 
   const currentGameMode = getGameMode(selectedGameMode);
   const { t } = useTranslation();
@@ -142,6 +145,10 @@ export function PlayCard() {
               setQueueCounts(data.queueCounts);
             }
             
+            if (data.currentUserId) {
+              setCurrentUserId(data.currentUserId);
+            }
+            
             if (mode === 'searching') {
               setQueueCount(data.count || 0);
               setCountdown(data.countdown || null);
@@ -153,8 +160,9 @@ export function PlayCard() {
                 setQueuePlayers([]);
               }
               
-              if (data.match) {
-                // Match trouvé ! Passer en phase "found" (flash)
+              // Match trouvé ! Passer en phase "found" (flash) seulement si c'est un nouveau match
+              if (data.match && matchFoundRef.current !== data.match.roomCode) {
+                matchFoundRef.current = data.match.roomCode;
                 setMatchInfo({
                   roomCode: data.match.roomCode,
                   players: data.match.players || [],
@@ -186,6 +194,7 @@ export function PlayCard() {
                 setMode('idle');
                 setMatchInfo(null);
                 setMatchTimeoutRemaining(null);
+                matchFoundRef.current = null; // Reset pour permettre un nouveau match
                 stopPolling();
                 triggerRefresh();
               }
@@ -202,7 +211,7 @@ export function PlayCard() {
     }
 
     return () => stopPolling();
-  }, [mode]);
+  }, [mode]); // matchInfo retiré des deps pour éviter les boucles
 
   const stopPolling = () => {
     if (pollingRef.current) {
@@ -260,6 +269,7 @@ export function PlayCard() {
     setMode('idle');
     setQueueCount(0);
     setMatchInfo(null);
+    matchFoundRef.current = null; // Reset pour permettre un nouveau match
   };
 
   const copyLink = () => {
@@ -439,9 +449,10 @@ export function PlayCard() {
             {queuePlayers.length >= 2 && (
               <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 {queuePlayers.map((player, idx) => {
-                  const isFirst = idx === 0;
-                  const myMmr = queuePlayers[0]?.mmr || 1000;
-                  const levelIndicator = !isFirst ? getLevelIndicator(myMmr, player.mmr) : null;
+                  const isMe = currentUserId && player.id === currentUserId;
+                  const myPlayer = queuePlayers.find(p => p.id === currentUserId);
+                  const myMmr = myPlayer?.mmr || 1000;
+                  const levelIndicator = !isMe ? getLevelIndicator(myMmr, player.mmr) : null;
                   
                   return (
                     <div 
@@ -449,7 +460,7 @@ export function PlayCard() {
                       className={`relative p-2 rounded-lg transition-all ${
                         player.isTopRanked 
                           ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border border-amber-400/50' 
-                          : isFirst 
+                          : isMe 
                             ? 'bg-primary/10 border border-primary/30'
                             : 'bg-secondary/30'
                       }`}
@@ -466,12 +477,12 @@ export function PlayCard() {
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
                             player.isTopRanked ? 'bg-amber-400/30' : 'bg-background'
                           }`}>
-                            {isFirst ? '👤' : '🎮'}
+                            {isMe ? '👤' : '🎮'}
                           </div>
                           <div>
                             <div className="font-medium text-sm flex items-center gap-1">
                               {player.nickname}
-                              {isFirst && <span className="text-[10px] text-muted-foreground">(toi)</span>}
+                              {currentUserId && player.id === currentUserId && <span className="text-[10px] text-muted-foreground">(toi)</span>}
                             </div>
                             <div className="text-[10px] text-muted-foreground">
                               {player.gamesPlayed} parties • {player.winrate}% WR

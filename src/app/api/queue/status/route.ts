@@ -52,7 +52,7 @@ export async function GET(req: Request) {
     }
 
     // Enrichir les données des joueurs si un match existe
-    let enrichedStatus: any = { ...status, queueCounts: counts };
+    let enrichedStatus: any = { ...status, queueCounts: counts, currentUserId: session.user.id };
     
     if (status.match && status.match.players.length > 0) {
       // Match créé - enrichir les joueurs du match
@@ -91,6 +91,7 @@ export async function GET(req: Request) {
 
 // Enrichir les joueurs avec leurs stats pour le lobby pré-match
 interface EnrichedPlayer {
+  id: string; // userId pour identifier le joueur connecté
   nickname: string;
   mmr: number;
   gamesPlayed: number;
@@ -147,6 +148,7 @@ async function enrichMatchPlayers(players: any[], category: Category): Promise<E
     const rank = rankMap.get(p.userId) || 999;
     
     return {
+      id: p.userId,
       nickname: p.nickname,
       mmr: p.mmr,
       gamesPlayed,
