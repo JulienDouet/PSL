@@ -206,8 +206,12 @@ class JKLMBot {
                 // Le message sera envoyé quand il rejoindra la partie (addPlayer)
                 console.log(`✅ [LOBBY] ${nick} est inscrit (en attente qu'il rejoigne la partie)`);
               } else {
-                // Joueur non inscrit - l'informer immédiatement
-                this.sendChat(`👋 Hey ${nick} ! Rejoins www.psl-ranked.app pour participer à la ligue ranked`);
+                // Joueur non inscrit - l'informer immédiatement (langue selon dictionaryId)
+                const isEnglish = this.customRules?.dictionaryId === 'en';
+                const welcomeMsg = isEnglish 
+                  ? `📊 ${nick}, this is a PSL ranked match. Sign up at psl-ranked.app for your points to count!`
+                  : `📊 ${nick}, cette partie est un match classé PSL. Inscris-toi sur psl-ranked.app pour que tes points comptent !`;
+                this.sendChat(welcomeMsg);
               }
             }
           });
