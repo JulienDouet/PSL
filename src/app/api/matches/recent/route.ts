@@ -24,7 +24,7 @@ export async function GET(req: Request) {
         },
         take: 50,
         include: {
-            matchPlayers: {
+            players: {
                 orderBy: {
                     placement: 'asc'
                 },
@@ -50,10 +50,10 @@ export async function GET(req: Request) {
             id: match.id,
             roomCode: match.lobbyCode,
             category: match.category,
-            playerCount: match.matchPlayers.length,
+            playerCount: match.players.length,
             endedAt: match.endedAt?.toISOString(),
             durationSeconds,
-            players: match.matchPlayers.map(mp => ({
+            players: match.players.map(mp => ({
                 id: mp.userId,
                 nickname: mp.user.displayName || mp.user.name || 'Joueur',
                 placement: mp.placement,
@@ -72,3 +72,4 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
