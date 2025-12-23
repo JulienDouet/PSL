@@ -42,11 +42,14 @@ export async function POST(req: Request) {
     console.log(`🧹 Match ${roomCode} nettoyé de pendingMatches`);
 
     // 1. Créer le match en base
+    // startedAt est passé par le bot (timestamp de quand le match a été trouvé)
+    const startedAt = body.startedAt ? new Date(body.startedAt) : new Date();
+    
     const match = await prisma.match.create({
         data: {
             lobbyCode: roomCode,
             status: 'COMPLETED',
-            startedAt: new Date(Date.now() - 1000 * 60 * 5), // Approx 5 min ago
+            startedAt,
             endedAt: new Date(),
             category,
         }

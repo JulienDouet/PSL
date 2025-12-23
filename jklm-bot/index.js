@@ -33,6 +33,7 @@ class JKLMBot {
     this.callbackUrl = null;
     this.customRules = null; // Règles personnalisées (dictionaryId, scoreGoal, challengeDuration)
     this.category = 'GP';   // Catégorie du match (pour le callback)
+    this.startedAt = null;  // Timestamp de début du match (passé par --started-at)
   }
 
   generateUserToken() {
@@ -521,7 +522,8 @@ class JKLMBot {
             roomCode: this.roomCode,
             scores: this.gameResults,
             answers: this.matchAnswers,
-            category: this.category
+            category: this.category,
+            startedAt: this.startedAt  // Timestamp de début passé par le serveur
         };
         console.log(`📤 [CALLBACK] Envoi des résultats au callback: ${this.callbackUrl}`);
         console.log(`📤 [CALLBACK] Body:`, JSON.stringify(callbackBody, null, 2));
@@ -884,6 +886,12 @@ async function main() {
       if (args[i + 1]) {
         bot.category = args[i + 1];
         console.log('📂 Catégorie:', bot.category);
+        i++;
+      }
+    } else if (args[i] === '--started-at') {
+      if (args[i + 1]) {
+        bot.startedAt = args[i + 1];
+        console.log('⏱️ StartedAt:', bot.startedAt);
         i++;
       }
     } else if (args[i].startsWith('http')) {
