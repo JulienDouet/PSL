@@ -19,6 +19,7 @@ interface EnrichedPlayer {
   winrate: number;
   rank: number;
   isTopRanked: boolean;
+  currentStreak: number; // Win streak
 }
 
 interface MatchInfo {
@@ -557,6 +558,13 @@ export function PlayCard() {
                         <div className={`mt-1 flex items-center gap-1 text-[10px] ${levelIndicator.color}`}>
                           {levelIndicator.icon}
                           <span>{levelIndicator.label}</span>
+                        </div>
+                      )}
+                      
+                      {/* Streak indicator - opportunity for bonus MMR */}
+                      {player.currentStreak >= 3 && player.id !== currentUserId && (
+                        <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-400">
+                          🎯 <span>Streak x{player.currentStreak} - Casse-la pour bonus !</span>
                         </div>
                       )}
                     </div>

@@ -94,13 +94,15 @@ model Verification {
 // ============================================
 
 model UserCategoryMMR {
-  id          String   @id @default(cuid())
-  userId      String
-  category    Category
-  mmr         Int      @default(1000)
-  gamesPlayed Int      @default(0)
+  id            String   @id @default(cuid())
+  userId        String
+  category      Category
+  mmr           Int      @default(1000)
+  gamesPlayed   Int      @default(0)
+  currentStreak Int      @default(0)   // Current consecutive wins
+  bestStreak    Int      @default(0)   // All-time best streak
   
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@unique([userId, category])
 }

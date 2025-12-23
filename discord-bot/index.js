@@ -109,14 +109,20 @@ async function sendQueueNotification(category, playerName, queueCount, type = 'j
       return { success: false, reason: 'channel_not_found' };
     }
     
-    // Construire le message selon le type
+    // Detect if category is English
+    const isEnglish = category.includes('EN'); // MS_EN, NOFILTER_EN
+    
+    // Construire le message selon le type (anonyme + localisé)
     let message;
     if (type === 'match_ready') {
-      message = `🚀 **Match en préparation !** Une partie en **${label}** va bientôt commencer !\n\n` +
-                `<@&${roleId}> Rejoignez vite sur [psl-ranked.app](https://www.psl-ranked.app) ! (30s avant lancement)`;
+      message = isEnglish
+        ? `🚀 **Match starting!** A game in **${label}** is about to begin!\n\n<@&${roleId}> Join now on [psl-ranked.app](https://www.psl-ranked.app/dashboard)! (30s before launch)`
+        : `🚀 **Match en préparation !** Une partie en **${label}** va bientôt commencer !\n\n<@&${roleId}> Rejoignez vite sur [psl-ranked.app](https://www.psl-ranked.app/dashboard) ! (30s avant lancement)`;
     } else {
-      message = `🎮 **${playerName}** cherche une partie en **${label}** !\n\n` +
-                `<@&${roleId}> Rejoignez le matchmaking sur [psl-ranked.app](https://www.psl-ranked.app) !`;
+      // ANONYME: "Un joueur" au lieu du pseudo
+      message = isEnglish
+        ? `🎮 **A player** is looking for a match in **${label}**!\n\n<@&${roleId}> Join matchmaking on [psl-ranked.app](https://www.psl-ranked.app/dashboard)!`
+        : `🎮 **Un joueur** cherche une partie en **${label}** !\n\n<@&${roleId}> Rejoignez le matchmaking sur [psl-ranked.app](https://www.psl-ranked.app/dashboard) !`;
     }
     
     await channel.send(message);
@@ -126,7 +132,7 @@ async function sendQueueNotification(category, playerName, queueCount, type = 'j
       lastPingTime.set(category, Date.now());
     }
     
-    console.log(`✅ Notification ${type} envoyée: ${category} (${playerName})`);
+    console.log(`✅ Notification ${type} envoyée: ${category} (anonyme)`);
     return { success: true };
     
   } catch (err) {

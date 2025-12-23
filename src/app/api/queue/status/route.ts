@@ -98,6 +98,7 @@ interface EnrichedPlayer {
   winrate: number; // 0-100
   rank: number; // Position au leaderboard (1 = N°1)
   isTopRanked: boolean; // True si N°1 de la catégorie
+  currentStreak: number; // Current win streak
 }
 
 async function enrichMatchPlayers(players: any[], category: Category): Promise<EnrichedPlayer[]> {
@@ -146,6 +147,7 @@ async function enrichMatchPlayers(players: any[], category: Category): Promise<E
     const wins = winsMap.get(p.userId) || 0;
     const winrate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
     const rank = rankMap.get(p.userId) || 999;
+    const currentStreak = stats?.currentStreak || 0;
     
     return {
       id: p.userId,
@@ -154,7 +156,8 @@ async function enrichMatchPlayers(players: any[], category: Category): Promise<E
       gamesPlayed,
       winrate,
       rank,
-      isTopRanked: p.userId === topRankedUserId
+      isTopRanked: p.userId === topRankedUserId,
+      currentStreak
     };
   });
 }
