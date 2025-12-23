@@ -89,7 +89,7 @@ export const QUEUE_CONFIG = {
   MAX_PLAYERS: 10,
   LOBBY_TIMER_MS: 30_000, // 30 secondes d'attente avant match
   MATCH_TIMEOUT_MS: 60_000, // 60s - doit correspondre au timeout du bot dans jklm-bot/index.js
-  MATCH_MAX_AGE_MS: 15 * 60_000, // 15 minutes max - cleanup les matchs orphelins
+  MATCH_MAX_AGE_MS: 15 * 60_000, // 15 minutes max - fallback si le bot ne signale pas l'annulation
   QUEUE_TIMEOUT_MS: 5 * 60_000, // 5 min inactif = kick
   HEARTBEAT_TIMEOUT_MS: 15_000, // 15 secondes sans heartbeat = joueur inactif
   DISCORD_JOIN_COOLDOWN_MS: 3 * 60_000, // 3 minutes entre deux pings pour queue join

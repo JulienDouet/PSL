@@ -8,13 +8,33 @@ export async function POST(req: Request) {
     const body = await req.json();
     console.log('📥 [API] Callback reçu du bot:', JSON.stringify(body, null, 2));
 
-    const { roomCode, scores, category: rawCategory } = body;
+    const { roomCode, scores, category: rawCategory, cancelled, reason } = body;
     const category: Category = rawCategory || 'GP_FR';
 
-    // Validation basique
-    if (!roomCode || !scores || !Array.isArray(scores)) {
-        console.error('❌ Données invalides reçues');
-        return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
+    // Validation: roomCode toujours requis
+    if (!roomCode) {
+        console.error('❌ roomCode manquant');
+        return NextResponse.json({ error: 'Missing roomCode' }, { status: 400 });
+    }
+
+    // === CAS D'ANNULATION ===
+    // Le bot signale que le match a été annulé (personne n'a rejoint, timeout, etc.)
+    if (cancelled) {
+        console.log(`🚫 [API] Match ${roomCode} annulé: ${reason || 'Raison inconnue'}`);
+        clearMatch(roomCode);
+        console.log(`🧹 Match ${roomCode} nettoyé de pendingMatches (annulé)`);
+        return NextResponse.json({ 
+            success: true, 
+            message: 'Match cancelled and cleared',
+            roomCode,
+            reason 
+        });
+    }
+
+    // === CAS NORMAL: Résultats de match ===
+    if (!scores || !Array.isArray(scores)) {
+        console.error('❌ Données invalides reçues (pas de scores)');
+        return NextResponse.json({ error: 'Invalid data: missing scores' }, { status: 400 });
     }
 
     // Nettoyer le match des pendingMatches (libère les joueurs du mode "matched")
