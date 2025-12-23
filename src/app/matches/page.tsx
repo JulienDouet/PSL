@@ -25,6 +25,7 @@ interface RecentMatchPlayer {
   nickname: string;
   placement: number;
   mmrChange: number;
+  mmrBefore: number;
   score: number;
 }
 
@@ -35,6 +36,10 @@ interface RecentMatch {
   playerCount: number;
   endedAt: string;
   durationSeconds: number;
+  avgMmr: number;
+  mmrSpread: number;
+  isUpset: boolean;
+  winnerStreak: number;
   players: RecentMatchPlayer[];
 }
 
@@ -326,20 +331,32 @@ export default function MatchesPage() {
                         </div>
                         
                         <div className="flex items-center justify-between w-full sm:w-auto sm:gap-4">
-                            {/* Vainqueur condensed */}
-                            <div className="flex items-center gap-2 max-w-[70%] sm:max-w-none">
+                            {/* Winner + badges */}
+                            <div className="flex items-center gap-2 max-w-[70%] sm:max-w-none flex-wrap">
                                 <span className="text-xl">🏆</span>
                                 <span className="font-bold text-amber-400 truncate">
-                                    {match.players.find(p => p.placement === 1)?.nickname || 'Unkown'}
+                                    {match.players.find(p => p.placement === 1)?.nickname || 'Unknown'}
                                 </span>
+                                {/* Upset badge */}
+                                {match.isUpset && (
+                                  <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs font-medium">
+                                    ⚡ Upset!
+                                  </span>
+                                )}
+                                {/* Streak badge */}
+                                {match.winnerStreak >= 2 && (
+                                  <span className="text-amber-400 text-xs">
+                                    🔥 {match.winnerStreak}
+                                  </span>
+                                )}
                             </div>
 
                           <div className="text-right hidden sm:block whitespace-nowrap">
                             <div className="text-sm text-muted-foreground">
-                              {match.playerCount} Joueurs
+                              {match.playerCount} Joueurs • Ø{match.avgMmr}
                             </div>
                             <div className="text-xs text-muted-foreground/70">
-                              ⏱️ {formatDuration(match.durationSeconds)}
+                              ⏱️ {formatDuration(match.durationSeconds)} • ±{match.mmrSpread} MMR
                             </div>
                           </div>
                           
