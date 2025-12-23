@@ -84,7 +84,14 @@ export const en = {
       play: "Play",
       cancel: "Cancel",
       in_queue: "{count} searching",
-      streak_opportunity: "Streak x{n} - Break it for bonus!"
+      streak_opportunity: "Streak x{n} - Break it for bonus!",
+      waiting_players: "Match starts when 2 players are ready",
+      player_stats: "{games} games • {winrate}% WR",
+      you: "you",
+      ranking: "ranking",
+      room_code: "Room Code",
+      notification_title: "🎮 Match found!",
+      notification_body: "Room {code} - Click to join"
     },
     discord_card: {
       title: "Join the Community",

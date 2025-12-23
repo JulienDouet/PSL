@@ -84,7 +84,14 @@ export const fr = {
       play: "Rejoindre la partie",
       cancel: "Annuler",
       in_queue: "{count} en recherche",
-      streak_opportunity: "Streak x{n} - Casse-la pour bonus !"
+      streak_opportunity: "Streak x{n} - Casse-la pour bonus !",
+      waiting_players: "La partie démarre dès que 2 joueurs sont prêts",
+      player_stats: "{games} parties • {winrate}% WR",
+      you: "toi",
+      ranking: "classement",
+      room_code: "Code Room",
+      notification_title: "🎮 Match trouvé !",
+      notification_body: "Room {code} - Clique pour rejoindre"
     },
     discord_card: {
       title: "Rejoins la communauté",
