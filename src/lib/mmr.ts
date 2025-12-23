@@ -4,16 +4,19 @@ export interface PlayerResult {
   score: number;
   placement: number;
   gamesPlayed: number; // For calibration
+  winStreak?: number;  // Current win streak (optional, 0 if not provided)
 }
 
 export const MMR_CONFIG = {
   DECAY: 500,           // Diviseur exponentiel pour le poids (plus petit = plus sélectif)
-  PROXIMITY_POWER: 2,   // Puissance de la courbe de réduction de pénalité
-  SCORE_THRESHOLD: 110, // Score en dessous duquel la pénalité est maximale
-  K_FACTOR: 32,         // Facteur K standard
+  PROXIMITY_POWER: 4,   // Puissance de la courbe de réduction (plus haut = moins de protection)
+  SCORE_THRESHOLD: 140, // Score en dessous duquel la pénalité est maximale (très strict)
+  K_FACTOR: 40,         // Facteur K augmenté (avant: 32) pour plus d'enjeux
   MIN_CHANGE: 1,        // Changement minimum garanti (sauf cas nul)
   CALIBRATION_GAMES: 5, // Nombre de parties de calibration
-  CALIBRATION_MULT: 2.0 // Multiplicateur pendant la calibration
+  CALIBRATION_MULT: 2.0, // Multiplicateur pendant la calibration
+  WINSTREAK_BONUS: 0.10, // +10% par victoire consécutive
+  WINSTREAK_CAP: 5,      // Bonus max à 5 victoires (+50%)
 };
 
 /**
@@ -26,137 +29,116 @@ export function getWeight(mmr1: number, mmr2: number): number {
 }
 
 /**
- * Calcule le facteur de réduction de pénalité en cas de défaite.
- * Si le score est proche du vainqueur (150), la pénalité est réduite.
+ * Facteur de proximité de score - DÉSACTIVÉ.
+ * Retourne toujours 1.0 (aucune réduction de pénalité).
  */
-export function getScoreProximityFactor(score: number, winnerScore = 150): number {
-  // En dessous du seuil -> pénalité complète
-  if (score < MMR_CONFIG.SCORE_THRESHOLD) {
-    return 1.0;
-  }
-  
-  // Ratio par rapport au score gagnant (ex: 140/150 = 0.93)
-  const ratio = score / winnerScore;
-  
-  // Facteur de réduction
-  // Formule: 1 - (ratio^POWER) * 0.5
-  // Ex: 1 - (0.93^2 * 0.5) = 1 - 0.43 = 0.57 (pénalité réduite à 57%)
-  const factor = 1 - Math.pow(ratio, MMR_CONFIG.PROXIMITY_POWER) * 0.5;
-  
-  // On ne réduit jamais en dessous de 50% de la pénalité (pour garder un enjeu)
-  return Math.max(0.5, factor);
+export function getScoreProximityFactor(_score: number, _winnerScore = 150): number {
+  // Protection désactivée - pénalité complète peu importe le score
+  return 1.0;
 }
 
 /**
  * Calcule le changement de MMR pour un joueur donné.
- * Utilise une comparaison par paire avec tous les autres joueurs.
+ * 
+ * NOUVEAU MODÈLE (Winner-Centric):
+ * - Non-gagnants: comparés uniquement au 1er (score ratio + MMR diff)
+ * - Gagnant: gain basé sur le meilleur adversaire (plus haut MMR)
  */
 export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResult[]): number {
-  let totalChange = 0;
-  let totalWeight = 0;
-  let sumOpponentMMR = 0;
-  
   const opponents = allPlayers.filter(p => p.id !== player.id);
   
-  // Si le joueur est seul (ne devrait pas arriver), 0
+  // Si le joueur est seul, pas de changement
   if (opponents.length === 0) return 0;
 
-  for (const opponent of opponents) {
-    sumOpponentMMR += opponent.mmr;
+  // Trouver le winner et son score
+  const winner = allPlayers.find(p => p.placement === 1);
+  if (!winner) return 0;
 
-    // 1. Poids du duel basé sur l'écart de niveau
-    let weight = getWeight(player.mmr, opponent.mmr);
+  let change = 0;
+
+  if (player.placement === 1) {
+    // === WINNER: gain basé sur le meilleur adversaire ===
+    const bestOpponentMMR = Math.max(...opponents.map(o => o.mmr));
     
-    // 2. Probabilité de victoire attendue (Elo standard)
-    const mmrDiff = opponent.mmr - player.mmr; 
-    const expectedWin = 1 / (1 + Math.pow(10, mmrDiff / 400));
+    // Probabilité attendue de battre le meilleur adversaire
+    const expected = 1 / (1 + Math.pow(10, (bestOpponentMMR - player.mmr) / 400));
     
-    // 3. Résultat réel
-    let actual = 0;
-    if (player.placement < opponent.placement) {
-        actual = 1; // Victoire
-    } else if (player.placement > opponent.placement) {
-        actual = 0; // Défaite
-    } else {
-        actual = 0.5; // Ex aequo
+    // Victoire = 1
+    change = MMR_CONFIG.K_FACTOR * (1 - expected);
+    
+    // Bonus si on a battu un adversaire significativement plus fort
+    if (bestOpponentMMR > player.mmr + 100) {
+      const diff = bestOpponentMMR - player.mmr;
+      const upsetBonus = 1 + Math.pow(diff / 800, 2);
+      change *= upsetBonus;
     }
-
-    // ASYMMETRIC WEIGHTING & PUNISHMENT/REWARD:
-    // Si l'issue est "logique" (High bat Low), poids normal (calculé par decay).
-    // Si l'issue est "illogique" (Low bat High OU High perd contre Low), poids forcés et boostés.
-    // SEULEMENT si l'écart est significatif (> 100 points)
-    // Bonus pour avoir battu un joueur mieux classé
-    const UPSET_THRESHOLD = 100;
-
-    // Cas 1: PÉNALITÉ (High perd contre Low)
-    if (actual === 0 && opponent.mmr < (player.mmr - UPSET_THRESHOLD)) {
-        weight = 1.0;
-        const diff = player.mmr - opponent.mmr;
-        const multiplier = 1 + Math.pow(diff / 800, 2);
-        totalChange += weight * (MMR_CONFIG.K_FACTOR * multiplier) * (actual - expectedWin);
-    } 
-    // Cas 2: RÉCOMPENSE (Low bat High)
-    else if (actual === 1 && opponent.mmr > (player.mmr + UPSET_THRESHOLD)) {
-        weight = 1.0;
-        const diff = opponent.mmr - player.mmr;
-        const multiplier = 1 + Math.pow(diff / 800, 2);
-        totalChange += weight * (MMR_CONFIG.K_FACTOR * multiplier) * (actual - expectedWin);
+    
+    // === WINSTREAK BONUS ===
+    // +10% par victoire consécutive, max +50% (5 wins)
+    const winStreak = player.winStreak || 0;
+    if (winStreak > 0) {
+      const streakBonus = 1 + Math.min(winStreak, MMR_CONFIG.WINSTREAK_CAP) * MMR_CONFIG.WINSTREAK_BONUS;
+      change *= streakBonus;
     }
-    // Cas 3: Normal
-    else {
-        totalChange += weight * MMR_CONFIG.K_FACTOR * (actual - expectedWin);
+  } else {
+    // === NON-WINNER: perte basée sur comparaison avec le winner ===
+    
+    // 1. Ratio de score par rapport au winner (0 à ~1)
+    const scoreRatio = Math.min(1, player.score / winner.score);
+    
+    // 2. Score "virtuel" pour le calcul Elo
+    // Un perdant avec un bon score a un actual légèrement plus élevé
+    // Max 0.15 pour un perdant qui était très proche, min 0 pour score nul
+    const actual = scoreRatio * 0.15;  // Réduit de 0.35 à 0.15
+    
+    // 3. Probabilité attendue de battre le winner
+    const expected = 1 / (1 + Math.pow(10, (winner.mmr - player.mmr) / 400));
+    
+    // 4. Changement de base
+    change = MMR_CONFIG.K_FACTOR * (actual - expected);
+    
+    // 5. Pénalité si on était favori (MMR > winner)
+    if (player.mmr > winner.mmr + 100) {
+      const diff = player.mmr - winner.mmr;
+      const penaltyMultiplier = 1 + Math.pow(diff / 600, 2);
+      change *= penaltyMultiplier;
     }
-
-    totalWeight += weight;
   }
-  
-  // Normalisation
-  let result = 0;
-  if (totalWeight > 0) {
-      result = totalChange / totalWeight;
-  }
-  
 
-  // Calibration: Boost si nouveau joueur
+  // === CALIBRATION: Boost pour nouveaux joueurs ===
   if (player.gamesPlayed < MMR_CONFIG.CALIBRATION_GAMES) {
-      result *= MMR_CONFIG.CALIBRATION_MULT;
+    change *= MMR_CONFIG.CALIBRATION_MULT;
   }
 
-  // Appliquer le facteur de proximité de score (seulement si perte MMR)
-  if (result < 0) {
-    let proximityFactor = getScoreProximityFactor(player.score);
+  // === SCORE PROXIMITY: Réduction de pénalité si proche du winner ===
+  if (change < 0 && player.placement > 1) {
+    const proximityFactor = getScoreProximityFactor(player.score, winner.score);
     
-    // PENALTY FOR FAVORITES:
-    // Si on était favori (MMR supérieur à la moyenne), on réduit la protection du score.
-    // Plus on est fort par rapport aux autres, moins on a d'excuse.
-    const avgOpponentMMR = sumOpponentMMR / opponents.length;
-    if (player.mmr > avgOpponentMMR) {
-        // Différence positive
-        const advantage = player.mmr - avgOpponentMMR;
-        // On réduit le facteur (le rapproche de 1.0)
-        // Ex: advantage 500 => lerp vers 1.0 à 100%
-        // Ex: advantage 0 => ne touche pas
-        const penaltyRatio = Math.min(1, advantage / 500); 
-        // proximityFactor de base est genre 0.5 (protection)
-        // On veut le rapprocher de 1.0 (pas de protection)
-        proximityFactor = proximityFactor + (1.0 - proximityFactor) * penaltyRatio;
+    // Réduire la protection si on était favori
+    let adjustedFactor = proximityFactor;
+    if (player.mmr > winner.mmr) {
+      const advantage = player.mmr - winner.mmr;
+      const penaltyRatio = Math.min(1, advantage / 500);
+      adjustedFactor = proximityFactor + (1.0 - proximityFactor) * penaltyRatio;
     }
-
-    result *= proximityFactor;
-  }
-  
-  let finalChange = Math.round(result);
-  
-  // Plancher : min ±1 point
-  if (finalChange === 0 && Math.abs(result) > 0) {
-      finalChange = result > 0 ? 1 : -1;
-  } else if (finalChange === 0 && player.placement === 1) {
-      finalChange = 1; 
+    
+    change *= adjustedFactor;
   }
 
-  // PLAFOND : max ±50 points
-  if (finalChange > 50) finalChange = 50;
-  if (finalChange < -50) finalChange = -50;
+  // === ARRONDI ET LIMITES ===
+  let finalChange = Math.round(change);
+  
+  // RÈGLE: Les non-gagnants perdent TOUJOURS du MMR (au moins -1)
+  if (player.placement > 1 && finalChange >= 0) {
+    finalChange = -1;
+  }
+  
+  // Plancher: le winner gagne toujours au moins 1
+  if (finalChange === 0 && player.placement === 1) {
+    finalChange = 1;
+  }
+
+  // Pas de plafond - les changements sont illimités
   
   return finalChange;
 }

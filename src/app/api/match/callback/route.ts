@@ -128,14 +128,32 @@ export async function POST(req: Request) {
             const currentMMR = catMMRData?.mmr ?? 1000;
             const gamesPlayed = catMMRData?.gamesPlayed ?? 0;
 
-            console.log(`👤 ${user.name} - MMR ${category}: ${currentMMR} (${gamesPlayed} games)`);
+            // Calculer le winstreak actuel (victoires consécutives récentes)
+            const recentMatches = await prisma.matchPlayer.findMany({
+                where: { userId: user.id, match: { category } },
+                orderBy: { match: { createdAt: 'desc' } },
+                take: 10, // Regarder les 10 derniers matchs max
+                select: { placement: true }
+            });
+            
+            let winStreak = 0;
+            for (const mp of recentMatches) {
+                if (mp.placement === 1) {
+                    winStreak++;
+                } else {
+                    break; // Streak cassé
+                }
+            }
+
+            console.log(`👤 ${user.name} - MMR ${category}: ${currentMMR} (${gamesPlayed} games, ${winStreak} winstreak)`);
 
             playersForCalculation.push({
                 id: user.id,
                 mmr: currentMMR,
                 score: scoreData.score,
                 placement: scoreData.placement,
-                gamesPlayed: gamesPlayed
+                gamesPlayed: gamesPlayed,
+                winStreak: winStreak
             });
             userMap.set(user.id, user);
             nicknameToUser.set(scoreData.nickname, user.id);

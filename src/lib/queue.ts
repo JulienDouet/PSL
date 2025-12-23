@@ -89,6 +89,7 @@ export const QUEUE_CONFIG = {
   MAX_PLAYERS: 10,
   LOBBY_TIMER_MS: 30_000, // 30 secondes d'attente avant match
   MATCH_TIMEOUT_MS: 60_000, // 60s - doit correspondre au timeout du bot dans jklm-bot/index.js
+  MATCH_MAX_AGE_MS: 15 * 60_000, // 15 minutes max - cleanup les matchs orphelins
   QUEUE_TIMEOUT_MS: 5 * 60_000, // 5 min inactif = kick
   HEARTBEAT_TIMEOUT_MS: 15_000, // 15 secondes sans heartbeat = joueur inactif
   DISCORD_JOIN_COOLDOWN_MS: 3 * 60_000, // 3 minutes entre deux pings pour queue join
@@ -440,7 +441,43 @@ export function startHeartbeatCleanup(): void {
   
   cleanupInterval = setInterval(() => {
     cleanupInactiveUsers();
+    cleanupOrphanedMatches(); // Aussi nettoyer les matchs orphelins
   }, 5000);
+}
+
+/**
+ * Nettoie les matchs orphelins (trop vieux, probablement jamais terminés).
+ * Un match est considéré orphelin s'il a plus de MATCH_MAX_AGE_MS.
+ * @returns Le nombre de matchs supprimés
+ */
+export function cleanupOrphanedMatches(): number {
+  const now = Date.now();
+  let removed = 0;
+
+  for (const [roomCode, match] of pendingMatches.entries()) {
+    const matchAge = now - match.createdAt.getTime();
+    
+    if (matchAge > QUEUE_CONFIG.MATCH_MAX_AGE_MS) {
+      console.log(`🧹 [CLEANUP] Match orphelin ${roomCode} supprimé (age: ${Math.round(matchAge / 60000)} min)`);
+      
+      // Nettoyer les références des joueurs
+      match.players.forEach(p => userMatches.delete(p.userId));
+      pendingMatches.delete(roomCode);
+      
+      // Kill le bot si encore actif
+      if (match.botPid) {
+        try {
+          process.kill(match.botPid, 'SIGTERM');
+        } catch (e) {
+          // Bot déjà mort, ignorer
+        }
+      }
+      
+      removed++;
+    }
+  }
+
+  return removed;
 }
 
 export function stopHeartbeatCleanup(): void {
