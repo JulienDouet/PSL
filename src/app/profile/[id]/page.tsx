@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar } from "@/components/navbar";
 
 import { CategoryStats } from "@/components/profile/category-stats";
@@ -14,19 +12,21 @@ interface ProfilePageProps {
 export default async function ProfilePage({ params }: ProfilePageProps) {
   const { id } = await params;
 
-  // Récupérer l'utilisateur avec ses MMR par catégorie
+  // Récupérer l'utilisateur avec ses MMR par catégorie et matchs
   const user = await prisma.user.findUnique({
     where: { id },
     include: {
       categoryMMRs: true,
       matchPlayers: {
         orderBy: { match: { createdAt: 'desc' } },
-        take: 50, // Plus de matchs pour le filtrage par catégorie
+        take: 50,
         include: {
           match: {
             select: {
               category: true,
-              createdAt: true
+              createdAt: true,
+              startedAt: true,
+              endedAt: true
             }
           }
         }
@@ -40,12 +40,28 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
   const displayName = user.displayName || user.name || "Joueur";
 
+  // Trouver la meilleure catégorie (plus haut MMR)
+  const bestCategory = user.categoryMMRs.length > 0
+    ? user.categoryMMRs.reduce((best, curr) => curr.mmr > best.mmr ? curr : best)
+    : null;
+
+  // Calculer le temps total joué (en secondes)
+  const totalPlayTimeMs = user.matchPlayers.reduce((total, mp) => {
+    if (mp.match.startedAt && mp.match.endedAt) {
+      return total + (new Date(mp.match.endedAt).getTime() - new Date(mp.match.startedAt).getTime());
+    }
+    return total;
+  }, 0);
+  const totalPlayTimeSeconds = Math.floor(totalPlayTimeMs / 1000);
 
   // Préparer les données pour le composant client
   const categoryMMRsData = user.categoryMMRs.map(c => ({
     category: c.category,
     mmr: c.mmr,
-    gamesPlayed: c.gamesPlayed
+    gamesPlayed: c.gamesPlayed,
+    currentStreak: c.currentStreak,
+    bestStreak: c.bestStreak,
+    mmrPeak: c.mmrPeak
   }));
 
   const matchPlayersData = user.matchPlayers.map(mp => ({
@@ -53,11 +69,26 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     placement: mp.placement,
     points: mp.points,
     mmrChange: mp.mmrChange,
+    mmrAfter: mp.mmrAfter,
     match: {
       category: mp.match.category,
       createdAt: mp.match.createdAt.toISOString()
     }
   }));
+
+  // Données pour le header
+  const headerData = {
+    displayName,
+    image: user.image,
+    createdAt: user.createdAt.toISOString(),
+    totalPlayTimeSeconds,
+    bestCategory: bestCategory ? {
+      category: bestCategory.category,
+      mmr: bestCategory.mmr,
+      currentStreak: bestCategory.currentStreak,
+      bestStreak: bestCategory.bestStreak
+    } : null
+  };
 
   return (
     <div className="min-h-screen">
@@ -66,7 +97,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       <main className="pt-24 pb-12 px-4">
         <div className="container mx-auto max-w-4xl">
           {/* Profile Header */}
-          <ProfileHeader displayName={displayName} image={user.image} />
+          <ProfileHeader {...headerData} />
 
           {/* Stats par catégorie avec onglets */}
           <CategoryStats 

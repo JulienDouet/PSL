@@ -12,9 +12,6 @@ export async function GET(req: Request) {
         headers: await headers(),
     });
 
-    // TODO: Ajouter une vérification admin si nécessaire pour voir TOUS les matchs ?
-    // Pour l'instant on laisse public comme le leaderboard.
-
     const matches = await prisma.match.findMany({
         where: {
             status: 'COMPLETED'
@@ -31,6 +28,7 @@ export async function GET(req: Request) {
                 include: {
                     user: {
                         select: {
+                            id: true,
                             displayName: true,
                             name: true,
                             image: true
@@ -41,10 +39,57 @@ export async function GET(req: Request) {
         }
     });
 
+    // Fetch winner streaks for all winners in one query
+    const winnerIds = matches
+      .map(m => m.players.find(p => p.placement === 1)?.userId)
+      .filter((id): id is string => !!id);
+    
+    const winnerCategories = matches.map(m => ({
+      oderId: m.players.find(p => p.placement === 1)?.userId,
+      category: m.category
+    }));
+
+    // Batch fetch streaks
+    const streakData = await prisma.userCategoryMMR.findMany({
+      where: {
+        userId: { in: winnerIds }
+      },
+      select: {
+        userId: true,
+        category: true,
+        currentStreak: true
+      }
+    });
+
+    // Create lookup map
+    const streakMap = new Map<string, number>();
+    streakData.forEach(s => {
+      streakMap.set(`${s.userId}-${s.category}`, s.currentStreak);
+    });
+
     const recentMatches = matches.map(match => {
         const durationSeconds = match.endedAt && match.startedAt 
             ? Math.floor((match.endedAt.getTime() - match.startedAt.getTime()) / 1000)
             : 0;
+        
+        // Calculate stats
+        const mmrValues = match.players.map(p => p.mmrBefore);
+        const avgMmr = mmrValues.length > 0 
+          ? Math.round(mmrValues.reduce((sum, v) => sum + v, 0) / mmrValues.length)
+          : 0;
+        const mmrSpread = mmrValues.length > 1
+          ? Math.max(...mmrValues) - Math.min(...mmrValues)
+          : 0;
+        
+        // Detect upset (winner had lower MMR than at least one opponent)
+        const winner = match.players.find(p => p.placement === 1);
+        const loser = match.players.find(p => p.placement === 2);
+        const isUpset = winner && loser && winner.mmrBefore < loser.mmrBefore;
+        
+        // Get winner's current streak
+        const winnerStreak = winner 
+          ? streakMap.get(`${winner.userId}-${match.category}`) || 0
+          : 0;
             
         return {
             id: match.id,
@@ -53,11 +98,17 @@ export async function GET(req: Request) {
             playerCount: match.players.length,
             endedAt: match.endedAt?.toISOString(),
             durationSeconds,
+            // New stats
+            avgMmr,
+            mmrSpread,
+            isUpset: !!isUpset,
+            winnerStreak,
             players: match.players.map(mp => ({
                 id: mp.userId,
                 nickname: mp.user.displayName || mp.user.name || 'Joueur',
                 placement: mp.placement,
                 mmrChange: mp.mmrChange,
+                mmrBefore: mp.mmrBefore,
                 score: mp.points
             }))
         };
@@ -72,4 +123,5 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
 

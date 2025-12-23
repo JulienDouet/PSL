@@ -109,7 +109,10 @@ async function sendQueueNotification(category, playerName, queueCount, type = 'j
       return { success: false, reason: 'channel_not_found' };
     }
     
-    // Construire le message selon le type
+    // Detect if category is English
+    const isEnglish = category.includes('EN'); // MS_EN, NOFILTER_EN
+    
+    // Construire le message selon le type (anonyme + localisé)
     let message;
     if (type === 'match_ready') {
       message = isEnglish
@@ -129,7 +132,7 @@ async function sendQueueNotification(category, playerName, queueCount, type = 'j
       lastPingTime.set(category, Date.now());
     }
     
-    console.log(`✅ Notification ${type} envoyée: ${category} (${playerName})`);
+    console.log(`✅ Notification ${type} envoyée: ${category} (anonyme)`);
     return { success: true };
     
   } catch (err) {

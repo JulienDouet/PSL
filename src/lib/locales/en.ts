@@ -29,7 +29,7 @@ export const en = {
     subtitle: "Join the competition, climb the leaderboard and become the best Popsauce player.",
     cta_join: "🎮 Join the League",
     cta_leaderboard: "📊 View Leaderboard",
-    why_psl: "Why PSL?",
+    why_psl: "Why PSL ",
     feature_mmr_title: "MMR System",
     feature_mmr_desc: "A competitive ELO system that rewards your performance. Every victory counts!",
     feature_stats_title: "Detailed Stats",
@@ -53,6 +53,7 @@ export const en = {
     platinum: "Platinum",
     diamond: "Diamond",
     master: "Master",
+    grandMaster: "Grandmaster",
   },
   login: {
     title: "Join PSL",
@@ -83,7 +84,15 @@ export const en = {
       join: "Join Queue",
       play: "Play",
       cancel: "Cancel",
-      in_queue: "{count} searching"
+      in_queue: "{count} searching",
+      streak_opportunity: "Streak x{n} - Break it for bonus!",
+      waiting_players: "Match starts when 2 players are ready",
+      player_stats: "{games} games • {winrate}% WR",
+      you: "you",
+      ranking: "ranking",
+      room_code: "Room Code",
+      notification_title: "🎮 Match found!",
+      notification_body: "Room {code} - Click to join"
     },
     discord_card: {
       title: "Join the Community",
@@ -176,6 +185,14 @@ export const en = {
     waiting_validation: "Waiting for validation...",
     cancel_button: "Cancel / Restart",
     error_verification: "Error during verification",
+    // New profile header translations
+    streak: "Streak",
+    best_streak: "Best streak",
+    member_since: "Member since",
+    played: "played",
+    mmr_peak: "MMR Peak",
+    mmr_evolution: "MMR Evolution",
+    not_enough_data: "Not enough data"
   },
   matches: {
     title: "Match History",
@@ -199,5 +216,13 @@ export const en = {
     stopping: "Stopping...",
     confirm_end: "Are you sure you want to end match {room}?",
     error_delete: "Error while deleting",
+    // New translations
+    tab_live: "Live",
+    tab_finished: "Finished",
+    no_recent: "No recent matches.",
+    ranking: "Ranking",
+    upset: "Upset!",
+    players_count: "{n} Players",
+    avg_mmr: "Ø{n}"
   }
 }
