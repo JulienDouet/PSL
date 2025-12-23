@@ -169,7 +169,8 @@ model MatchAnswer {
   peerId      Int      // ID JKLM interne pour debug
   roundIndex  Int      // Numéro de la question
   
-  question    String   // La question posée
+  question    String   // La question posée (prompt)
+  questionHash String? // Hash unique pour identifier la question
   answer      String   // La réponse (correcte)
   playerAnswer String? // Ce que le joueur a répondu (peut être différent de la réponse canonique)
   elapsedTime Int      // Temps en ms
@@ -178,9 +179,39 @@ model MatchAnswer {
   
   match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
   user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  popsauceQuestion PopsauceQuestion? @relation(fields: [questionHash], references: [questionHash])
   
   @@index([matchId])
   @@index([userId])
+  @@index([questionHash])
+}
+
+// ============================================
+// POPSAUCE QUESTIONS (for solo training mode)
+// ============================================
+
+model PopsauceQuestion {
+  id            String   @id @default(cuid())
+  questionHash  String   @unique  // SHA256(prompt + "|" + content) - unique identifier
+  
+  prompt        String              // "De quel film ça vient ?"
+  text          String?             // Text content (if text question)
+  imageHash     String?             // Hash of image data (if image question)
+  
+  correctAnswer String?             // The correct answer learned from matches
+  aliases       String[]  @default([]) // Alternative spellings that work
+  
+  timesAsked    Int      @default(0)   // How many times this question was asked
+  timesAnswered Int      @default(0)   // How many times players found the answer
+  avgResponseMs Int?                   // Average response time in ms
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  matchAnswers  MatchAnswer[]
+  
+  @@index([prompt])
+  @@index([correctAnswer])
 }
 
 // ============================================

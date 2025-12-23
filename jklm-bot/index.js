@@ -9,6 +9,7 @@
  */
 
 import { io } from 'socket.io-client';
+import crypto from 'crypto';
 
 // URL correcte découverte dans le HAR
 const PHOENIX_URL = 'wss://phoenix.jklm.fun';
@@ -393,8 +394,16 @@ class JKLMBot {
     this.gameSocket.on('startChallenge', (challenge) => {
       console.log('❓ Question:', challenge.prompt?.substring(0, 50));
       this.roundCounter++;
+      
+      // Generate question hash for identification
+      const questionHash = this.generateQuestionHash(challenge);
+      console.log(`🔑 Question hash: ${questionHash}`);
+      
       this.currentChallenge = {
         question: challenge.prompt,
+        text: challenge.text || null,
+        imageHash: challenge.image?.data ? this.hashBuffer(challenge.image.data) : null,
+        questionHash: questionHash,
         index: this.roundCounter,
         playerTimes: new Map() // peerId -> elapsedTime
       };
@@ -421,7 +430,7 @@ class JKLMBot {
       
       // Enregistrer les réponses de ce round
       if (this.currentChallenge) {
-        const { question, index, playerTimes } = this.currentChallenge;
+        const { question, text, imageHash, questionHash, index, playerTimes } = this.currentChallenge;
         const correctAnswer = result.source;
         const playerAnswers = result.foundSourcesByPlayerPeerId || {};
         
@@ -435,6 +444,9 @@ class JKLMBot {
                     nickname: player.nickname,
                     roundIndex: index,
                     question: question,
+                    questionText: text,         // Le texte de la question (si pas image)
+                    questionImageHash: imageHash, // Hash de l'image (si question image)
+                    questionHash: questionHash, // Hash unique pour identifier la question
                     answer: correctAnswer,      // La bonne réponse attendue
                     playerAnswer: actualAnswer, // Ce que le joueur a écrit
                     elapsedTime: elapsedTime
@@ -549,6 +561,38 @@ class JKLMBot {
     }
 
     return this.gameResults;
+  }
+
+  /**
+   * Generate SHA256 hash of a buffer (for images)
+   */
+  hashBuffer(buffer) {
+    if (!buffer) return null;
+    // Handle both Buffer and ArrayBuffer
+    const data = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+    return crypto.createHash('sha256').update(data).digest('hex').slice(0, 32);
+  }
+
+  /**
+   * Generate a unique hash for a question based on its content
+   * Format: SHA256(prompt + "|" + content)
+   * Where content is either the text or "img:" + imageHash
+   */
+  generateQuestionHash(challenge) {
+    const prompt = challenge.prompt || '';
+    let content = '';
+    
+    if (challenge.text) {
+      // Text question: use the text content
+      content = challenge.text;
+    } else if (challenge.image?.data) {
+      // Image question: use hash of the image
+      const imgHash = this.hashBuffer(challenge.image.data);
+      content = 'img:' + imgHash;
+    }
+    
+    const combined = prompt + '|' + content;
+    return crypto.createHash('sha256').update(combined).digest('hex').slice(0, 32);
   }
 
   disconnect() {
