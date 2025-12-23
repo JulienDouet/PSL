@@ -27,14 +27,14 @@ export default function MentionsLegalesPage() {
               Le site <strong className="text-foreground">psl-ranked.app</strong> (ci-après &quot;PSL&quot; ou &quot;PopSauce League&quot;) est édité par :
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1">
-              <li><strong className="text-foreground">Nom :</strong> Julien Douet</li>
+              <li><strong className="text-foreground">Nom :</strong> Julien D.</li>
               <li><strong className="text-foreground">Email :</strong> psl.ranked.contact@gmail.com</li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-foreground mb-3">2. Directeur de la publication</h2>
-            <p>Julien Douet</p>
+            <p>Julien D.</p>
           </section>
 
           <section>

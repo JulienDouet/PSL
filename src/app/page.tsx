@@ -160,9 +160,6 @@ export default function LandingPage() {
               {t.landing.footer_leaderboard}
             </Link>
 
-            <a href="https://github.com/JulienDouet/PSL" className="hover:text-foreground transition-colors">
-              GitHub
-            </a>
             <span className="hidden sm:inline text-border">|</span>
             <Link href="/legal/mentions" className="hover:text-foreground transition-colors">
               {t.landing.footer_legal}

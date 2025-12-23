@@ -28,7 +28,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-xl font-semibold text-foreground mb-3">1. Responsable du traitement</h2>
             <p>
-              Le responsable du traitement des données personnelles est Julien Douet, 
+              Le responsable du traitement des données personnelles est Julien D., 
               joignable à l&apos;adresse email :{" "}
               <a href="mailto:psl.ranked.contact@gmail.com" className="text-primary hover:underline">
                 psl.ranked.contact@gmail.com
