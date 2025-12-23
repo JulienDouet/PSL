@@ -42,11 +42,14 @@ export async function POST(req: Request) {
     console.log(`🧹 Match ${roomCode} nettoyé de pendingMatches`);
 
     // 1. Créer le match en base
+    // startedAt est passé par le bot (timestamp de quand le match a été trouvé)
+    const startedAt = body.startedAt ? new Date(body.startedAt) : new Date();
+    
     const match = await prisma.match.create({
         data: {
             lobbyCode: roomCode,
             status: 'COMPLETED',
-            startedAt: new Date(Date.now() - 1000 * 60 * 5), // Approx 5 min ago
+            startedAt,
             endedAt: new Date(),
             category,
         }
@@ -200,6 +203,7 @@ export async function POST(req: Request) {
         const user = userMap.get(playerStats.id)!;
         const oldMMR = playerStats.mmr;
         const newMMR = oldMMR + mmrChange;
+        const isWinner = playerStats.placement === 1;
         
         console.log(`📈 ${user.name} (${category}): ${oldMMR} -> ${newMMR} (${mmrChange > 0 ? '+' : ''}${mmrChange})`);
 
@@ -224,7 +228,34 @@ export async function POST(req: Request) {
             }
         });
 
-        // Mise à jour UserCategoryMMR (MMR par catégorie)
+        // Récupérer le streak actuel pour calculer le nouveau
+        const existingCatMMR = await prisma.userCategoryMMR.findUnique({
+            where: { userId_category: { userId: user.id, category } }
+        });
+        const currentStreak = existingCatMMR?.currentStreak || 0;
+        const bestStreak = existingCatMMR?.bestStreak || 0;
+        const currentMmrPeak = existingCatMMR?.mmrPeak || 1000;
+        
+        // Calculer le nouveau streak
+        const newStreak = isWinner ? currentStreak + 1 : 0;
+        const newBestStreak = isWinner ? Math.max(bestStreak, newStreak) : bestStreak;
+        
+        // Calculer le nouveau MMR et peak
+        const currentMmr = existingCatMMR?.mmr || 1000;
+        const newMmr = currentMmr + mmrChange;
+        const newMmrPeak = Math.max(currentMmrPeak, newMmr);
+        
+        if (isWinner) {
+            console.log(`🔥 ${user.name}: Streak ${currentStreak} -> ${newStreak} (best: ${newBestStreak})`);
+        } else if (currentStreak > 0) {
+            console.log(`💔 ${user.name}: Streak reset (was ${currentStreak})`);
+        }
+        
+        if (newMmr > currentMmrPeak) {
+            console.log(`🏔️ ${user.name}: New MMR Peak! ${currentMmrPeak} -> ${newMmr}`);
+        }
+
+        // Mise à jour UserCategoryMMR (MMR + streak par catégorie)
         await prisma.userCategoryMMR.upsert({
             where: {
                 userId_category: {
@@ -236,11 +267,17 @@ export async function POST(req: Request) {
                 userId: user.id,
                 category,
                 mmr: 1000 + mmrChange,
-                gamesPlayed: 1
+                gamesPlayed: 1,
+                currentStreak: isWinner ? 1 : 0,
+                bestStreak: isWinner ? 1 : 0,
+                mmrPeak: Math.max(1000, 1000 + mmrChange)
             },
             update: {
                 mmr: { increment: mmrChange },
-                gamesPlayed: { increment: 1 }
+                gamesPlayed: { increment: 1 },
+                currentStreak: newStreak,
+                bestStreak: newBestStreak,
+                mmrPeak: newMmrPeak
             }
         });
     }

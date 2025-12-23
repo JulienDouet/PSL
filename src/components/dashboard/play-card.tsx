@@ -19,6 +19,7 @@ interface EnrichedPlayer {
   winrate: number;
   rank: number;
   isTopRanked: boolean;
+  currentStreak: number; // Win streak
 }
 
 interface MatchInfo {
@@ -89,8 +90,8 @@ export function PlayCard() {
   // Fonction pour envoyer une notification navigateur
   const sendMatchNotification = (roomCode: string) => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-      const notification = new Notification('🎮 Match trouvé !', {
-        body: `Room ${roomCode} - Clique pour rejoindre`,
+      const notification = new Notification(t.dashboard.play_card.notification_title || '🎮 Match trouvé !', {
+        body: (t.dashboard.play_card.notification_body || 'Room {code} - Clique pour rejoindre').replace('{code}', roomCode),
         icon: '/logo.png',
         tag: 'psl-match',
         requireInteraction: true
@@ -262,7 +263,7 @@ export function PlayCard() {
       };
 
       poll();
-      const interval = mode === 'searching' ? 2000 : 5000; // 2s en recherche, 5s en lobby
+      const interval = mode === 'searching' ? 1000 : 2000; // 1s en recherche (countdown fluide), 2s en lobby
       pollingRef.current = setInterval(poll, interval);
     }
 
@@ -538,10 +539,10 @@ export function PlayCard() {
                           <div>
                             <div className="font-medium text-sm flex items-center gap-1">
                               {player.nickname}
-                              {currentUserId && player.id === currentUserId && <span className="text-[10px] text-muted-foreground">(toi)</span>}
+                              {currentUserId && player.id === currentUserId && <span className="text-[10px] text-muted-foreground">({t.dashboard.play_card.you || 'toi'})</span>}
                             </div>
                             <div className="text-[10px] text-muted-foreground">
-                              {player.gamesPlayed} parties • {player.winrate}% WR
+                              {(t.dashboard.play_card.player_stats || '{games} parties • {winrate}% WR').replace('{games}', String(player.gamesPlayed)).replace('{winrate}', String(player.winrate))}
                             </div>
                           </div>
                         </div>
@@ -559,6 +560,13 @@ export function PlayCard() {
                           <span>{levelIndicator.label}</span>
                         </div>
                       )}
+                      
+                      {/* Streak indicator - opportunity for bonus MMR */}
+                      {player.currentStreak >= 3 && player.id !== currentUserId && (
+                        <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-400">
+                          🎯 <span>{t.dashboard.play_card.streak_opportunity?.replace('{n}', String(player.currentStreak)) || `Streak x${player.currentStreak}`}</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -569,7 +577,7 @@ export function PlayCard() {
             {queuePlayers.length < 2 && (
               <div className="bg-secondary/30 rounded-lg p-3 text-center">
                 <p className="text-sm text-muted-foreground">
-                  La partie démarre dès que 2 joueurs sont prêts
+                  {t.dashboard.play_card.waiting_players || 'La partie démarre dès que 2 joueurs sont prêts'}
                 </p>
               </div>
             )}
@@ -655,10 +663,10 @@ export function PlayCard() {
                         <div>
                           <div className="font-bold flex items-center gap-2">
                             {player.nickname}
-                            {isMe && <span className="text-xs text-muted-foreground">(toi)</span>}
+                            {isMe && <span className="text-xs text-muted-foreground">({t.dashboard.play_card.you || 'toi'})</span>}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {player.gamesPlayed} parties • {player.winrate}% WR
+                            {(t.dashboard.play_card.player_stats || '{games} parties • {winrate}% WR').replace('{games}', String(player.gamesPlayed)).replace('{winrate}', String(player.winrate))}
                           </div>
                         </div>
                       </div>
@@ -666,7 +674,7 @@ export function PlayCard() {
                       <div className="text-right">
                         <div className="font-bold text-lg">{player.mmr}</div>
                         <div className="text-xs text-muted-foreground">
-                          #{player.rank} classement
+                          #{player.rank} {t.dashboard.play_card.ranking || 'classement'}
                         </div>
                       </div>
                     </div>
@@ -686,7 +694,7 @@ export function PlayCard() {
             {/* Room Code & Actions */}
             <div className="pt-4 border-t border-border/50 space-y-3">
               <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-1">Code Room</p>
+                <p className="text-xs text-muted-foreground mb-1">{t.dashboard.play_card.room_code || 'Code Room'}</p>
                 <div className="text-3xl font-mono font-black tracking-wider text-primary">
                   {matchInfo.roomCode}
                 </div>

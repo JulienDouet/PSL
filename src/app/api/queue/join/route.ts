@@ -153,8 +153,9 @@ async function createMatchWithBot(players: any[], category: Category, rules: { d
     }
 
     const rulesJson = JSON.stringify(rules);
+    const startedAt = new Date().toISOString();
 
-    const child = spawn('node', [botScript, '--create', callbackUrl, '--players-json', playersJson, '--rules', rulesJson, '--category', category], {
+    const child = spawn('node', [botScript, '--create', callbackUrl, '--players-json', playersJson, '--rules', rulesJson, '--category', category, '--started-at', startedAt], {
       detached: isDetached,
       stdio: ['ignore', 'pipe', 'pipe'],
       cwd: process.cwd()
