@@ -29,7 +29,7 @@ export const fr = {
     subtitle: "Rejoins la compétition, grimpe dans le classement et deviens le meilleur joueur Popsauce français.",
     cta_join: "🎮 Rejoindre la Ligue",
     cta_leaderboard: "📊 Voir le classement",
-    why_psl: "Pourquoi PSL ?",
+    why_psl: "Pourquoi PSL ",
     feature_mmr_title: "Système MMR",
     feature_mmr_desc: "Un système ELO compétitif qui récompense ta performance. Chaque victoire compte !",
     feature_stats_title: "Stats Détaillées",
@@ -53,6 +53,7 @@ export const fr = {
     platinum: "Platine",
     diamond: "Diamant",
     master: "Maître",
+    grandMaster: "Grand Maître",
   },
   login: {
     title: "Rejoindre PSL",

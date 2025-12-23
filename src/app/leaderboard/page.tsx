@@ -161,7 +161,7 @@ export default function LeaderboardPage() {
                         <div className="text-3xl font-bold text-gradient">{top3[0].mmr}</div>
                         <div className="text-sm text-muted-foreground">MMR</div>
                         <div className="mt-2 text-xs px-2 py-1 rounded-full bg-primary/20 text-primary inline-block">
-                            🏆 {t.ranks.master}
+                            🏆 {t.ranks.grandMaster}
                         </div>
                         </CardContent>
                     </Card>
