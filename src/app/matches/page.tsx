@@ -173,7 +173,7 @@ export default function MatchesPage() {
                     : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
                 }`}
               >
-                🔴 En cours
+                🔴 {t.matches.tab_live}
                 {activeMatches.length > 0 && <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">{activeMatches.length}</span>}
               </button>
               <button
@@ -184,7 +184,7 @@ export default function MatchesPage() {
                     : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
                 }`}
               >
-                🕒 Terminées
+                🕒 {t.matches.tab_finished}
               </button>
             </div>
           </div>
@@ -299,7 +299,7 @@ export default function MatchesPage() {
             recentMatches.length === 0 ? (
                 <Card className="glass-card">
                   <CardContent className="py-12 text-center">
-                    <p className="text-muted-foreground">Aucune partie terminée récemment.</p>
+                    <p className="text-muted-foreground">{t.matches.no_recent}</p>
                   </CardContent>
                 </Card>
             ) : (
@@ -340,7 +340,7 @@ export default function MatchesPage() {
                                 {/* Upset badge */}
                                 {match.isUpset && (
                                   <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs font-medium">
-                                    ⚡ Upset!
+                                    ⚡ {t.matches.upset}
                                   </span>
                                 )}
                                 {/* Streak badge */}
@@ -353,7 +353,7 @@ export default function MatchesPage() {
 
                           <div className="text-right hidden sm:block whitespace-nowrap">
                             <div className="text-sm text-muted-foreground">
-                              {match.playerCount} Joueurs • Ø{match.avgMmr}
+                              {t.matches.players_count.replace('{n}', String(match.playerCount))} • Ø{match.avgMmr}
                             </div>
                             <div className="text-xs text-muted-foreground/70">
                               ⏱️ {formatDuration(match.durationSeconds)} • ±{match.mmrSpread} MMR
@@ -372,7 +372,7 @@ export default function MatchesPage() {
                       <CardContent className="border-t border-border/50 pt-4">
                         <div className="space-y-3">
                           <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-                            Classement
+                            {t.matches.ranking}
                           </h4>
                           <div className="grid gap-2">
                             {match.players.map((player) => (

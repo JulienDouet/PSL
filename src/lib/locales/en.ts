@@ -207,5 +207,13 @@ export const en = {
     stopping: "Stopping...",
     confirm_end: "Are you sure you want to end match {room}?",
     error_delete: "Error while deleting",
+    // New translations
+    tab_live: "Live",
+    tab_finished: "Finished",
+    no_recent: "No recent matches.",
+    ranking: "Ranking",
+    upset: "Upset!",
+    players_count: "{n} Players",
+    avg_mmr: "Ø{n}"
   }
 }

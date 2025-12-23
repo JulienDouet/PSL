@@ -207,5 +207,13 @@ export const fr = {
     stopping: "Arrêt...",
     confirm_end: "Êtes-vous sûr de vouloir terminer la partie {room} ?",
     error_delete: "Erreur lors de la suppression",
+    // New translations
+    tab_live: "En cours",
+    tab_finished: "Terminées",
+    no_recent: "Aucune partie terminée récemment.",
+    ranking: "Classement",
+    upset: "Upset!",
+    players_count: "{n} Joueurs",
+    avg_mmr: "Ø{n}"
   }
 }
