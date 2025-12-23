@@ -263,7 +263,7 @@ export function PlayCard() {
       };
 
       poll();
-      const interval = mode === 'searching' ? 2000 : 5000; // 2s en recherche, 5s en lobby
+      const interval = mode === 'searching' ? 1000 : 2000; // 1s en recherche (countdown fluide), 2s en lobby
       pollingRef.current = setInterval(poll, interval);
     }
 
