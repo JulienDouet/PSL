@@ -24,6 +24,7 @@ interface CategoryMMR {
   currentStreak: number;
   bestStreak: number;
   mmrPeak: number;
+  wins: number;  // Pre-calculated server-side
 }
 
 interface MatchPlayer {
@@ -79,8 +80,8 @@ export function CategoryStats({ categoryMMRs, matchPlayers }: CategoryStatsProps
   // Matchs filtrés par catégorie active
   const filteredMatches = matchPlayers.filter(mp => mp.match.category === activeCategory);
 
-  // Calculer stats
-  const wins = filteredMatches.filter(mp => mp.placement === 1).length;
+  // Utiliser les wins pré-calculés côté serveur
+  const wins = activeStats.wins;
   const winRate = displayGames > 0 ? Math.round((wins / displayGames) * 100) : 0;
 
   // Rank progression

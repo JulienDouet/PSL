@@ -54,6 +54,29 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   }, 0);
   const totalPlayTimeSeconds = Math.floor(totalPlayTimeMs / 1000);
 
+  // Compter les victoires par catégorie (côté serveur, pas limité)
+  const winsByCategory = await prisma.matchPlayer.groupBy({
+    by: ['matchId'],
+    where: {
+      userId: id,
+      placement: 1
+    },
+    _count: true
+  });
+
+  // Récupérer les catégories des matchs gagnés
+  const wonMatchIds = winsByCategory.map(w => w.matchId);
+  const wonMatches = await prisma.match.findMany({
+    where: { id: { in: wonMatchIds } },
+    select: { id: true, category: true }
+  });
+
+  // Compteur de victoires par catégorie
+  const winsPerCategory: Record<string, number> = {};
+  wonMatches.forEach(m => {
+    winsPerCategory[m.category] = (winsPerCategory[m.category] || 0) + 1;
+  });
+
   // Préparer les données pour le composant client
   const categoryMMRsData = user.categoryMMRs.map(c => ({
     category: c.category,
@@ -61,7 +84,8 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     gamesPlayed: c.gamesPlayed,
     currentStreak: c.currentStreak,
     bestStreak: c.bestStreak,
-    mmrPeak: c.mmrPeak
+    mmrPeak: c.mmrPeak,
+    wins: winsPerCategory[c.category] || 0  // Ajout des wins calculés serveur
   }));
 
   const matchPlayersData = user.matchPlayers.map(mp => ({
