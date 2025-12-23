@@ -83,7 +83,15 @@ export const fr = {
       join: "Rejoindre la file",
       play: "Rejoindre la partie",
       cancel: "Annuler",
-      in_queue: "{count} en recherche"
+      in_queue: "{count} en recherche",
+      streak_opportunity: "Streak x{n} - Casse-la pour bonus !",
+      waiting_players: "La partie démarre dès que 2 joueurs sont prêts",
+      player_stats: "{games} parties • {winrate}% WR",
+      you: "toi",
+      ranking: "classement",
+      room_code: "Code Room",
+      notification_title: "🎮 Match trouvé !",
+      notification_body: "Room {code} - Clique pour rejoindre"
     },
     discord_card: {
       title: "Rejoins la communauté",
@@ -176,6 +184,14 @@ export const fr = {
     waiting_validation: "En attente de validation...",
     cancel_button: "Annuler / Recommencer",
     error_verification: "Erreur lors de la vérification",
+    // New profile header translations
+    streak: "Série",
+    best_streak: "Meilleure série",
+    member_since: "Membre depuis",
+    played: "joué",
+    mmr_peak: "MMR Peak",
+    mmr_evolution: "Évolution MMR",
+    not_enough_data: "Pas assez de données"
   },
   matches: {
     title: "Historique des parties",
@@ -199,5 +215,13 @@ export const fr = {
     stopping: "Arrêt...",
     confirm_end: "Êtes-vous sûr de vouloir terminer la partie {room} ?",
     error_delete: "Erreur lors de la suppression",
+    // New translations
+    tab_live: "En cours",
+    tab_finished: "Terminées",
+    no_recent: "Aucune partie terminée récemment.",
+    ranking: "Classement",
+    upset: "Upset!",
+    players_count: "{n} Joueurs",
+    avg_mmr: "Ø{n}"
   }
 }

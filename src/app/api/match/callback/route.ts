@@ -42,11 +42,14 @@ export async function POST(req: Request) {
     console.log(`🧹 Match ${roomCode} nettoyé de pendingMatches`);
 
     // 1. Créer le match en base
+    // startedAt est passé par le bot (timestamp de quand le match a été trouvé)
+    const startedAt = body.startedAt ? new Date(body.startedAt) : new Date();
+    
     const match = await prisma.match.create({
         data: {
             lobbyCode: roomCode,
             status: 'COMPLETED',
-            startedAt: new Date(Date.now() - 1000 * 60 * 5), // Approx 5 min ago
+            startedAt,
             endedAt: new Date(),
             category,
         }
@@ -200,6 +203,7 @@ export async function POST(req: Request) {
         const user = userMap.get(playerStats.id)!;
         const oldMMR = playerStats.mmr;
         const newMMR = oldMMR + mmrChange;
+        const isWinner = playerStats.placement === 1;
         
         console.log(`📈 ${user.name} (${category}): ${oldMMR} -> ${newMMR} (${mmrChange > 0 ? '+' : ''}${mmrChange})`);
 
@@ -224,7 +228,34 @@ export async function POST(req: Request) {
             }
         });
 
-        // Mise à jour UserCategoryMMR (MMR par catégorie)
+        // Récupérer le streak actuel pour calculer le nouveau
+        const existingCatMMR = await prisma.userCategoryMMR.findUnique({
+            where: { userId_category: { userId: user.id, category } }
+        });
+        const currentStreak = existingCatMMR?.currentStreak || 0;
+        const bestStreak = existingCatMMR?.bestStreak || 0;
+        const currentMmrPeak = existingCatMMR?.mmrPeak || 1000;
+        
+        // Calculer le nouveau streak
+        const newStreak = isWinner ? currentStreak + 1 : 0;
+        const newBestStreak = isWinner ? Math.max(bestStreak, newStreak) : bestStreak;
+        
+        // Calculer le nouveau MMR et peak
+        const currentMmr = existingCatMMR?.mmr || 1000;
+        const newMmr = currentMmr + mmrChange;
+        const newMmrPeak = Math.max(currentMmrPeak, newMmr);
+        
+        if (isWinner) {
+            console.log(`🔥 ${user.name}: Streak ${currentStreak} -> ${newStreak} (best: ${newBestStreak})`);
+        } else if (currentStreak > 0) {
+            console.log(`💔 ${user.name}: Streak reset (was ${currentStreak})`);
+        }
+        
+        if (newMmr > currentMmrPeak) {
+            console.log(`🏔️ ${user.name}: New MMR Peak! ${currentMmrPeak} -> ${newMmr}`);
+        }
+
+        // Mise à jour UserCategoryMMR (MMR + streak par catégorie)
         await prisma.userCategoryMMR.upsert({
             where: {
                 userId_category: {
@@ -236,25 +267,111 @@ export async function POST(req: Request) {
                 userId: user.id,
                 category,
                 mmr: 1000 + mmrChange,
-                gamesPlayed: 1
+                gamesPlayed: 1,
+                currentStreak: isWinner ? 1 : 0,
+                bestStreak: isWinner ? 1 : 0,
+                mmrPeak: Math.max(1000, 1000 + mmrChange)
             },
             update: {
                 mmr: { increment: mmrChange },
-                gamesPlayed: { increment: 1 }
+                gamesPlayed: { increment: 1 },
+                currentStreak: newStreak,
+                bestStreak: newBestStreak,
+                mmrPeak: newMmrPeak
             }
         });
     }
 
-    // 4. Sauvegarder les réponses (MatchAnswer)
+    // 4. Sauvegarder les réponses (MatchAnswer) et apprendre les questions (PopsauceQuestion)
     const answers = (body as any).answers;
     if (answers && Array.isArray(answers)) {
         console.log(`📝 Traitement de ${answers.length} réponses...`);
+        
+        // Collecter les questions uniques pour UPSERT
+        const uniqueQuestions = new Map<string, {
+            prompt: string;
+            text: string | null;
+            imageHash: string | null;
+            correctAnswer: string;
+            playerAnswers: string[];
+            responseTimes: number[];
+        }>();
+        
+        for (const ans of answers) {
+            if (ans.questionHash) {
+                const existing = uniqueQuestions.get(ans.questionHash);
+                if (existing) {
+                    // Agréger les données
+                    if (ans.playerAnswer) existing.playerAnswers.push(ans.playerAnswer);
+                    if (ans.elapsedTime) existing.responseTimes.push(ans.elapsedTime);
+                } else {
+                    uniqueQuestions.set(ans.questionHash, {
+                        prompt: ans.question,
+                        text: ans.questionText || null,
+                        imageHash: ans.questionImageHash || null,
+                        correctAnswer: ans.answer,
+                        playerAnswers: ans.playerAnswer ? [ans.playerAnswer] : [],
+                        responseTimes: ans.elapsedTime ? [ans.elapsedTime] : []
+                    });
+                }
+            }
+        }
+        
+        // UPSERT les questions dans PopsauceQuestion
+        console.log(`🧠 Apprentissage de ${uniqueQuestions.size} questions uniques...`);
+        for (const [hash, data] of uniqueQuestions) {
+            try {
+                // Calculer le temps moyen de réponse
+                const avgTime = data.responseTimes.length > 0 
+                    ? Math.round(data.responseTimes.reduce((a, b) => a + b, 0) / data.responseTimes.length)
+                    : null;
+                
+                // Collecter les alias uniques (réponses joueur différentes de la réponse correcte)
+                const normalizedCorrect = data.correctAnswer.toLowerCase().replace(/[^a-z0-9]/g, '');
+                const newAliases = [...new Set(
+                    data.playerAnswers
+                        .map(a => a.toLowerCase().replace(/[^a-z0-9]/g, ''))
+                        .filter(a => a && a !== normalizedCorrect)
+                )];
+                
+                await prisma.popsauceQuestion.upsert({
+                    where: { questionHash: hash },
+                    create: {
+                        questionHash: hash,
+                        prompt: data.prompt,
+                        text: data.text,
+                        imageHash: data.imageHash,
+                        correctAnswer: data.correctAnswer,
+                        aliases: newAliases,
+                        timesAsked: 1,
+                        timesAnswered: data.responseTimes.length,
+                        avgResponseMs: avgTime
+                    },
+                    update: {
+                        // Mettre à jour les stats
+                        timesAsked: { increment: 1 },
+                        timesAnswered: { increment: data.responseTimes.length },
+                        // Calculer la nouvelle moyenne (approximation)
+                        avgResponseMs: avgTime,
+                        // Ajouter les nouveaux alias (merge)
+                        aliases: {
+                            push: newAliases
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error(`⚠️ Erreur UPSERT PopsauceQuestion ${hash}:`, err);
+            }
+        }
+        
+        // Créer les MatchAnswer avec le questionHash
         const answersData = answers.map((ans: any) => ({
             matchId: match.id,
             userId: nicknameToUser.get(ans.nickname) || null,
             peerId: typeof ans.peerId === 'number' ? ans.peerId : parseInt(ans.peerId) || 0,
             roundIndex: ans.roundIndex,
             question: ans.question,
+            questionHash: ans.questionHash || null,
             answer: ans.answer,
             playerAnswer: (ans.playerAnswer || ans.answer).toLowerCase().replace(/[^a-z0-9]/g, ''), // Normalisation: minuscule + alphanumérique only
             elapsedTime: ans.elapsedTime,
