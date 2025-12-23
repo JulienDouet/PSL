@@ -83,7 +83,8 @@ export const fr = {
       join: "Rejoindre la file",
       play: "Rejoindre la partie",
       cancel: "Annuler",
-      in_queue: "{count} en recherche"
+      in_queue: "{count} en recherche",
+      streak_opportunity: "Streak x{n} - Casse-la pour bonus !"
     },
     discord_card: {
       title: "Rejoins la communauté",

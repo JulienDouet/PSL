@@ -564,7 +564,7 @@ export function PlayCard() {
                       {/* Streak indicator - opportunity for bonus MMR */}
                       {player.currentStreak >= 3 && player.id !== currentUserId && (
                         <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-400">
-                          🎯 <span>Streak x{player.currentStreak} - Casse-la pour bonus !</span>
+                          🎯 <span>{t.dashboard.play_card.streak_opportunity?.replace('{n}', String(player.currentStreak)) || `Streak x${player.currentStreak}`}</span>
                         </div>
                       )}
                     </div>

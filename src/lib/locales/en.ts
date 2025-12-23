@@ -83,7 +83,8 @@ export const en = {
       join: "Join Queue",
       play: "Play",
       cancel: "Cancel",
-      in_queue: "{count} searching"
+      in_queue: "{count} searching",
+      streak_opportunity: "Streak x{n} - Break it for bonus!"
     },
     discord_card: {
       title: "Join the Community",
