@@ -29,7 +29,7 @@ export const en = {
     subtitle: "Join the competition, climb the leaderboard and become the best Popsauce player.",
     cta_join: "🎮 Join the League",
     cta_leaderboard: "📊 View Leaderboard",
-    why_psl: "Why PSL?",
+    why_psl: "Why PSL ",
     feature_mmr_title: "MMR System",
     feature_mmr_desc: "A competitive ELO system that rewards your performance. Every victory counts!",
     feature_stats_title: "Detailed Stats",
@@ -53,6 +53,7 @@ export const en = {
     platinum: "Platinum",
     diamond: "Diamond",
     master: "Master",
+    grandMaster: "Grandmaster",
   },
   login: {
     title: "Join PSL",
