@@ -184,6 +184,14 @@ export const en = {
     waiting_validation: "Waiting for validation...",
     cancel_button: "Cancel / Restart",
     error_verification: "Error during verification",
+    // New profile header translations
+    streak: "Streak",
+    best_streak: "Best streak",
+    member_since: "Member since",
+    played: "played",
+    mmr_peak: "MMR Peak",
+    mmr_evolution: "MMR Evolution",
+    not_enough_data: "Not enough data"
   },
   matches: {
     title: "Match History",

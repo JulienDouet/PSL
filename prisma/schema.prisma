@@ -101,6 +101,7 @@ model UserCategoryMMR {
   gamesPlayed   Int      @default(0)
   currentStreak Int      @default(0)   // Current consecutive wins
   bestStreak    Int      @default(0)   // All-time best streak
+  mmrPeak       Int      @default(1000) // All-time highest MMR
   
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   

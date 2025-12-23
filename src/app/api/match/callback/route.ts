@@ -234,15 +234,25 @@ export async function POST(req: Request) {
         });
         const currentStreak = existingCatMMR?.currentStreak || 0;
         const bestStreak = existingCatMMR?.bestStreak || 0;
+        const currentMmrPeak = existingCatMMR?.mmrPeak || 1000;
         
         // Calculer le nouveau streak
         const newStreak = isWinner ? currentStreak + 1 : 0;
         const newBestStreak = isWinner ? Math.max(bestStreak, newStreak) : bestStreak;
         
+        // Calculer le nouveau MMR et peak
+        const currentMmr = existingCatMMR?.mmr || 1000;
+        const newMmr = currentMmr + mmrChange;
+        const newMmrPeak = Math.max(currentMmrPeak, newMmr);
+        
         if (isWinner) {
             console.log(`🔥 ${user.name}: Streak ${currentStreak} -> ${newStreak} (best: ${newBestStreak})`);
         } else if (currentStreak > 0) {
             console.log(`💔 ${user.name}: Streak reset (was ${currentStreak})`);
+        }
+        
+        if (newMmr > currentMmrPeak) {
+            console.log(`🏔️ ${user.name}: New MMR Peak! ${currentMmrPeak} -> ${newMmr}`);
         }
 
         // Mise à jour UserCategoryMMR (MMR + streak par catégorie)
@@ -259,13 +269,15 @@ export async function POST(req: Request) {
                 mmr: 1000 + mmrChange,
                 gamesPlayed: 1,
                 currentStreak: isWinner ? 1 : 0,
-                bestStreak: isWinner ? 1 : 0
+                bestStreak: isWinner ? 1 : 0,
+                mmrPeak: Math.max(1000, 1000 + mmrChange)
             },
             update: {
                 mmr: { increment: mmrChange },
                 gamesPlayed: { increment: 1 },
                 currentStreak: newStreak,
-                bestStreak: newBestStreak
+                bestStreak: newBestStreak,
+                mmrPeak: newMmrPeak
             }
         });
     }
