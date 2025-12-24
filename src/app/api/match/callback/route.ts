@@ -283,14 +283,24 @@ export async function POST(req: Request) {
     }
 
     // 4. Update H2H stats (Rivalries)
-    // Winner gets +1 win against all losers, losers get +1 loss against winner
-    const winnerIds = playersForCalculation.filter(p => p.placement === 1).map(p => p.id);
-    const loserIds = playersForCalculation.filter(p => p.placement !== 1).map(p => p.id);
+    // Compare each pair of players by their points - whoever scored more gets the H2H win
+    console.log(`🤝 [H2H] Updating rivalries for ${playersForCalculation.length} players`);
     
-    console.log(`🤝 [H2H] Updating rivalries: ${winnerIds.length} winner(s) vs ${loserIds.length} loser(s)`);
-    
-    for (const winnerId of winnerIds) {
-        for (const loserId of loserIds) {
+    for (let i = 0; i < playersForCalculation.length; i++) {
+        for (let j = i + 1; j < playersForCalculation.length; j++) {
+            const playerA = playersForCalculation[i];
+            const playerB = playersForCalculation[j];
+            
+            // Determine winner based on points (not placement)
+            const aWon = playerA.points > playerB.points;
+            const bWon = playerB.points > playerA.points;
+            
+            // If tied, no H2H update
+            if (playerA.points === playerB.points) continue;
+            
+            const winnerId = aWon ? playerA.id : playerB.id;
+            const loserId = aWon ? playerB.id : playerA.id;
+            
             // Winner gets +1 win against loser
             await prisma.userMatchup.upsert({
                 where: { 
