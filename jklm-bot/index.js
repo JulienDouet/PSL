@@ -35,6 +35,30 @@ class JKLMBot {
     this.customRules = null; // Règles personnalisées (dictionaryId, scoreGoal, challengeDuration)
     this.category = 'GP';   // Catégorie du match (pour le callback)
     this.startedAt = null;  // Timestamp de début du match (passé par --started-at)
+    
+    // Test mode for admin panel
+    this.testMode = false;
+    this.logBuffer = [];    // Buffer for SSE streaming
+    this.httpServer = null; // HTTP server for log streaming
+  }
+  
+  // Structured logging with levels (for test mode streaming)
+  log(level, ...args) {
+    const message = args.join(' ');
+    const logEntry = {
+      ts: Date.now(),
+      level,
+      msg: message
+    };
+    
+    // Always console.log
+    const prefix = level === 'DEBUG' ? '🔍' : level === 'PLAYER' ? '👤' : level === 'AUTH' ? '🔐' : 'ℹ️';
+    console.log(`${prefix} [${level}] ${message}`);
+    
+    // Buffer for SSE streaming in test mode
+    if (this.testMode && this.logBuffer) {
+      this.logBuffer.push(logEntry);
+    }
   }
 
   generateUserToken() {
@@ -1002,11 +1026,69 @@ async function main() {
         console.log('⏱️ StartedAt:', bot.startedAt);
         i++;
       }
+    } else if (args[i] === '--test-mode') {
+      bot.testMode = true;
+      console.log('🧪 Test mode enabled (no MMR callback, log streaming on port 3099)');
     } else if (args[i].startsWith('http')) {
       callbackUrl = args[i];
     } else if (args[i].length === 4 && !args[i].startsWith('-')) {
       roomCode = args[i];
     }
+  }
+  
+  // Start HTTP server for log streaming in test mode
+  if (bot.testMode) {
+    const http = await import('http');
+    const sseClients = [];
+    
+    bot.httpServer = http.createServer((req, res) => {
+      if (req.url === '/logs') {
+        // SSE endpoint
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+          'Access-Control-Allow-Origin': '*'
+        });
+        
+        sseClients.push(res);
+        console.log(`📡 SSE client connected (${sseClients.length} total)`);
+        
+        // Send initial message
+        res.write(`data: ${JSON.stringify({ ts: Date.now(), level: 'INFO', msg: 'Connected to log stream' })}\n\n`);
+        
+        req.on('close', () => {
+          const idx = sseClients.indexOf(res);
+          if (idx > -1) sseClients.splice(idx, 1);
+          console.log(`📡 SSE client disconnected (${sseClients.length} remaining)`);
+        });
+      } else if (req.url === '/status') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          roomCode: bot.roomCode, 
+          players: bot.players.size,
+          testMode: true 
+        }));
+      } else {
+        res.writeHead(404);
+        res.end('Not found');
+      }
+    });
+    
+    bot.httpServer.listen(3099, () => {
+      console.log('🌐 HTTP log server listening on port 3099');
+    });
+    
+    // Broadcast logs to all SSE clients
+    setInterval(() => {
+      while (bot.logBuffer.length > 0) {
+        const log = bot.logBuffer.shift();
+        const data = `data: ${JSON.stringify(log)}\n\n`;
+        sseClients.forEach(client => {
+          try { client.write(data); } catch (e) {}
+        });
+      }
+    }, 100);
   }
   
   try {
@@ -1015,6 +1097,8 @@ async function main() {
       let roomName = 'PSL Ranked';
       if (verifyMode) {
         roomName = 'PSL Verif';
+      } else if (bot.testMode) {
+        roomName = 'PSL Test Bot';
       } else {
         const categoryNames = {
           'GP_FR': 'GP [FR]',
@@ -1028,7 +1112,7 @@ async function main() {
         roomName = `PSL Bot - ${catLabel}`;
       }
       console.log(`🏗️ Mode création automatique (${roomName})...`);
-      const result = await bot.createRoom({ name: roomName, isPublic: true });
+      const result = await bot.createRoom({ name: roomName, isPublic: !bot.testMode });
       roomCode = result.roomCode;
       console.log(`🎮 Room créée: ${roomCode}`);
     }

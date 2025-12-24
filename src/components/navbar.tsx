@@ -116,6 +116,13 @@ export function Navbar() {
                       <Settings className="w-4 h-4" />
                       {t.navbar.edit_profile}
                     </Link>
+                    <Link
+                      href="/admin"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-secondary transition-colors"
+                    >
+                      🛠️ {t.navbar.admin}
+                    </Link>
                     <hr className="my-1 border-border" />
                     <button
                       onClick={handleSignOut}

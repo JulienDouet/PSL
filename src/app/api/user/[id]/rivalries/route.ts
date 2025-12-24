@@ -54,8 +54,10 @@ export async function GET(
     const qualified = enriched.filter(m => m.totalGames >= 3);
     const sortedByWinRate = [...qualified].sort((a, b) => a.winRate - b.winRate);
     
-    // Nemesis: someone you LOSE against (winrate < 50%), sorted by worst winrate
-    const potentialNemesis = sortedByWinRate.filter(m => m.winRate < 0.5);
+    // Nemesis: someone you LOSE against THE MOST (most losses, winrate < 50%)
+    const potentialNemesis = qualified
+      .filter(m => m.winRate < 0.5)
+      .sort((a, b) => b.losses - a.losses);  // Sort by most losses
     const nemesis = potentialNemesis[0] || null;
     
     // Prey: someone you DOMINATE - most WINS among those with winrate > 50%
