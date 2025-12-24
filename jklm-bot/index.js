@@ -198,11 +198,28 @@ class JKLMBot {
             const nick = chatter.nickname;
             const auth = chatter.auth;
             
+            // === DEBUG: Log détaillé pour JKLM staff (service=jklm) ===
+            if (auth?.service === 'jklm') {
+              console.log(`🔍 [DEBUG-JKLM-STAFF] Compte JKLM détecté au lobby:`);
+              console.log(`   - nickname (affiché): "${nick}"`);
+              console.log(`   - auth.username (permanent): "${auth.username || 'N/A'}"`);
+              console.log(`   - auth.id: "${auth.id || 'N/A'}"`);
+              console.log(`   - auth complet:`, JSON.stringify(auth));
+            }
+            
             // Message de bienvenue au lobby selon si le joueur est inscrit ou non
             if (this.expectedPlayers.length > 0) {
               const isExpected = this.findExpectedPlayer(nick, auth);
               const connectedCount = this.countConnectedExpectedPlayers();
               const totalExpected = this.expectedPlayers.length;
+              
+              // === DEBUG: Log si le joueur n'était pas dans la queue ===
+              if (!isExpected) {
+                console.log(`⚠️ [QUEUE] Joueur NON ATTENDU au lobby: "${nick}"`);
+                console.log(`   - auth: ${auth ? JSON.stringify(auth) : 'null (guest)'}`); 
+                console.log(`   - Joueurs attendus (${totalExpected}):`);
+                this.expectedPlayers.forEach(p => console.log(`     - ${p.service}:${p.id || p.username}`));
+              }
               
               if (isExpected) {
                 // Joueur inscrit et attendu - seulement le compter, pas encore de message
@@ -364,6 +381,27 @@ class JKLMBot {
       
       console.log(`👤 Joueur: ${nick}`, auth ? `(${auth.service}: ${auth.username || auth.id})` : '');
       
+      // === DEBUG: Log détaillé pour JKLM staff (service=jklm) ===
+      if (auth?.service === 'jklm') {
+        console.log(`🔍 [DEBUG-JKLM-STAFF] Compte JKLM détecté dans la partie:`);
+        console.log(`   - nickname (affiché): "${nick}"`);
+        console.log(`   - auth.username (permanent): "${auth.username || 'N/A'}"`);
+        console.log(`   - auth.id: "${auth.id || 'N/A'}"`);
+        console.log(`   - auth complet:`, JSON.stringify(auth));
+        console.log(`   - Tentative de matching avec expectedPlayers...`);
+        
+        // Debug du matching pour JKLM staff
+        this.expectedPlayers.forEach(exp => {
+          if (exp.service === 'jklm') {
+            console.log(`     - Attendu: service=${exp.service}, id="${exp.id}", username="${exp.username}"`);
+            const matchById = auth.id && exp.id && String(auth.id) === String(exp.id);
+            const matchByUsername = exp.username && auth.username && auth.username.toLowerCase() === exp.username.toLowerCase();
+            const matchByNick = exp.username && nick && nick.toLowerCase() === exp.username.toLowerCase();
+            console.log(`       -> Match par ID: ${matchById}, par username: ${matchByUsername}, par nick: ${matchByNick}`);
+          }
+        });
+      }
+      
       this.players.set(player.profile?.peerId, {
         nickname: nick,
         peerId: player.profile?.peerId,
@@ -376,6 +414,14 @@ class JKLMBot {
         const isExpected = this.findExpectedPlayer(nick, auth);
         const connectedCount = this.countConnectedExpectedPlayers();
         const totalExpected = this.expectedPlayers.length;
+        
+        // === DEBUG: Log si le joueur n'était pas dans la queue mais rejoint la partie ===
+        if (!isExpected) {
+          console.log(`⚠️ [QUEUE] Joueur NON ATTENDU dans la partie: "${nick}"`);
+          console.log(`   - peerId: ${player.profile?.peerId}`);
+          console.log(`   - auth: ${auth ? JSON.stringify(auth) : 'null (guest)'}`); 
+          console.log(`   - ⚠️ Ce joueur recevra du MMR à la fin du match sans avoir queue!`);
+        }
         
         if (isExpected) {
           // Joueur inscrit et attendu - afficher le compteur de progression
@@ -516,6 +562,14 @@ class JKLMBot {
       
       // Trouver si ce joueur était attendu pour récupérer ses infos
       const expectedInfo = this.findExpectedPlayer(p.nickname, p.auth);
+      
+      // === DEBUG: Signaler les joueurs non-attendus dans les résultats finaux ===
+      if (this.expectedPlayers.length > 0 && !expectedInfo) {
+        console.log(`⚠️ [RESULT] Joueur NON ATTENDU dans les résultats finaux: "${p.nickname}"`);
+        console.log(`   - Placement: ${i + 1}, Score: ${p.score} pts`);
+        console.log(`   - auth: ${p.auth ? JSON.stringify(p.auth) : 'null (guest)'}`);
+        console.log(`   - ⚠️ Ce joueur va potentiellement recevoir du MMR via le callback!`);
+      }
       
       this.gameResults.push({ 
         placement: i + 1, 
@@ -712,12 +766,22 @@ class JKLMBot {
     if (!auth && !nickname) return null;
     
     for (const exp of this.expectedPlayers) {
-      // Match par auth (Discord/Twitch ID)
-      if (auth?.service?.toLowerCase() === exp.service && auth?.id === exp.id) {
-        return exp;
+      // Match par auth (Discord/Twitch ID) - normalisation des IDs en string
+      if (auth?.service?.toLowerCase() === exp.service && auth?.id && exp.id) {
+        if (String(auth.id) === String(exp.id)) {
+          return exp;
+        }
       }
-      // Match par username si pas d'ID
-      if (exp.username && nickname?.toLowerCase() === exp.username) {
+      
+      // Pour JKLM staff: match par auth.username (username permanent JKLM)
+      if (exp.service === 'jklm' && auth?.service === 'jklm' && exp.username && auth?.username) {
+        if (auth.username.toLowerCase() === exp.username.toLowerCase()) {
+          return exp;
+        }
+      }
+      
+      // Match par nickname si pas d'ID (fallback pour JKLM et guests)
+      if (exp.username && nickname?.toLowerCase() === exp.username.toLowerCase()) {
         return exp;
       }
     }
