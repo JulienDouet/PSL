@@ -291,12 +291,12 @@ export async function POST(req: Request) {
             const playerA = playersForCalculation[i];
             const playerB = playersForCalculation[j];
             
-            // Determine winner based on points (not placement)
-            const aWon = playerA.points > playerB.points;
-            const bWon = playerB.points > playerA.points;
+            // Determine winner based on score (not placement)
+            const aWon = playerA.score > playerB.score;
+            const bWon = playerB.score > playerA.score;
             
             // If tied, no H2H update
-            if (playerA.points === playerB.points) continue;
+            if (playerA.score === playerB.score) continue;
             
             const winnerId = aWon ? playerA.id : playerB.id;
             const loserId = aWon ? playerB.id : playerA.id;
