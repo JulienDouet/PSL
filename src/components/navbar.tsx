@@ -76,13 +76,34 @@ export function Navbar() {
           <Image src="/transparent logo.png" alt="PSL Logo" width={120} height={60} className="object-contain" />
         </Link>
         <div className="flex items-center gap-3 sm:gap-4">
-          {/* Language Switcher - With flag */}
+          {/* Language Switcher - With SVG flags */}
           <button 
             onClick={toggleLanguage} 
-            className="px-2.5 py-1 rounded-md text-xs font-medium bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all cursor-pointer border border-border/30"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all cursor-pointer border border-border/30"
             title={language === 'fr' ? 'Switch to English' : 'Passer en Français'}
           >
-            {language === 'fr' ? '🇫🇷 FR' : '🇬🇧 EN'}
+            {language === 'fr' ? (
+              <>
+                <svg className="w-5 h-3.5" viewBox="0 0 3 2">
+                  <rect width="1" height="2" fill="#002654"/>
+                  <rect x="1" width="1" height="2" fill="#fff"/>
+                  <rect x="2" width="1" height="2" fill="#ce1126"/>
+                </svg>
+                <span>FR</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-3.5" viewBox="0 0 60 30">
+                  <rect width="60" height="30" fill="#012169"/>
+                  <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
+                  <path d="M0,0 L60,30" stroke="#C8102E" strokeWidth="2"/>
+                  <path d="M60,0 L0,30" stroke="#C8102E" strokeWidth="2"/>
+                  <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
+                  <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
+                </svg>
+                <span>EN</span>
+              </>
+            )}
           </button>
 
           {isPending ? (
