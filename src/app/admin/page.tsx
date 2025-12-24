@@ -140,6 +140,7 @@ export default function AdminPage() {
 
   const getLevelColor = (level: string) => {
     switch (level) {
+      case 'CONNECTION': return 'text-cyan-400';
       case 'DEBUG': return 'text-gray-400';
       case 'PLAYER': return 'text-green-400';
       case 'AUTH': return 'text-yellow-400';
@@ -219,6 +220,7 @@ export default function AdminPage() {
                   className="px-3 py-1.5 bg-secondary rounded text-sm"
                 >
                   <option value="ALL">All Levels</option>
+                  <option value="CONNECTION">🔗 CONNECTION</option>
                   <option value="INFO">INFO</option>
                   <option value="DEBUG">DEBUG</option>
                   <option value="PLAYER">PLAYER</option>

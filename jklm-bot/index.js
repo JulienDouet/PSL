@@ -439,8 +439,37 @@ class JKLMBot {
         const connectedCount = this.countConnectedExpectedPlayers();
         const totalExpected = this.expectedPlayers.length;
         
-        // === DEBUG: Log si le joueur n'était pas dans la queue mais rejoint la partie ===
-        if (!isExpected) {
+        // === CONNECTION LOG for Admin Panel ===
+        if (isExpected) {
+          // Determine how the match was made
+          let matchMethod = 'unknown';
+          if (auth?.service === 'discord') matchMethod = 'Discord auth';
+          else if (auth?.service === 'twitch') matchMethod = 'Twitch auth';
+          else if (auth?.service === 'jklm') matchMethod = `JKLM username "${auth.username}"`;
+          else matchMethod = `Nickname "${nick}"`;
+          
+          console.log(`🔗 [CONNECTION] ✅ ${nick} | Room: ${this.roomCode} | Status: OK | Method: ${matchMethod} | Queue: ${connectedCount}/${totalExpected}`);
+        } else {
+          // Determine why the match failed
+          let failReason = 'Unknown';
+          if (!auth) {
+            failReason = 'Guest account (no auth)';
+          } else if (auth.service === 'jklm') {
+            const expectedJklm = this.expectedPlayers.filter(e => e.service === 'jklm');
+            if (expectedJklm.length === 0) {
+              failReason = 'No JKLM accounts expected in queue';
+            } else {
+              failReason = `JKLM "${auth.username || nick}" not in queue`;
+            }
+          } else if (auth.service === 'discord') {
+            failReason = `Discord ID ${auth.id} not in queue`;
+          } else if (auth.service === 'twitch') {
+            failReason = `Twitch ID ${auth.id} not in queue`;
+          } else {
+            failReason = `${auth.service} account not matched`;
+          }
+          
+          console.log(`🔗 [CONNECTION] ❌ ${nick} | Room: ${this.roomCode} | Status: FAILED | Reason: ${failReason}`);
           console.log(`⚠️ [QUEUE] Joueur NON ATTENDU dans la partie: "${nick}"`);
           console.log(`   - peerId: ${player.profile?.peerId}`);
           console.log(`   - auth: ${auth ? JSON.stringify(auth) : 'null (guest)'}`); 
@@ -456,6 +485,9 @@ class JKLMBot {
           this.sendChat(joinedMsg);
         }
         // Note: le message de bienvenue pour les non-inscrits est envoyé dans chatterAdded (lobby join)
+      } else {
+        // No expected players - test mode or open game
+        console.log(`🔗 [CONNECTION] ℹ️ ${nick} | Room: ${this.roomCode} | Status: OK (no queue)`);
       }
 
       // Vérifier si tous les joueurs attendus ont rejoint
@@ -1046,6 +1078,7 @@ async function main() {
     const originalError = console.error.bind(console);
     
     const parseLevel = (msg) => {
+      if (msg.includes('[CONNECTION]') || msg.includes('🔗')) return 'CONNECTION';
       if (msg.includes('[DEBUG]') || msg.includes('🔍')) return 'DEBUG';
       if (msg.includes('[PLAYER]') || msg.includes('👤') || msg.includes('addPlayer')) return 'PLAYER';
       if (msg.includes('[AUTH]') || msg.includes('🔐') || msg.includes('auth')) return 'AUTH';
