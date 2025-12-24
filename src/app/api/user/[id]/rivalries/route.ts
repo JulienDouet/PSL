@@ -54,13 +54,15 @@ export async function GET(
     const qualified = enriched.filter(m => m.totalGames >= 3);
     const sortedByWinRate = [...qualified].sort((a, b) => a.winRate - b.winRate);
     
-    // Nemesis: someone you LOSE against (winrate < 50%)
+    // Nemesis: someone you LOSE against (winrate < 50%), sorted by worst winrate
     const potentialNemesis = sortedByWinRate.filter(m => m.winRate < 0.5);
     const nemesis = potentialNemesis[0] || null;
     
-    // Prey: someone you DOMINATE (winrate > 50%)
-    const potentialPrey = sortedByWinRate.filter(m => m.winRate > 0.5);
-    const prey = potentialPrey[potentialPrey.length - 1] || null;
+    // Prey: someone you DOMINATE - most WINS among those with winrate > 50%
+    const potentialPrey = qualified
+      .filter(m => m.winRate > 0.5)
+      .sort((a, b) => b.wins - a.wins);  // Sort by most wins
+    const prey = potentialPrey[0] || null;
 
     return NextResponse.json({ 
       matchups: enriched, 
