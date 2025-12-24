@@ -1041,6 +1041,30 @@ async function main() {
     const http = await import('http');
     const sseClients = [];
     
+    // Patch console.log to capture all output for SSE streaming
+    const originalLog = console.log.bind(console);
+    const originalError = console.error.bind(console);
+    
+    const parseLevel = (msg) => {
+      if (msg.includes('[DEBUG]') || msg.includes('🔍')) return 'DEBUG';
+      if (msg.includes('[PLAYER]') || msg.includes('👤') || msg.includes('addPlayer')) return 'PLAYER';
+      if (msg.includes('[AUTH]') || msg.includes('🔐') || msg.includes('auth')) return 'AUTH';
+      if (msg.includes('Error') || msg.includes('❌')) return 'ERROR';
+      return 'INFO';
+    };
+    
+    console.log = (...args) => {
+      originalLog(...args);
+      const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+      bot.logBuffer.push({ ts: Date.now(), level: parseLevel(msg), msg });
+    };
+    
+    console.error = (...args) => {
+      originalError(...args);
+      const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+      bot.logBuffer.push({ ts: Date.now(), level: 'ERROR', msg });
+    };
+    
     bot.httpServer = http.createServer((req, res) => {
       if (req.url === '/logs') {
         // SSE endpoint
