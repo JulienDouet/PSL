@@ -42,15 +42,19 @@ export async function GET(
       const userPlayer = match.players.find(p => p.userId === id);
       const opponentPlayer = match.players.find(p => p.userId === opponentId);
       
+      const userPoints = userPlayer?.points ?? 0;
+      const opponentPoints = opponentPlayer?.points ?? 0;
+      
       return {
         matchId: match.id,
         date: match.createdAt,
         category: match.category,
-        userPoints: userPlayer?.points ?? 0,
-        opponentPoints: opponentPlayer?.points ?? 0,
+        userPoints,
+        opponentPoints,
         userPlacement: userPlayer?.placement,
         opponentPlacement: opponentPlayer?.placement,
-        userWon: userPlayer?.placement === 1
+        // H2H win = user has more points than THIS specific opponent
+        userWon: userPoints > opponentPoints
       };
     });
 
