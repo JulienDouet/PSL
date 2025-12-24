@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRankProgress } from "@/lib/mmr";
 import { useTranslation } from "@/lib/i18n/context";
+import { RivalriesTab } from "./rivalries-tab";
 
 // Emojis pour les catégories
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -40,12 +41,14 @@ interface MatchPlayer {
 }
 
 interface CategoryStatsProps {
+  userId: string;
   categoryMMRs: CategoryMMR[];
   matchPlayers: MatchPlayer[];
 }
 
-export function CategoryStats({ categoryMMRs, matchPlayers }: CategoryStatsProps) {
+export function CategoryStats({ userId, categoryMMRs, matchPlayers }: CategoryStatsProps) {
   const { t } = useTranslation();
+  const [activeSubTab, setActiveSubTab] = useState<'stats' | 'rivalries'>('stats');
   
   // Catégories avec des données - triées par parties jouées
   const categoriesWithData = categoryMMRs
@@ -119,6 +122,36 @@ export function CategoryStats({ categoryMMRs, matchPlayers }: CategoryStatsProps
           );
         })}
       </div>
+
+      {/* Sous-onglets Stats / Rivalités */}
+      <div className="flex gap-2 border-b border-border/50 pb-2">
+        <button
+          onClick={() => setActiveSubTab('stats')}
+          className={`px-4 py-2 text-sm font-medium transition-all rounded-t-lg ${
+            activeSubTab === 'stats'
+              ? 'bg-primary/10 text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          📊 {t.profile?.stats || 'Stats'}
+        </button>
+        <button
+          onClick={() => setActiveSubTab('rivalries')}
+          className={`px-4 py-2 text-sm font-medium transition-all rounded-t-lg ${
+            activeSubTab === 'rivalries'
+              ? 'bg-primary/10 text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          🤝 {t.rivalries?.title || 'Rivalités'}
+        </button>
+      </div>
+
+      {/* Contenu selon le sous-onglet actif */}
+      {activeSubTab === 'rivalries' ? (
+        <RivalriesTab userId={userId} category={activeCategory || undefined} />
+      ) : (
+        <>
 
       {/* Stats principales */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -260,6 +293,8 @@ export function CategoryStats({ categoryMMRs, matchPlayers }: CategoryStatsProps
           )}
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }

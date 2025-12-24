@@ -125,6 +125,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
           {/* Stats par catégorie avec onglets */}
           <CategoryStats 
+            userId={id}
             categoryMMRs={categoryMMRsData}
             matchPlayers={matchPlayersData}
           />

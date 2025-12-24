@@ -47,6 +47,10 @@ model User {
   reportsAgainst    Report[]  @relation("Reported")
   jklmVerification  JKLMVerification?
   answers           MatchAnswer[]
+  
+  // Rivalries (H2H tracking)
+  matchups           UserMatchup[] @relation("UserMatchups")
+  opponentMatchups   UserMatchup[] @relation("OpponentMatchups")
 }
 
 model Session {
@@ -320,4 +324,24 @@ model JKLMVerification {
   createdAt    DateTime @default(now())
   
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// RIVALRIES (HEAD-TO-HEAD TRACKING)
+// ============================================
+
+model UserMatchup {
+  id          String   @id @default(cuid())
+  userId      String   // The player
+  opponentId  String   // The opponent
+  category    Category
+  wins        Int      @default(0)
+  losses      Int      @default(0)
+  lastPlayed  DateTime @default(now())
+
+  user        User     @relation("UserMatchups", fields: [userId], references: [id], onDelete: Cascade)
+  opponent    User     @relation("OpponentMatchups", fields: [opponentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, opponentId, category])
+  @@index([userId, category])
 }

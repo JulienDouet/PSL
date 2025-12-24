@@ -282,6 +282,45 @@ export async function POST(req: Request) {
         });
     }
 
+    // 4. Update H2H stats (Rivalries)
+    // Winner gets +1 win against all losers, losers get +1 loss against winner
+    const winnerIds = playersForCalculation.filter(p => p.placement === 1).map(p => p.id);
+    const loserIds = playersForCalculation.filter(p => p.placement !== 1).map(p => p.id);
+    
+    console.log(`🤝 [H2H] Updating rivalries: ${winnerIds.length} winner(s) vs ${loserIds.length} loser(s)`);
+    
+    for (const winnerId of winnerIds) {
+        for (const loserId of loserIds) {
+            // Winner gets +1 win against loser
+            await prisma.userMatchup.upsert({
+                where: { 
+                    userId_opponentId_category: { 
+                        userId: winnerId, 
+                        opponentId: loserId, 
+                        category 
+                    } 
+                },
+                create: { userId: winnerId, opponentId: loserId, category, wins: 1, losses: 0 },
+                update: { wins: { increment: 1 }, lastPlayed: new Date() }
+            });
+            
+            // Loser gets +1 loss against winner
+            await prisma.userMatchup.upsert({
+                where: { 
+                    userId_opponentId_category: { 
+                        userId: loserId, 
+                        opponentId: winnerId, 
+                        category 
+                    } 
+                },
+                create: { userId: loserId, opponentId: winnerId, category, wins: 0, losses: 1 },
+                update: { losses: { increment: 1 }, lastPlayed: new Date() }
+            });
+        }
+    }
+    
+    console.log(`✅ [H2H] Updated ${winnerIds.length * loserIds.length * 2} matchup records`);
+
     // 4. Sauvegarder les réponses (MatchAnswer) et apprendre les questions (PopsauceQuestion)
     const answers = (body as any).answers;
     if (answers && Array.isArray(answers)) {
@@ -334,31 +373,41 @@ export async function POST(req: Request) {
                         .filter(a => a && a !== normalizedCorrect)
                 )];
                 
-                await prisma.popsauceQuestion.upsert({
-                    where: { questionHash: hash },
-                    create: {
-                        questionHash: hash,
-                        prompt: data.prompt,
-                        text: data.text,
-                        imageHash: data.imageHash,
-                        correctAnswer: data.correctAnswer,
-                        aliases: newAliases,
-                        timesAsked: 1,
-                        timesAnswered: data.responseTimes.length,
-                        avgResponseMs: avgTime
-                    },
-                    update: {
-                        // Mettre à jour les stats
-                        timesAsked: { increment: 1 },
-                        timesAnswered: { increment: data.responseTimes.length },
-                        // Calculer la nouvelle moyenne (approximation)
-                        avgResponseMs: avgTime,
-                        // Ajouter les nouveaux alias (merge)
-                        aliases: {
-                            push: newAliases
-                        }
-                    }
+                // Vérifier si la question existe déjà
+                const existing = await prisma.popsauceQuestion.findUnique({
+                    where: { questionHash: hash }
                 });
+                
+                if (existing) {
+                    // UPDATE: Merger les aliases et incrémenter les compteurs
+                    const mergedAliases = [...new Set([...existing.aliases, ...newAliases])];
+                    await prisma.popsauceQuestion.update({
+                        where: { questionHash: hash },
+                        data: {
+                            timesAsked: { increment: 1 },
+                            timesAnswered: { increment: data.responseTimes.length },
+                            avgResponseMs: avgTime,
+                            aliases: mergedAliases
+                        }
+                    });
+                    console.log(`  ✓ Updated question ${hash.slice(0, 8)}... (asked: ${existing.timesAsked + 1})`);
+                } else {
+                    // CREATE: Nouvelle question
+                    await prisma.popsauceQuestion.create({
+                        data: {
+                            questionHash: hash,
+                            prompt: data.prompt,
+                            text: data.text,
+                            imageHash: data.imageHash,
+                            correctAnswer: data.correctAnswer,
+                            aliases: newAliases,
+                            timesAsked: 1,
+                            timesAnswered: data.responseTimes.length,
+                            avgResponseMs: avgTime
+                        }
+                    });
+                    console.log(`  ✓ Created question ${hash.slice(0, 8)}...`);
+                }
             } catch (err) {
                 console.error(`⚠️ Erreur UPSERT PopsauceQuestion ${hash}:`, err);
             }

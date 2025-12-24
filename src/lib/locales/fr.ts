@@ -224,5 +224,13 @@ export const fr = {
     upset: "Upset!",
     players_count: "{n} Joueurs",
     avg_mmr: "Ø{n}"
+  },
+  rivalries: {
+    title: "Rivalités",
+    nemesis: "Némésis",
+    prey: "Proie Favorite",
+    all_opponents: "Tous les adversaires",
+    no_data: "Pas encore de rivalités. Joue plus de parties ranked !",
+    need_more_games: "3+ parties contre un même adversaire requises"
   }
 }

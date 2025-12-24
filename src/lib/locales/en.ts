@@ -224,5 +224,13 @@ export const en = {
     upset: "Upset!",
     players_count: "{n} Players",
     avg_mmr: "Ø{n}"
+  },
+  rivalries: {
+    title: "Rivalries",
+    nemesis: "Nemesis",
+    prey: "Favorite Prey",
+    all_opponents: "All Opponents",
+    no_data: "No rivalries yet. Play more ranked matches!",
+    need_more_games: "3+ games against same opponent required"
   }
 }
