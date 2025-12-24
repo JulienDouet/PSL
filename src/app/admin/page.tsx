@@ -70,8 +70,8 @@ export default function AdminPage() {
       return;
     }
 
-    // Connect to bot's SSE endpoint (proxied or direct)
-    const evtSource = new EventSource('http://localhost:3099/logs');
+    // Connect to bot's SSE endpoint via API proxy (works in prod)
+    const evtSource = new EventSource('/api/admin/test-bot/logs');
     eventSourceRef.current = evtSource;
 
     evtSource.onmessage = (e) => {
