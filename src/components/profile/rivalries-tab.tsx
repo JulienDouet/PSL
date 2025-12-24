@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { useTranslation } from "@/lib/i18n/context";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface Opponent {
   id: string;
@@ -21,6 +22,15 @@ interface Matchup {
   opponent: Opponent;
 }
 
+interface MatchHistory {
+  matchId: string;
+  date: string;
+  category: string;
+  userPoints: number;
+  opponentPoints: number;
+  userWon: boolean;
+}
+
 interface RivalriesData {
   matchups: Matchup[];
   nemesis: Matchup | null;
@@ -32,6 +42,110 @@ interface RivalriesData {
 interface RivalriesTabProps {
   userId: string;
   category?: string;
+}
+
+// Expandable matchup row component
+function MatchupRow({ matchup, userId, category }: { matchup: Matchup; userId: string; category?: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [history, setHistory] = useState<MatchHistory[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    if (!expanded && !history) {
+      setLoading(true);
+      try {
+        const url = `/api/user/${userId}/rivalries/${matchup.opponent.id}${category ? `?category=${category}` : ''}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          setHistory(data.history);
+        }
+      } catch (err) {
+        console.error('Failed to fetch match history:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    setExpanded(!expanded);
+  };
+
+  return (
+    <div className="rounded-lg bg-muted/30 overflow-hidden">
+      <div 
+        onClick={handleClick}
+        className="flex items-center justify-between py-2 px-3 hover:bg-muted/50 transition-colors cursor-pointer"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 flex items-center justify-center text-muted-foreground">
+            {loading ? (
+              <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            ) : expanded ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </div>
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-sm overflow-hidden">
+            {matchup.opponent.image ? (
+              <img src={matchup.opponent.image} alt="" className="w-full h-full object-cover" />
+            ) : (
+              matchup.opponent.name[0]?.toUpperCase() || '?'
+            )}
+          </div>
+          <span className="font-medium">{matchup.opponent.name}</span>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <div className="text-sm">
+            <span className="text-green-400">{matchup.wins}W</span>
+            {' - '}
+            <span className="text-red-400">{matchup.losses}L</span>
+          </div>
+          
+          {/* Win rate bar */}
+          <div className="w-16 h-2 bg-red-500/30 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-green-500 transition-all"
+              style={{ width: `${matchup.winRate * 100}%` }}
+            />
+          </div>
+          
+          <span className="text-sm text-muted-foreground w-12 text-right">
+            {Math.round(matchup.winRate * 100)}%
+          </span>
+        </div>
+      </div>
+      
+      {/* Expanded history */}
+      {expanded && history && (
+        <div className="px-3 pb-3 pt-1 border-t border-border/30">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {history.map((match, idx) => (
+              <div 
+                key={match.matchId || idx}
+                className={`text-center py-1.5 px-2 rounded text-sm ${
+                  match.userWon 
+                    ? 'bg-green-500/10 border border-green-500/30' 
+                    : 'bg-red-500/10 border border-red-500/30'
+                }`}
+              >
+                <span className={match.userWon ? 'text-green-400 font-semibold' : 'text-muted-foreground'}>
+                  {match.userPoints}
+                </span>
+                <span className="text-muted-foreground mx-1">-</span>
+                <span className={!match.userWon ? 'text-red-400 font-semibold' : 'text-muted-foreground'}>
+                  {match.opponentPoints}
+                </span>
+              </div>
+            ))}
+          </div>
+          {history.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-2">No match history available</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function RivalriesTab({ userId, category }: RivalriesTabProps) {
@@ -182,41 +296,12 @@ export function RivalriesTab({ userId, category }: RivalriesTabProps) {
           
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
             {data.matchups.map((matchup) => (
-              <div 
+              <MatchupRow 
                 key={matchup.id}
-                className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-sm overflow-hidden">
-                    {matchup.opponent.image ? (
-                      <img src={matchup.opponent.image} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      matchup.opponent.name[0]?.toUpperCase() || '?'
-                    )}
-                  </div>
-                  <span className="font-medium">{matchup.opponent.name}</span>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <div className="text-sm">
-                    <span className="text-green-400">{matchup.wins}W</span>
-                    {' - '}
-                    <span className="text-red-400">{matchup.losses}L</span>
-                  </div>
-                  
-                  {/* Win rate bar */}
-                  <div className="w-16 h-2 bg-red-500/30 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-green-500 transition-all"
-                      style={{ width: `${matchup.winRate * 100}%` }}
-                    />
-                  </div>
-                  
-                  <span className="text-sm text-muted-foreground w-12 text-right">
-                    {Math.round(matchup.winRate * 100)}%
-                  </span>
-                </div>
-              </div>
+                matchup={matchup}
+                userId={userId}
+                category={category}
+              />
             ))}
           </div>
         </CardContent>
