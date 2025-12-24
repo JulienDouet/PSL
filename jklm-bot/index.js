@@ -449,6 +449,25 @@ class JKLMBot {
           else matchMethod = `Nickname "${nick}"`;
           
           console.log(`🔗 [CONNECTION] ✅ ${nick} | Room: ${this.roomCode} | Status: OK | Method: ${matchMethod} | Queue: ${connectedCount}/${totalExpected}`);
+          
+          // Joueur inscrit et attendu - afficher le compteur de progression
+          const isEnglish = this.customRules?.dictionaryId === 'en';
+          const joinedMsg = isEnglish
+            ? `✅ ${nick} joined the game! (${connectedCount}/${totalExpected})`
+            : `✅ ${nick} a rejoint la partie ! (${connectedCount}/${totalExpected})`;
+          this.sendChat(joinedMsg);
+          
+          // POST to connection-logs API (async, don't await)
+          this.sendConnectionLog({
+            roomCode: this.roomCode,
+            nickname: nick,
+            success: true,
+            method: matchMethod,
+            authService: auth?.service || null,
+            authId: auth?.id || null,
+            category: this.category,
+            queueCount: `${connectedCount}/${totalExpected}`
+          });
         } else {
           // Determine why the match failed
           let failReason = 'Unknown';
@@ -481,27 +500,6 @@ class JKLMBot {
             nickname: nick,
             success: false,
             failReason: failReason,
-            authService: auth?.service || null,
-            authId: auth?.id || null,
-            category: this.category,
-            queueCount: `${connectedCount}/${totalExpected}`
-          });
-        }
-        
-        if (isExpected) {
-          // Joueur inscrit et attendu - afficher le compteur de progression
-          const isEnglish = this.customRules?.dictionaryId === 'en';
-          const joinedMsg = isEnglish
-            ? `✅ ${nick} joined the game! (${connectedCount}/${totalExpected})`
-            : `✅ ${nick} a rejoint la partie ! (${connectedCount}/${totalExpected})`;
-          this.sendChat(joinedMsg);
-          
-          // POST to connection-logs API (async, don't await)
-          this.sendConnectionLog({
-            roomCode: this.roomCode,
-            nickname: nick,
-            success: true,
-            method: matchMethod,
             authService: auth?.service || null,
             authId: auth?.id || null,
             category: this.category,
