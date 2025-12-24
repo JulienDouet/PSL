@@ -345,3 +345,30 @@ model UserMatchup {
   @@unique([userId, opponentId, category])
   @@index([userId, category])
 }
+
+// ============================================
+// ADMIN MONITORING - CONNECTION LOGS
+// ============================================
+
+model ConnectionLog {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  
+  roomCode    String                // JKLM room code (e.g. "ABCD")
+  nickname    String                // Display name in JKLM
+  success     Boolean               // Did the player match to a PSL account?
+  method      String?               // How they were matched: "Discord auth", "JKLM username", etc.
+  failReason  String?               // If failed, why?
+  
+  // Optional link to matched user
+  userId      String?
+  authService String?               // "discord", "twitch", "jklm", null for guests
+  authId      String?               // The auth provider ID
+  
+  category    Category?
+  queueCount  String?               // e.g. "2/3" - connected/expected
+  
+  @@index([createdAt])
+  @@index([roomCode])
+  @@index([userId])
+}

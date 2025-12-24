@@ -374,13 +374,13 @@ class JKLMBot {
            this.applyRules();
          }, 500);
          
-         // Si pas de joueurs attendus, lancer directement
-         if (this.expectedPlayers.length === 0) {
-             setTimeout(() => {
-                 console.log('📤 Envoi startRoundNow...');
-                 this.gameSocket.emit('startRoundNow');
-             }, 3000);
-         }
+          // Si pas de joueurs attendus (test mode), laisser le countdown naturel
+          if (this.expectedPlayers.length === 0) {
+              setTimeout(() => {
+                  console.log('ℹ️ Pas de joueurs attendus, attente du countdown naturel...');
+                  // this.gameSocket.emit('startRoundNow'); // DISABLED - let countdown finish
+              }, 3000);
+          }
       }
 
       if (data.players) {
@@ -474,6 +474,18 @@ class JKLMBot {
           console.log(`   - peerId: ${player.profile?.peerId}`);
           console.log(`   - auth: ${auth ? JSON.stringify(auth) : 'null (guest)'}`); 
           console.log(`   - ⚠️ Ce joueur recevra du MMR à la fin du match sans avoir queue!`);
+          
+          // POST to connection-logs API (async, don't await)
+          this.sendConnectionLog({
+            roomCode: this.roomCode,
+            nickname: nick,
+            success: false,
+            failReason: failReason,
+            authService: auth?.service || null,
+            authId: auth?.id || null,
+            category: this.category,
+            queueCount: `${connectedCount}/${totalExpected}`
+          });
         }
         
         if (isExpected) {
@@ -483,6 +495,18 @@ class JKLMBot {
             ? `✅ ${nick} joined the game! (${connectedCount}/${totalExpected})`
             : `✅ ${nick} a rejoint la partie ! (${connectedCount}/${totalExpected})`;
           this.sendChat(joinedMsg);
+          
+          // POST to connection-logs API (async, don't await)
+          this.sendConnectionLog({
+            roomCode: this.roomCode,
+            nickname: nick,
+            success: true,
+            method: matchMethod,
+            authService: auth?.service || null,
+            authId: auth?.id || null,
+            category: this.category,
+            queueCount: `${connectedCount}/${totalExpected}`
+          });
         }
         // Note: le message de bienvenue pour les non-inscrits est envoyé dans chatterAdded (lobby join)
       } else {
@@ -673,6 +697,26 @@ class JKLMBot {
     }
 
     return this.gameResults;
+  }
+
+  /**
+   * Send connection log to API for admin monitoring
+   * Called async (fire and forget) when players join
+   */
+  sendConnectionLog(data) {
+    if (!this.callbackUrl) return; // No callback URL = no logging
+    
+    // Derive base URL from callback URL
+    const baseUrl = this.callbackUrl.replace(/\/api\/match\/callback$/, '');
+    const logUrl = `${baseUrl}/api/admin/connection-logs`;
+    
+    fetch(logUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).catch(err => {
+      console.error('❌ [CONNECTION-LOG] Failed to send:', err.message);
+    });
   }
 
   /**
@@ -902,28 +946,24 @@ class JKLMBot {
         this.warningTimeout50 = null;
       }
       
-      // Déverrouiller les règles et lancer la partie
+      // Déverrouiller les règles (mais ne plus forcer startRoundNow - laisser le countdown naturel)
       setTimeout(() => {
         if (this.gameSocket?.connected) {
-          console.log(`🎮 [START] Tentative de démarrage... isLeader=${this.isLeader}, gameSocket.connected=${this.gameSocket?.connected}`);
+          console.log(`🎮 [START] Tous les joueurs attendus sont présents!`);
           
           if (this.isLeader) {
-            // Note: les règles ont déjà été appliquées au setup, pas besoin de les ré-appliquer
+            // Déverrouiller les règles pour permettre le jeu
             console.log('🔓 [START] Déverrouillage des règles (isLeader=true)...');
             this.gameSocket.emit('setRulesLocked', true); // true = menu fermé = permet le jeu
             
-            console.log('📤 [START] Envoi startRoundNow (tous joueurs présents, isLeader=true)...');
-            this.gameSocket.emit('startRoundNow');
+            // NE PLUS forcer startRoundNow - laisser le countdown naturel de 15s
+            console.log('⏳ [START] Attente du countdown naturel JKLM (15s)...');
+            // this.gameSocket.emit('startRoundNow'); // DISABLED - let countdown finish
           } else {
-            // Si on n'est pas leader, on ne peut pas démarrer - log l'erreur
-            console.error('❌ [START] IMPOSSIBLE de démarrer: le bot n\'est PAS leader!');
-            console.error('❌ [START] selfRoles probablement pas "leader". Vérifier la création de room.');
-            // Essayer quand même au cas où
-            console.log('📤 [START] Tentative de startRoundNow malgré tout...');
-            this.gameSocket.emit('startRoundNow');
+            console.log('ℹ️ [START] Le bot n\'est pas leader, attente du countdown naturel...');
           }
         } else {
-          console.error('❌ [START] gameSocket déconnecté, impossible de démarrer!');
+          console.error('❌ [START] gameSocket déconnecté!');
         }
       }, 2000);
     }
