@@ -12,9 +12,21 @@ import { useTranslation } from "@/lib/i18n/context";
 export function Navbar() {
   const { data: session, isPending } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { t, language, setLanguage } = useTranslation();
+
+  // Check admin status
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetch('/api/admin/test-bot')
+        .then(res => {
+          setIsAdmin(res.status !== 401);
+        })
+        .catch(() => setIsAdmin(false));
+    }
+  }, [session?.user?.id]);
 
   // Fermer le menu si on clique ailleurs
   useEffect(() => {
@@ -116,13 +128,15 @@ export function Navbar() {
                       <Settings className="w-4 h-4" />
                       {t.navbar.edit_profile}
                     </Link>
-                    <Link
-                      href="/admin"
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-secondary transition-colors"
-                    >
-                      🛠️ {t.navbar.admin}
-                    </Link>
+                    {isAdmin && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-secondary transition-colors"
+                      >
+                        🛠️ {t.navbar.admin}
+                      </Link>
+                    )}
                     <hr className="my-1 border-border" />
                     <button
                       onClick={handleSignOut}
