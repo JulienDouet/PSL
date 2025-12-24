@@ -49,12 +49,18 @@ export async function GET(
       }
     }));
 
-    // Find nemesis (worst winrate with 3+ games) and prey (best winrate with 3+ games)
+    // Find nemesis (worst winrate with 3+ games AND winrate < 50%) 
+    // and prey (best winrate with 3+ games AND winrate > 50%)
     const qualified = enriched.filter(m => m.totalGames >= 3);
     const sortedByWinRate = [...qualified].sort((a, b) => a.winRate - b.winRate);
     
-    const nemesis = sortedByWinRate[0] || null;  // Worst winrate
-    const prey = sortedByWinRate[sortedByWinRate.length - 1] || null;  // Best winrate
+    // Nemesis: someone you LOSE against (winrate < 50%)
+    const potentialNemesis = sortedByWinRate.filter(m => m.winRate < 0.5);
+    const nemesis = potentialNemesis[0] || null;
+    
+    // Prey: someone you DOMINATE (winrate > 50%)
+    const potentialPrey = sortedByWinRate.filter(m => m.winRate > 0.5);
+    const prey = potentialPrey[potentialPrey.length - 1] || null;
 
     return NextResponse.json({ 
       matchups: enriched, 
