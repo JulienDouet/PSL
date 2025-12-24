@@ -257,7 +257,7 @@ export default function AdminPage() {
                       <span className={`w-16 flex-shrink-0 ${getLevelColor(log.level)}`}>
                         [{log.level}]
                       </span>
-                      <span className="text-gray-200">{log.msg}</span>
+                    <span className="text-gray-200">{log.msg}</span>
                     </div>
                   ))
                 )}
@@ -266,8 +266,101 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
+          {/* Connection Logs Section */}
+          <ConnectionLogsPanel />
+
         </div>
       </main>
     </div>
+  );
+}
+
+// Connection Logs Panel Component
+function ConnectionLogsPanel() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'success' | 'failed'>('all');
+
+  useEffect(() => {
+    async function fetchLogs() {
+      try {
+        const successParam = filter === 'all' ? '' : `&success=${filter === 'success'}`;
+        const res = await fetch(`/api/admin/connection-logs?limit=100${successParam}`);
+        if (res.ok) {
+          const data = await res.json();
+          setLogs(data.logs || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch connection logs:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 10000); // Refresh every 10s
+    return () => clearInterval(interval);
+  }, [filter]);
+
+  return (
+    <Card className="bg-card border-border/50">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span>🔗 Connection Logs (Live)</span>
+          <div className="flex items-center gap-2">
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as any)}
+              className="px-2 py-1 bg-secondary rounded text-sm"
+            >
+              <option value="all">All</option>
+              <option value="success">✅ Success</option>
+              <option value="failed">❌ Failed</option>
+            </select>
+            <span className="text-xs text-muted-foreground">
+              {logs.length} logs
+            </span>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No connection logs yet. Logs appear when players join ranked matches.
+          </div>
+        ) : (
+          <div className="space-y-1 max-h-[400px] overflow-y-auto font-mono text-xs">
+            {logs.map((log) => (
+              <div 
+                key={log.id}
+                className={`flex items-center gap-3 p-2 rounded ${
+                  log.success ? 'bg-green-500/10' : 'bg-red-500/10'
+                }`}
+              >
+                <span className="text-gray-500 w-16 flex-shrink-0">
+                  {new Date(log.createdAt).toLocaleTimeString()}
+                </span>
+                <span className={log.success ? 'text-green-400' : 'text-red-400'}>
+                  {log.success ? '✅' : '❌'}
+                </span>
+                <span className="font-medium w-24 flex-shrink-0">{log.nickname}</span>
+                <span className="text-muted-foreground">→</span>
+                <span className="text-cyan-400 font-medium">{log.roomCode}</span>
+                {log.queueCount && (
+                  <span className="text-muted-foreground">({log.queueCount})</span>
+                )}
+                <span className="flex-1 truncate text-muted-foreground">
+                  {log.success ? log.method : log.failReason}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
