@@ -94,10 +94,10 @@ export default function TermsPage() {
             </ul>
             <p className="mt-3">
               Les décisions de modération sont prises par l&apos;équipe PSL et peuvent être contestées 
-              en contactant{" "}
-              <a href="mailto:psl.ranked.contact@gmail.com" className="text-primary hover:underline">
-                psl.ranked.contact@gmail.com
-              </a>
+              sur notre{" "}
+              <a href="https://discord.gg/JGHRNy6qRn" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                serveur Discord
+              </a>.
             </p>
           </section>
 
@@ -156,11 +156,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-foreground mb-3">11. Contact</h2>
             <p>
-              Pour toute question concernant les CGU, contactez-nous à{" "}
-              <a href="mailto:psl.ranked.contact@gmail.com" className="text-primary hover:underline">
-                psl.ranked.contact@gmail.com
-              </a>{" "}
-              ou sur notre{" "}
+              Pour toute question concernant les CGU, contactez-nous sur notre{" "}
               <a href="https://discord.gg/JGHRNy6qRn" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                 serveur Discord
               </a>.
