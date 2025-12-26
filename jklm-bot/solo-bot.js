@@ -631,16 +631,29 @@ if (args.includes('--session')) {
         console.log(`Room créée: ${result.roomCode}`);
         
         // Notify API via callback
+        const callbackPayload = {
+          type: 'room_created',
+          sessionId,
+          roomCode: result.roomCode,
+          joinUrl: result.joinUrl
+        };
+        console.log(`📤 [SOLO-CLI] Sending callback to ${callbackUrl}/api/solo/callback`);
+        
         fetch(`${callbackUrl}/api/solo/callback`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'room_created',
-            sessionId,
-            roomCode: result.roomCode,
-            joinUrl: result.joinUrl
+          body: JSON.stringify(callbackPayload)
+        })
+          .then(res => {
+            console.log(`📥 [SOLO-CLI] Callback response: ${res.status} ${res.statusText}`);
+            return res.json().catch(() => ({}));
           })
-        }).catch(err => console.error('Callback failed:', err.message));
+          .then(data => {
+            console.log(`📥 [SOLO-CLI] Callback data:`, JSON.stringify(data));
+          })
+          .catch(err => {
+            console.error(`❌ [SOLO-CLI] Callback failed:`, err.message);
+          });
         
         // Keep process alive
         console.log('✅ Session started - keeping process alive...');
