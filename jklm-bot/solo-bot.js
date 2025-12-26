@@ -93,7 +93,30 @@ class SoloSession {
       this.roomCode = await this.createRoom();
       console.log(`🏠 [SOLO-${this.sessionId}] Room created: ${this.roomCode}`);
       
-      // Connect to room
+      // 🔥 IMMEDIATELY notify API that room is created (don't wait for full connection)
+      if (this.callbackUrl) {
+        const callbackPayload = {
+          type: 'room_created',
+          sessionId: this.sessionId,
+          roomCode: this.roomCode,
+          joinUrl: `https://jklm.fun/${this.roomCode}`
+        };
+        console.log(`📤 [SOLO-${this.sessionId}] Sending room_created callback...`);
+        
+        fetch(`${this.callbackUrl}/api/solo/callback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(callbackPayload)
+        })
+          .then(res => {
+            console.log(`📥 [SOLO-${this.sessionId}] Callback response: ${res.status}`);
+            return res.json().catch(() => ({}));
+          })
+          .then(data => console.log(`📥 [SOLO-${this.sessionId}] Callback data:`, JSON.stringify(data)))
+          .catch(err => console.error(`❌ [SOLO-${this.sessionId}] Callback failed:`, err.message));
+      }
+      
+      // Connect to room (async, continues in background)
       await this.connectToRoom();
       
       // Setup keepalive and timeout
