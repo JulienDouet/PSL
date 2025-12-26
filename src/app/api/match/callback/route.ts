@@ -86,12 +86,13 @@ export async function POST(req: Request) {
             // Special case for JKLM - lookup by jklmUsername in User table
             if (authService === 'jklm') {
                 // For JKLM, the "id" might be a hash or the username itself
-                // Try to find user by jklmUsername matching the nickname
-                console.log(`🔍 [JKLM] Searching for user with jklmUsername="${scoreData.nickname}" and isVerified=true`);
+                // Try to find user by jklmUsername matching the nickname (trimmed)
+                const trimmedNickname = scoreData.nickname?.trim();
+                console.log(`🔍 [JKLM] Searching for user with jklmUsername="${trimmedNickname}" and isVerified=true`);
                 user = await prisma.user.findFirst({
                     where: {
                         isVerified: true,
-                        jklmUsername: { equals: scoreData.nickname, mode: 'insensitive' }
+                        jklmUsername: { equals: trimmedNickname, mode: 'insensitive' }
                     },
                     include: {
                         categoryMMRs: { where: { category } }
