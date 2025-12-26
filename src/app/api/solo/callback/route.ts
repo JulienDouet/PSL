@@ -26,7 +26,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    if (type === 'state_update') {
+    if (type === 'room_created') {
+      // Bot created the JKLM room
+      const { roomCode, joinUrl } = body;
+
+      if (!roomCode) {
+        return NextResponse.json({ error: 'Missing roomCode' }, { status: 400 });
+      }
+
+      await prisma.soloSession.update({
+        where: { id: sessionId },
+        data: {
+          roomCode,
+          lastActivityAt: new Date()
+        }
+      });
+
+      console.log(`🏠 [SOLO] Room created for session ${sessionId}: ${roomCode}`);
+
+      return NextResponse.json({ success: true, roomCode });
+
+    } else if (type === 'state_update') {
       // Periodic state update from bot
       const { streak, bestStreak, questionsAsked, roomCode } = body;
 

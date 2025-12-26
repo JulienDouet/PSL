@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
+import { spawn } from 'child_process';
+import path from 'path';
 import type { Category, SoloMode } from '@prisma/client';
 
 // Solo bot connection (runs in same process for now)
@@ -79,13 +81,50 @@ export async function POST(req: Request) {
 
     console.log(`🎯 [SOLO] Created session ${soloSession.id} for user ${session.user.id}`);
 
-    // TODO: Trigger solo-bot to create JKLM room
-    // For now, return session info and let frontend handle bot connection
-    // In production, this would spawn a bot instance or add to queue
-
     // Get callback URL from environment
     const callbackUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://psl-ranked.app';
 
+    // Spawn solo-bot process
+    const botScript = path.join(process.cwd(), 'jklm-bot/solo-bot.js');
+    
+    const isDev = process.env.NODE_ENV === 'development';
+    let isDetached = !isDev;
+    if (process.env.BOT_DETACHED !== undefined) {
+      isDetached = process.env.BOT_DETACHED === 'true';
+    }
+
+    console.log(`🚀 [SOLO] Spawning bot for session ${soloSession.id}`);
+
+    const child = spawn('node', [
+      botScript,
+      '--session', soloSession.id,
+      '--user', session.user.id,
+      '--category', category,
+      '--mode', mode,
+      '--callback', callbackUrl
+    ], {
+      detached: isDetached,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      cwd: process.cwd()
+    });
+
+    const botPid = child.pid;
+    console.log(`🤖 [SOLO] Bot spawned with PID: ${botPid}`);
+
+    // Log stdout/stderr
+    child.stdout.on('data', (data) => {
+      console.log(`[SOLO-BOT] ${data.toString().trim()}`);
+    });
+
+    child.stderr.on('data', (data) => {
+      console.error(`[SOLO-BOT ERR] ${data.toString().trim()}`);
+    });
+
+    if (isDetached) {
+      child.unref();
+    }
+
+    // Return immediately - bot will notify via callback when room is ready
     return NextResponse.json({
       success: true,
       session: {
@@ -94,9 +133,7 @@ export async function POST(req: Request) {
         mode,
         status: 'IN_PROGRESS'
       },
-      // Room will be created by solo-bot
-      // For MVP: direct user to wait while bot starts
-      message: 'Session created. Connecting to game server...',
+      message: 'Session created. Bot is creating room...',
       callbackUrl
     });
 

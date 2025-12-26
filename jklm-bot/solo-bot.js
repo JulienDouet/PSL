@@ -595,3 +595,62 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Every 10 min
 
 console.log('🎯 Solo Bot initialized - Ready to accept sessions');
+
+// ===========================================
+// CLI Entry Point - for spawning from API
+// ===========================================
+// Usage: node solo-bot.js --session <id> --user <id> --category <cat> --mode <mode> --callback <url>
+
+const args = process.argv.slice(2);
+
+if (args.includes('--session')) {
+  const sessionIdx = args.indexOf('--session');
+  const userIdx = args.indexOf('--user');
+  const categoryIdx = args.indexOf('--category');
+  const modeIdx = args.indexOf('--mode');
+  const callbackIdx = args.indexOf('--callback');
+  
+  const sessionId = args[sessionIdx + 1];
+  const userId = args[userIdx + 1];
+  const category = args[categoryIdx + 1];
+  const mode = args[modeIdx + 1] || 'NORMAL';
+  const callbackUrl = args[callbackIdx + 1] || 'https://psl-ranked.app';
+  
+  console.log(`🚀 [SOLO-CLI] Starting session via CLI:`);
+  console.log(`  Session: ${sessionId}`);
+  console.log(`  User: ${userId}`);
+  console.log(`  Category: ${category}`);
+  console.log(`  Mode: ${mode}`);
+  console.log(`  Callback: ${callbackUrl}`);
+  
+  // Start the session
+  startSession(sessionId, userId, category, mode, callbackUrl)
+    .then((result) => {
+      if (result.success) {
+        // CRITICAL: Print room code so API can capture it
+        console.log(`Room créée: ${result.roomCode}`);
+        
+        // Notify API via callback
+        fetch(`${callbackUrl}/api/solo/callback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'room_created',
+            sessionId,
+            roomCode: result.roomCode,
+            joinUrl: result.joinUrl
+          })
+        }).catch(err => console.error('Callback failed:', err.message));
+        
+        // Keep process alive
+        console.log('✅ Session started - keeping process alive...');
+      } else {
+        console.error('❌ Failed to start session:', result.error);
+        process.exit(1);
+      }
+    })
+    .catch((err) => {
+      console.error('❌ Fatal error:', err);
+      process.exit(1);
+    });
+}

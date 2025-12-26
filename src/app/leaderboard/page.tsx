@@ -137,7 +137,7 @@ export default function LeaderboardPage() {
             >
                 {t.leaderboard.tabs.speed}
             </button>
-            <button
+            {/*<button
                 onClick={() => setActiveTab('solo')}
                 className={`px-6 py-2 rounded-full font-bold transition-all flex items-center gap-2 ${
                     activeTab === 'solo' 
@@ -147,7 +147,7 @@ export default function LeaderboardPage() {
             >
                 <Flame className="w-4 h-4" />
                 Solo
-            </button>
+            </button>*/}
           </div>
 
           {/* VIEW: MMR LEADERBOARD */}

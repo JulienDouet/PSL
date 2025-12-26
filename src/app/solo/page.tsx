@@ -111,6 +111,31 @@ export default function SoloPage() {
     checkAdmin();
   }, [router]);
 
+  // Poll for roomCode when session is active but room not yet created
+  useEffect(() => {
+    if (!activeSession || activeSession.roomCode) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/solo/start');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.active && data.session) {
+            setActiveSession(data.session);
+            // Stop polling once we have roomCode
+            if (data.session.roomCode) {
+              clearInterval(pollInterval);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [activeSession]);
+
   // Show loading while checking auth
   if (checkingAuth) {
     return (
