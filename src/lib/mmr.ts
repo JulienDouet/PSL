@@ -15,8 +15,16 @@ export const MMR_CONFIG = {
   MIN_CHANGE: 1,        // Changement minimum garanti (sauf cas nul)
   CALIBRATION_GAMES: 5, // Nombre de parties de calibration
   CALIBRATION_MULT: 2.0, // Multiplicateur pendant la calibration
-  WINSTREAK_BONUS: 0.10, // +10% par victoire consécutive
+  WINSTREAK_BONUS: 0.10, // +10% par victoire consécutive pour le winner
   WINSTREAK_CAP: 5,      // Bonus max à 5 victoires (+50%)
+  // === NEW: Winstreak Break System ===
+  STREAK_BREAK_BONUS: 0.15,   // +15% de gain par point de streak cassée (pour le casseur)
+  STREAK_BREAK_CAP: 25,       // Cap à 25 streaks max (+375% bonus max)
+  STREAK_BREAK_MALUS: 0.10,   // +10% de perte par point de streak perdue (pour celui qui perd sa streak)
+  // === NEW: Underdog Protection ===
+  UNDERDOG_MMR_THRESHOLD: 200,  // Seuil d'écart MMR pour être considéré underdog
+  UNDERDOG_SCORE_RATIO: 0.65,   // Score minimum (65% du winner) pour gain underdog
+  UNDERDOG_MAX_GAIN: 8,         // Gain max possible pour un underdog
 };
 
 /**
@@ -40,9 +48,10 @@ export function getScoreProximityFactor(_score: number, _winnerScore = 150): num
 /**
  * Calcule le changement de MMR pour un joueur donné.
  * 
- * NOUVEAU MODÈLE (Winner-Centric):
- * - Non-gagnants: comparés uniquement au 1er (score ratio + MMR diff)
- * - Gagnant: gain basé sur le meilleur adversaire (plus haut MMR)
+ * MODÈLE V3 (Balanced):
+ * - Winner: gains + bonus winstreak + bonus streak break
+ * - Non-winners: perte + malus streak perdue + protection underdog
+ * - Underdog (200+ MMR sous le best): peut gagner avec 75%+ du score winner
  */
 export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResult[]): number {
   const opponents = allPlayers.filter(p => p.id !== player.id);
@@ -53,6 +62,11 @@ export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResul
   // Trouver le winner et son score
   const winner = allPlayers.find(p => p.placement === 1);
   if (!winner) return 0;
+
+  // Trouver le meilleur MMR dans la partie
+  const bestMMR = Math.max(...allPlayers.map(p => p.mmr));
+  const mmrGap = bestMMR - player.mmr;
+  const isUnderdog = mmrGap >= MMR_CONFIG.UNDERDOG_MMR_THRESHOLD;
 
   let change = 0;
 
@@ -73,35 +87,73 @@ export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResul
       change *= upsetBonus;
     }
     
-    // === WINSTREAK BONUS ===
+    // === WINSTREAK BONUS (propre streak) ===
     // +10% par victoire consécutive, max +50% (5 wins)
     const winStreak = player.winStreak || 0;
     if (winStreak > 0) {
       const streakBonus = 1 + Math.min(winStreak, MMR_CONFIG.WINSTREAK_CAP) * MMR_CONFIG.WINSTREAK_BONUS;
       change *= streakBonus;
     }
-  } else {
-    // === NON-WINNER: perte basée sur comparaison avec le winner ===
     
-    // 1. Ratio de score par rapport au winner (0 à ~1)
+    // === NEW: WINSTREAK BREAK BONUS ===
+    // Si on a battu quelqu'un qui était en winstreak, bonus proportionnel à leur streak (capped)
+    const loserStreaks = opponents.map(o => o.winStreak || 0);
+    const maxLoserStreak = Math.min(Math.max(...loserStreaks), MMR_CONFIG.STREAK_BREAK_CAP);
+    if (maxLoserStreak > 0) {
+      const breakBonus = 1 + maxLoserStreak * MMR_CONFIG.STREAK_BREAK_BONUS;
+      change *= breakBonus;
+      console.log(`🔥 Streak break bonus: ${maxLoserStreak} streak cassée (capped), +${Math.round((breakBonus - 1) * 100)}%`);
+    }
+  } else {
+    // === NON-WINNER ===
+    
+    // Score ratio par rapport au winner
     const scoreRatio = Math.min(1, player.score / winner.score);
     
-    // 2. Score "virtuel" pour le calcul Elo
-    // Un perdant avec un bon score a un actual légèrement plus élevé
-    // Max 0.15 pour un perdant qui était très proche, min 0 pour score nul
-    const actual = scoreRatio * 0.15;  // Réduit de 0.35 à 0.15
-    
-    // 3. Probabilité attendue de battre le winner
-    const expected = 1 / (1 + Math.pow(10, (winner.mmr - player.mmr) / 400));
-    
-    // 4. Changement de base
-    change = MMR_CONFIG.K_FACTOR * (actual - expected);
-    
-    // 5. Pénalité si on était favori (MMR > winner)
-    if (player.mmr > winner.mmr + 100) {
-      const diff = player.mmr - winner.mmr;
-      const penaltyMultiplier = 1 + Math.pow(diff / 600, 2);
-      change *= penaltyMultiplier;
+    // === NEW: UNDERDOG PROTECTION ===
+    // Si 200+ MMR sous le meilleur ET score >= 75% du winner, peut GAGNER du MMR
+    if (isUnderdog && scoreRatio >= MMR_CONFIG.UNDERDOG_SCORE_RATIO) {
+      // Gain proportionnel à la performance au-dessus du seuil
+      const performanceBonus = (scoreRatio - MMR_CONFIG.UNDERDOG_SCORE_RATIO) / (1 - MMR_CONFIG.UNDERDOG_SCORE_RATIO);
+      // Plus l'écart MMR est grand, plus le gain potentiel est élevé
+      const underdogFactor = Math.min(2, mmrGap / MMR_CONFIG.UNDERDOG_MMR_THRESHOLD);
+      change = performanceBonus * MMR_CONFIG.UNDERDOG_MAX_GAIN * underdogFactor;
+      console.log(`🛡️ Underdog protection: ${mmrGap} MMR gap, ${Math.round(scoreRatio * 100)}% score, +${Math.round(change)} MMR`);
+    } else {
+      // Perte normale basée sur comparaison avec le winner
+      
+      // Score "virtuel" pour le calcul Elo
+      // Max 0.15 pour un perdant qui était très proche, min 0 pour score nul
+      const actual = scoreRatio * 0.15;
+      
+      // Probabilité attendue de battre le winner
+      const expected = 1 / (1 + Math.pow(10, (winner.mmr - player.mmr) / 400));
+      
+      // Changement de base
+      change = MMR_CONFIG.K_FACTOR * (actual - expected);
+      
+      // Pénalité si on était favori (MMR > winner)
+      if (player.mmr > winner.mmr + 100) {
+        const diff = player.mmr - winner.mmr;
+        const penaltyMultiplier = 1 + Math.pow(diff / 600, 2);
+        change *= penaltyMultiplier;
+      }
+      
+      // === NEW: STREAK LOST MALUS ===
+      // Si ce joueur perdait sa winstreak, pénalité supplémentaire
+      const playerStreak = player.winStreak || 0;
+      if (playerStreak > 0) {
+        const streakLostMalus = 1 + playerStreak * MMR_CONFIG.STREAK_BREAK_MALUS;
+        change *= streakLostMalus;
+        console.log(`💔 Streak perdue: ${playerStreak} victoires, perte x${streakLostMalus.toFixed(2)}`);
+      }
+      
+      // === UNDERDOG LOSS REDUCTION ===
+      // Même si underdog ne gagne pas de MMR, réduire sa perte
+      if (isUnderdog && change < 0) {
+        const reductionFactor = Math.max(0.3, 1 - (mmrGap / 600));
+        change *= reductionFactor;
+      }
     }
   }
 
@@ -110,27 +162,16 @@ export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResul
     change *= MMR_CONFIG.CALIBRATION_MULT;
   }
 
-  // === SCORE PROXIMITY: Réduction de pénalité si proche du winner ===
-  if (change < 0 && player.placement > 1) {
-    const proximityFactor = getScoreProximityFactor(player.score, winner.score);
-    
-    // Réduire la protection si on était favori
-    let adjustedFactor = proximityFactor;
-    if (player.mmr > winner.mmr) {
-      const advantage = player.mmr - winner.mmr;
-      const penaltyRatio = Math.min(1, advantage / 500);
-      adjustedFactor = proximityFactor + (1.0 - proximityFactor) * penaltyRatio;
-    }
-    
-    change *= adjustedFactor;
-  }
-
   // === ARRONDI ET LIMITES ===
   let finalChange = Math.round(change);
   
-  // RÈGLE: Les non-gagnants perdent TOUJOURS du MMR (au moins -1)
+  // RÈGLE: Les non-gagnants qui ne sont pas underdog avec bon score perdent TOUJOURS du MMR
   if (player.placement > 1 && finalChange >= 0) {
-    finalChange = -1;
+    const scoreRatio = player.score / winner.score;
+    const qualifiesForUnderdogGain = isUnderdog && scoreRatio >= MMR_CONFIG.UNDERDOG_SCORE_RATIO;
+    if (!qualifiesForUnderdogGain) {
+      finalChange = -1;
+    }
   }
   
   // Plancher: le winner gagne toujours au moins 1
