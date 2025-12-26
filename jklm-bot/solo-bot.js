@@ -116,6 +116,10 @@ class SoloSession {
           .catch(err => console.error(`❌ [SOLO-${this.sessionId}] Callback failed:`, err.message));
       }
       
+      // Wait for JKLM to fully initialize the room before connecting
+      console.log(`⏳ [SOLO-${this.sessionId}] Waiting 2s for room to initialize on JKLM...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       // Connect to room (async, continues in background)
       await this.connectToRoom();
       
@@ -158,36 +162,38 @@ class SoloSession {
     
     const data = await res.json();
     console.log(`📦 [SOLO-${this.sessionId}] startRoom response:`, JSON.stringify(data));
-    if (!data.roomCode) throw new Error('Failed to create room');
+    
+    if (!data.roomCode) throw new Error('Failed to create room - no roomCode');
+    if (!data.url) throw new Error('Failed to create room - no server URL');
     
     // CRITICAL: Store the creator token to use the SAME token when joining!
     // This is what the ranked bot does (index.js line 143)
     this.userToken = creatorUserToken;
     console.log(`🔑 [SOLO-${this.sessionId}] Using creator token for join`);
     
+    // Extract server URL from the response - this is the server we should connect to!
+    // The ranked bot uses this URL directly, not calling /api/joinRoom again
+    const serverUrl = new URL(data.url);
+    this.serverHost = serverUrl.host;
+    console.log(`🌐 [SOLO-${this.sessionId}] Server from startRoom: ${this.serverHost}`);
+    
     return data.roomCode;
   }
   
   /**
    * Connect to the JKLM room
+   * Uses the server URL that was stored from createRoom() response
    */
   async connectToRoom() {
-    console.log(`📡 [SOLO-${this.sessionId}] Fetching room server info...`);
+    // Use the server host from createRoom() - don't call /api/joinRoom again!
+    // The ranked bot's connect() method does call joinRoom, but we already have the server from createRoom
+    const serverHost = this.serverHost;
     
-    // Get room server
-    const res = await fetch('https://jklm.fun/api/joinRoom', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomCode: this.roomCode })
-    });
+    if (!serverHost) {
+      throw new Error('No server host set - createRoom must be called first');
+    }
     
-    const data = await res.json();
-    console.log(`📡 [SOLO-${this.sessionId}] joinRoom response:`, JSON.stringify(data));
-    
-    if (!data.url) throw new Error('No server URL in joinRoom response');
-    
-    const serverUrl = new URL(data.url);
-    console.log(`📡 [SOLO-${this.sessionId}] Connecting to server: ${serverUrl.host}`);
+    console.log(`📡 [SOLO-${this.sessionId}] Connecting to server: ${serverHost} (from startRoom)`);
     
     // Connect to room socket with timeout
     return new Promise((resolve, reject) => {
@@ -196,7 +202,7 @@ class SoloSession {
         reject(new Error('Room socket connection timeout'));
       }, 15000);
       
-      this.roomSocket = io(`wss://${serverUrl.host}`, {
+      this.roomSocket = io(`wss://${serverHost}`, {
         path: '/socket.io/',  // CRITICAL: trailing slash like ranked bot!
         transports: ['websocket'],
         query: { EIO: '4', transport: 'websocket' },  // Added from ranked bot
@@ -224,7 +230,7 @@ class SoloSession {
           if (response && (response.roomEntry || response[0]?.roomEntry)) {
             console.log(`✅ [SOLO-${this.sessionId}] Lobby rejoint via Ack`);
             this.selfPeerId = response.roomEntry?.selfPeerId || response[0]?.roomEntry?.selfPeerId;
-            this.connectToGame(serverUrl.host).then(resolve).catch(reject);
+            this.connectToGame(serverHost).then(resolve).catch(reject);
           } else {
             // Fallback: wait for joinedRoom event
             console.log(`⚠️ [SOLO-${this.sessionId}] Ack vide, en attente de joinedRoom event...`);
@@ -238,7 +244,7 @@ class SoloSession {
         console.log(`✅ [SOLO-${this.sessionId}] Joined room via event, selfPeerId:`, roomData.selfPeerId);
         if (!this.selfPeerId) {
           this.selfPeerId = roomData.selfPeerId;
-          this.connectToGame(serverUrl.host).then(resolve).catch(reject);
+          this.connectToGame(serverHost).then(resolve).catch(reject);
         }
       });
       
