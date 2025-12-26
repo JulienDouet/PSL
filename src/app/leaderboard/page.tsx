@@ -7,6 +7,8 @@ import { Navbar } from "@/components/navbar";
 import { GAME_MODE_LIST, type GameModeKey } from '@/lib/game-modes';
 import { SpeedRecords } from "@/components/leaderboard/speed-records";
 import { useTranslation } from "@/lib/i18n/context";
+import { Flame, Crown, Medal } from 'lucide-react';
+import type { Category, SoloMode } from '@prisma/client';
 
 // Types pour le leaderboard
 interface LeaderboardEntry {
@@ -32,10 +34,16 @@ function getPositionBadge(position: number) {
 }
 
 export default function LeaderboardPage() {
-  const [activeTab, setActiveTab] = useState<'mmr' | 'speed'>('mmr');
+  const [activeTab, setActiveTab] = useState<'mmr' | 'speed' | 'solo'>('mmr');
   const [activeCategory, setActiveCategory] = useState('GP_FR');
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Solo mode state
+  const [soloCategory, setSoloCategory] = useState<Category>('GP_FR');
+  const [soloMode, setSoloMode] = useState<SoloMode>('NORMAL');
+  const [soloLeaderboard, setSoloLeaderboard] = useState<any[]>([]);
+  const [soloLoading, setSoloLoading] = useState(false);
   const { t } = useTranslation();
 
   // Catégories pour le leaderboard (correspondant aux modes de jeu)
@@ -48,7 +56,7 @@ export default function LeaderboardPage() {
     { key: 'NOFILTER_EN', emoji: '🔥' }
   ];
 
-  // Fetch leaderboard only when needed
+  // Fetch MMR leaderboard only when needed
   useEffect(() => {
     if (activeTab !== 'mmr') return;
     
@@ -67,6 +75,26 @@ export default function LeaderboardPage() {
     }
     fetchLeaderboard();
   }, [activeCategory, activeTab]);
+
+  // Fetch Solo leaderboard
+  useEffect(() => {
+    if (activeTab !== 'solo') return;
+    
+    async function fetchSoloLeaderboard() {
+      setSoloLoading(true);
+      try {
+        const res = await fetch(`/api/solo/leaderboard?category=${soloCategory}&mode=${soloMode}&limit=50`);
+        if (res.ok) {
+          const data = await res.json();
+          setSoloLeaderboard(data.leaderboard || []);
+        }
+      } catch (err) {
+        console.error('Error fetching solo leaderboard:', err);
+      }
+      setSoloLoading(false);
+    }
+    fetchSoloLeaderboard();
+  }, [soloCategory, soloMode, activeTab]);
 
   const top3 = leaderboard.slice(0, 3);
   const hasTop3 = top3.length >= 3;
@@ -108,6 +136,17 @@ export default function LeaderboardPage() {
                 }`}
             >
                 {t.leaderboard.tabs.speed}
+            </button>
+            <button
+                onClick={() => setActiveTab('solo')}
+                className={`px-6 py-2 rounded-full font-bold transition-all flex items-center gap-2 ${
+                    activeTab === 'solo' 
+                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg scale-105' 
+                    : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
+                }`}
+            >
+                <Flame className="w-4 h-4" />
+                Solo
             </button>
           </div>
 
@@ -251,6 +290,133 @@ export default function LeaderboardPage() {
           {/* VIEW: SPEED RECORDS */}
           {activeTab === 'speed' && (
             <SpeedRecords />
+          )}
+
+          {/* VIEW: SOLO STREAK LEADERBOARD */}
+          {activeTab === 'solo' && (
+            <>
+              {/* Category + Mode Filters */}
+              <div className="space-y-4 mb-8">
+                {/* Categories */}
+                <div className="flex justify-center gap-2 flex-wrap">
+                  {LEADERBOARD_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.key}
+                      onClick={() => setSoloCategory(cat.key as Category)}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                        soloCategory === cat.key
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary/50 hover:bg-secondary text-muted-foreground'
+                      }`}
+                    >
+                      <span>{cat.emoji}</span>
+                      <span>{t.categories[cat.key as keyof typeof t.categories]}</span>
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Mode selector */}
+                <div className="flex justify-center gap-2">
+                  {(['NORMAL', 'CHALLENGE', 'HARDCORE'] as SoloMode[]).map((mode) => {
+                    const modeConfig = {
+                      NORMAL: { emoji: '🎯', label: 'Normal' },
+                      CHALLENGE: { emoji: '⚡', label: 'Challenge' },
+                      HARDCORE: { emoji: '💀', label: 'Hardcore' }
+                    };
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => setSoloMode(mode)}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                          soloMode === mode
+                            ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
+                            : 'bg-secondary/50 hover:bg-secondary text-muted-foreground'
+                        }`}
+                      >
+                        {modeConfig[mode].emoji} {modeConfig[mode].label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Loading */}
+              {soloLoading && (
+                <div className="text-center py-12">
+                  <div className="inline-block animate-spin text-4xl">🔄</div>
+                  <p className="text-muted-foreground mt-2">{t.common.loading}</p>
+                </div>
+              )}
+
+              {/* Solo Leaderboard Table */}
+              {!soloLoading && (
+                <Card className="bg-card border-border/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Flame className="w-5 h-5 text-orange-500" />
+                      Top Streaks - {t.categories[soloCategory as keyof typeof t.categories]}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {soloLeaderboard.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Flame className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>Aucun record pour cette catégorie.</p>
+                        <p className="text-sm mt-1">Sois le premier à établir un record !</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {soloLeaderboard.map((entry, idx) => (
+                          <Link
+                            key={entry.userId}
+                            href={`/profile/${entry.userId}`}
+                            className={`flex items-center gap-4 p-3 rounded-lg transition-all hover:bg-secondary/50 ${
+                              entry.rank === 1
+                                ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border border-amber-400/50'
+                                : entry.rank <= 3
+                                  ? 'bg-secondary/50'
+                                  : 'bg-secondary/20'
+                            }`}
+                          >
+                            {/* Rank */}
+                            <div className="w-10 flex justify-center">
+                              {entry.rank === 1 && <Crown className="w-5 h-5 text-amber-400" />}
+                              {entry.rank === 2 && <Medal className="w-5 h-5 text-gray-300" />}
+                              {entry.rank === 3 && <Medal className="w-5 h-5 text-amber-600" />}
+                              {entry.rank > 3 && <span className="text-muted-foreground font-mono">#{entry.rank}</span>}
+                            </div>
+
+                            {/* Avatar */}
+                            <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center overflow-hidden">
+                              {entry.userImage ? (
+                                <img src={entry.userImage} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-lg">👤</span>
+                              )}
+                            </div>
+
+                            {/* Name */}
+                            <div className="flex-1">
+                              <div className="font-medium">{entry.userName}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(entry.achievedAt).toLocaleDateString('fr-FR')}
+                              </div>
+                            </div>
+
+                            {/* Streak */}
+                            <div className="text-right">
+                              <div className="font-bold text-lg flex items-center gap-1 text-orange-400">
+                                🔥 {entry.bestStreak}
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
 
         </div>
