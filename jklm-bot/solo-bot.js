@@ -138,12 +138,16 @@ class SoloSession {
    * Create a private JKLM room
    */
   async createRoom() {
+    // Generate token that will be used for BOTH creating AND joining
     const creatorUserToken = this.generateUserToken();
     const duration = CONFIG.MODES[this.mode]?.duration || 12;
     
     const res = await fetch('https://jklm.fun/api/startRoom', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
       body: JSON.stringify({
         name: 'PSL Solo Training',
         isPublic: false,
@@ -153,7 +157,13 @@ class SoloSession {
     });
     
     const data = await res.json();
+    console.log(`📦 [SOLO-${this.sessionId}] startRoom response:`, JSON.stringify(data));
     if (!data.roomCode) throw new Error('Failed to create room');
+    
+    // CRITICAL: Store the creator token to use the SAME token when joining!
+    // This is what the ranked bot does (index.js line 143)
+    this.userToken = creatorUserToken;
+    console.log(`🔑 [SOLO-${this.sessionId}] Using creator token for join`);
     
     return data.roomCode;
   }
