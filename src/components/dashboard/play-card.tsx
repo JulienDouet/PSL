@@ -417,12 +417,12 @@ export function PlayCard() {
               🔍 {t.common.search} ({currentGameMode.label})
             </Button>
 
-            <a 
+            {/* <a 
               href="/solo" 
               className="w-full flex items-center justify-center gap-2 h-12 px-4 rounded-lg border border-border bg-secondary/30 hover:bg-secondary/50 hover:border-primary/50 transition-all text-sm font-medium"
             >
               🎯 Mode Solo (Entraînement)
-            </a>
+            </a> */}
             {Object.keys(queueCounts).length > 0 && Object.values(queueCounts).some(c => c > 0) && (
               <div className="mt-3 p-3 bg-secondary/30 rounded-lg">
                 <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
