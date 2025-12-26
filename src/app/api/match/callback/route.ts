@@ -61,11 +61,21 @@ export async function POST(req: Request) {
     // On essaie de matcher par auth (Discord ID, Twitch ID) en priorité
     // puis par nickname (jklmUsername, displayName) en fallback
     
+    // First, check if this was a ranked match (some players have expectedPlayer)
+    const hasExpectedPlayers = scores.some((s: any) => s.expectedPlayer != null);
+    
     const playersForCalculation: import('@/lib/mmr').PlayerResult[] = [];
     const userMap = new Map<string, any>();
     const nicknameToUser = new Map<string, string>();
 
     for (const scoreData of scores) {
+        // Skip unmatched players in ranked matches
+        // If hasExpectedPlayers is true (ranked match) and this player has no expectedPlayer, skip them
+        if (hasExpectedPlayers && !scoreData.expectedPlayer) {
+            console.log(`⚠️ Skipping unmatched player: ${scoreData.nickname} (not in queue, no MMR change)`);
+            continue;
+        }
+        
         let user = null;
         
         // 1. Essayer de matcher par auth (Discord/Twitch ID)
