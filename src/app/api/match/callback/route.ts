@@ -83,26 +83,44 @@ export async function POST(req: Request) {
             const authService = scoreData.auth.service.toLowerCase();
             const authId = String(scoreData.auth.id);
             
-            // Chercher l'account avec ce service/ID
-            const account = await prisma.account.findFirst({
-                where: {
-                    providerId: authService,
-                    accountId: authId
-                },
-                include: { 
-                    user: {
-                        include: {
-                            categoryMMRs: {
-                                where: { category }
-                            }
-                        }
-                    } 
+            // Special case for JKLM - lookup by jklmUsername in User table
+            if (authService === 'jklm') {
+                // For JKLM, the "id" might be a hash or the username itself
+                // Try to find user by jklmUsername matching the nickname
+                user = await prisma.user.findFirst({
+                    where: {
+                        isVerified: true,
+                        jklmUsername: { equals: scoreData.nickname, mode: 'insensitive' }
+                    },
+                    include: {
+                        categoryMMRs: { where: { category } }
+                    }
+                });
+                if (user) {
+                    console.log(`✅ Match par auth JKLM: ${scoreData.nickname} -> ${user.name} (jklmUsername verified)`);
                 }
-            });
-            
-            if (account?.user) {
-                user = account.user;
-                console.log(`✅ Match par auth: ${scoreData.nickname} -> ${user.name} (${authService}:${authId})`);
+            } else {
+                // Chercher l'account avec ce service/ID (Discord, Twitch, etc)
+                const account = await prisma.account.findFirst({
+                    where: {
+                        providerId: authService,
+                        accountId: authId
+                    },
+                    include: { 
+                        user: {
+                            include: {
+                                categoryMMRs: {
+                                    where: { category }
+                                }
+                            }
+                        } 
+                    }
+                });
+                
+                if (account?.user) {
+                    user = account.user;
+                    console.log(`✅ Match par auth: ${scoreData.nickname} -> ${user.name} (${authService}:${authId})`);
+                }
             }
         }
         
