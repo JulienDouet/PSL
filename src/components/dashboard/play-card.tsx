@@ -340,8 +340,8 @@ export function PlayCard() {
   // Calcul de l'indicateur de niveau relatif (pour le 1er joueur = toi vs les autres)
   const getLevelIndicator = (myMmr: number, opponentMmr: number) => {
     const diff = myMmr - opponentMmr;
-    if (diff > 50) return { type: 'favorite', icon: <Flame className="w-4 h-4" />, label: 'Favori', color: 'text-orange-400' };
-    if (diff < -50) return { type: 'challenge', icon: <Target className="w-4 h-4" />, label: 'Défi', color: 'text-purple-400' };
+    if (diff > 100) return { type: 'favorite', icon: <Flame className="w-4 h-4" />, label: 'Facile', color: 'text-orange-400' };
+    if (diff < -100) return { type: 'challenge', icon: <Target className="w-4 h-4" />, label: 'Défi', color: 'text-purple-400' };
     return { type: 'balanced', icon: <Scale className="w-4 h-4" />, label: 'Équilibré', color: 'text-blue-400' };
   };
 

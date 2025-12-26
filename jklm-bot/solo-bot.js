@@ -162,6 +162,8 @@ class SoloSession {
    * Connect to the JKLM room
    */
   async connectToRoom() {
+    console.log(`📡 [SOLO-${this.sessionId}] Fetching room server info...`);
+    
     // Get room server
     const res = await fetch('https://jklm.fun/api/joinRoom', {
       method: 'POST',
@@ -170,36 +172,86 @@ class SoloSession {
     });
     
     const data = await res.json();
-    if (!data.url) throw new Error('No server URL');
+    console.log(`📡 [SOLO-${this.sessionId}] joinRoom response:`, JSON.stringify(data));
+    
+    if (!data.url) throw new Error('No server URL in joinRoom response');
     
     const serverUrl = new URL(data.url);
+    console.log(`📡 [SOLO-${this.sessionId}] Connecting to server: ${serverUrl.host}`);
     
-    // Connect to room socket
+    // Connect to room socket with timeout
     return new Promise((resolve, reject) => {
+      const connectionTimeout = setTimeout(() => {
+        console.error(`⏰ [SOLO-${this.sessionId}] Room socket connection timeout (15s)`);
+        reject(new Error('Room socket connection timeout'));
+      }, 15000);
+      
       this.roomSocket = io(`wss://${serverUrl.host}`, {
-        path: '/socket.io',
+        path: '/socket.io/',  // CRITICAL: trailing slash like ranked bot!
         transports: ['websocket'],
-        forceNew: true
+        query: { EIO: '4', transport: 'websocket' },  // Added from ranked bot
+        extraHeaders: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        },
+        forceNew: true,
+        timeout: 10000
       });
       
       this.roomSocket.on('connect', () => {
         console.log(`🔗 [SOLO-${this.sessionId}] Room socket connected`);
-        this.roomSocket.emit('joinRoom', {
+        
+        // Use callback format like ranked bot
+        const joinData = {
           roomCode: this.roomCode,
           userToken: this.userToken,
           nickname: CONFIG.BOT_NAME,
           language: 'fr-FR'
+        };
+        
+        console.log(`📤 [SOLO-${this.sessionId}] Sending joinRoom...`);
+        this.roomSocket.emit('joinRoom', joinData, (response) => {
+          console.log(`📥 [SOLO-${this.sessionId}] joinRoom Ack:`, JSON.stringify(response));
+          if (response && (response.roomEntry || response[0]?.roomEntry)) {
+            console.log(`✅ [SOLO-${this.sessionId}] Lobby rejoint via Ack`);
+            this.selfPeerId = response.roomEntry?.selfPeerId || response[0]?.roomEntry?.selfPeerId;
+            this.connectToGame(serverUrl.host).then(resolve).catch(reject);
+          } else {
+            // Fallback: wait for joinedRoom event
+            console.log(`⚠️ [SOLO-${this.sessionId}] Ack vide, en attente de joinedRoom event...`);
+          }
         });
       });
       
+      // Fallback listener if Ack doesn't work
       this.roomSocket.on('joinedRoom', (roomData) => {
-        console.log(`✅ [SOLO-${this.sessionId}] Joined room`);
-        this.selfPeerId = roomData.selfPeerId;
-        this.connectToGame(serverUrl.host).then(resolve).catch(reject);
+        clearTimeout(connectionTimeout);
+        console.log(`✅ [SOLO-${this.sessionId}] Joined room via event, selfPeerId:`, roomData.selfPeerId);
+        if (!this.selfPeerId) {
+          this.selfPeerId = roomData.selfPeerId;
+          this.connectToGame(serverUrl.host).then(resolve).catch(reject);
+        }
       });
       
-      this.roomSocket.on('connect_error', reject);
-      this.roomSocket.on('error', reject);
+      this.roomSocket.on('connect_error', (err) => {
+        clearTimeout(connectionTimeout);
+        console.error(`❌ [SOLO-${this.sessionId}] Room socket connect_error:`, err.message);
+        reject(err);
+      });
+      
+      this.roomSocket.on('error', (err) => {
+        clearTimeout(connectionTimeout);
+        console.error(`❌ [SOLO-${this.sessionId}] Room socket error:`, err.message || err);
+        reject(err);
+      });
+      
+      this.roomSocket.on('disconnect', (reason) => {
+        console.log(`🔌 [SOLO-${this.sessionId}] Room socket disconnected: ${reason}`);
+      });
+      
+      // Debug: log all events
+      this.roomSocket.onAny((event, ...args) => {
+        console.log(`📥 [SOLO-${this.sessionId}] [ROOM] ${event}:`, JSON.stringify(args).substring(0, 150));
+      });
     });
   }
   
@@ -209,18 +261,17 @@ class SoloSession {
   async connectToGame(serverHost) {
     return new Promise((resolve, reject) => {
       this.gameSocket = io(`wss://${serverHost}`, {
-        path: '/socket.io',
+        path: '/socket.io/',  // CRITICAL: trailing slash!
         transports: ['websocket'],
+        query: { EIO: '4', transport: 'websocket' },
         forceNew: true
       });
       
       this.gameSocket.on('connect', () => {
         console.log(`🎮 [SOLO-${this.sessionId}] Game socket connected`);
-        this.gameSocket.emit('joinGame', {
-          gameId: 'popsauce',
-          roomCode: this.roomCode,
-          userToken: this.userToken
-        });
+        // Use same format as ranked bot: 3 separate arguments
+        console.log(`📤 [SOLO-${this.sessionId}] Sending joinGame...`);
+        this.gameSocket.emit('joinGame', 'popsauce', this.roomCode, this.userToken);
       });
       
       this.gameSocket.on('joinedGame', () => {
