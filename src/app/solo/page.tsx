@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trophy, Clock, Zap, Target, Play, X, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Trophy, Clock, Zap, Target, Play, X, ExternalLink, Shield } from 'lucide-react';
 import Link from 'next/link';
 import type { Category, SoloMode as SoloModeType } from '@prisma/client';
+import { authClient } from '@/lib/auth-client';
 
 // Mode configuration
 const SOLO_MODES = {
@@ -70,12 +71,62 @@ export default function SoloPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [bestStreaks, setBestStreaks] = useState<BestStreak[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Check for active session on mount
+  // Check admin status on mount
   useEffect(() => {
-    checkActiveSession();
-    fetchBestStreaks();
-  }, []);
+    async function checkAdmin() {
+      try {
+        const { data } = await authClient.getSession();
+        if (!data?.user?.id) {
+          router.push('/login');
+          return;
+        }
+        
+        // Check if user is admin via API
+        const res = await fetch('/api/solo/start');
+        if (res.status === 401 || res.status === 403) {
+          router.push('/dashboard');
+          return;
+        }
+        
+        setIsAdmin(true);
+        
+        // Check for active session
+        if (res.ok) {
+          const responseData = await res.json();
+          if (responseData.active) {
+            setActiveSession(responseData.session);
+          }
+        }
+      } catch (err) {
+        console.error('Error checking admin:', err);
+        router.push('/dashboard');
+      } finally {
+        setCheckingAuth(false);
+      }
+    }
+    
+    checkAdmin();
+  }, [router]);
+
+  // Show loading while checking auth
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-muted-foreground">Vérification des accès...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Only show to admins
+  if (!isAdmin) {
+    return null;
+  }
 
   const checkActiveSession = async () => {
     try {

@@ -24,6 +24,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Admin check - Solo Mode is admin-only during beta
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isAdmin: true }
+    });
+    if (!user?.isAdmin) {
+      return NextResponse.json({ error: 'Solo Mode is admin-only during beta' }, { status: 403 });
+    }
+
     const body = await req.json();
     const { category, mode } = body;
 
@@ -97,12 +106,21 @@ export async function POST(req: Request) {
   }
 }
 
-// GET: Check if user has active session
+// GET: Check if user has active session (admin only)
 export async function GET() {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Admin check - Solo Mode is admin-only during beta
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isAdmin: true }
+    });
+    if (!user?.isAdmin) {
+      return NextResponse.json({ error: 'Solo Mode is admin-only during beta' }, { status: 403 });
     }
 
     const activeSession = await prisma.soloSession.findFirst({
