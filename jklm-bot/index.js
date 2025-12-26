@@ -385,11 +385,18 @@ class JKLMBot {
 
       if (data.players) {
         data.players.forEach(p => {
+          const auth = p.profile?.auth || p.auth || null;
           this.players.set(p.peerId, {
             nickname: p.profile?.nickname || `Player${p.peerId}`,
             peerId: p.peerId,
+            auth: auth,  // ✅ Capture auth for existing players too!
             score: 0,
           });
+          
+          // Log if auth is present
+          if (auth) {
+            console.log(`👤 [setPlayers] ${p.profile?.nickname} avec auth: ${auth.service}:${auth.username || auth.id}`);
+          }
         });
         // Vérifier si les joueurs attendus sont déjà présents
         this.checkExpectedPlayers();
