@@ -157,3 +157,74 @@ printScenario('6.4. Post calibration (5ème game = normal)', [
     { id: 'New', mmr: 1150, score: 150, placement: 1, gamesPlayed: 5 },
     { id: 'Old', mmr: 1200, score: 140, placement: 2, gamesPlayed: 50 }
 ]);
+
+// ===================================
+// PARTIE 7: WINSTREAK BREAK (NEW V3)
+// ===================================
+console.log('\n🔥 --- SÉRIE 7: WINSTREAK BREAK ---');
+
+printScenario('7.1. Casseur (1200) bat Joueur en streak 5 (1500)', [
+    { id: 'Casseur', mmr: 1200, score: 150, placement: 1, gamesPlayed: 50, winStreak: 0 },
+    { id: 'Streak5', mmr: 1500, score: 140, placement: 2, gamesPlayed: 50, winStreak: 5 }
+]);
+
+printScenario('7.2. Casseur (1200) bat Joueur en streak 10 (1500)', [
+    { id: 'Casseur', mmr: 1200, score: 150, placement: 1, gamesPlayed: 50, winStreak: 0 },
+    { id: 'Streak10', mmr: 1500, score: 140, placement: 2, gamesPlayed: 50, winStreak: 10 }
+]);
+
+printScenario('7.3. Casseur (1200) bat Joueur en streak 25 (1500)', [
+    { id: 'Casseur', mmr: 1200, score: 150, placement: 1, gamesPlayed: 50, winStreak: 0 },
+    { id: 'Streak25', mmr: 1500, score: 140, placement: 2, gamesPlayed: 50, winStreak: 25 }
+]);
+
+printScenario('7.4. Casseur (1200) bat Joueur en streak 50 (1500) - Capped at 25', [
+    { id: 'Casseur', mmr: 1200, score: 150, placement: 1, gamesPlayed: 50, winStreak: 0 },
+    { id: 'Streak50', mmr: 1500, score: 140, placement: 2, gamesPlayed: 50, winStreak: 50 }
+]);
+
+// ===================================
+// PARTIE 8: UNDERDOG PROTECTION (NEW V3)
+// ===================================
+console.log('\n🛡️ --- SÉRIE 8: UNDERDOG PROTECTION ---');
+
+printScenario('8.1. Underdog (1000) fait 97 pts (64.6%) vs Winner (1400, 150pts) - Seuil 65% pas atteint', [
+    { id: 'Winner', mmr: 1400, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'Underdog', mmr: 1000, score: 97, placement: 2, gamesPlayed: 50 }
+]);
+
+printScenario('8.2. Underdog (1000) fait 98 pts (65.3%) vs Winner (1400, 150pts) - Seuil 65% atteint!', [
+    { id: 'Winner', mmr: 1400, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'Underdog', mmr: 1000, score: 98, placement: 2, gamesPlayed: 50 }
+]);
+
+printScenario('8.3. Underdog (1000) fait 110 pts (73.3%) vs Winner (1400, 150pts)', [
+    { id: 'Winner', mmr: 1400, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'Underdog', mmr: 1000, score: 110, placement: 2, gamesPlayed: 50 }
+]);
+
+printScenario('8.4. Underdog (1000) fait 145 pts (96.6%) vs Winner (1400, 150pts) - Très proche!', [
+    { id: 'Winner', mmr: 1400, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'Underdog', mmr: 1000, score: 145, placement: 2, gamesPlayed: 50 }
+]);
+
+printScenario('8.5. Non-underdog (1250) fait 110 pts vs Winner (1400, 150pts) - Pas assez d\'écart MMR', [
+    { id: 'Winner', mmr: 1400, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'NotUnderdog', mmr: 1250, score: 110, placement: 2, gamesPlayed: 50 }
+]);
+
+// ===================================
+// PARTIE 9: COMBINAISONS (NEW V3)
+// ===================================
+console.log('\n⚡ --- SÉRIE 9: COMBINAISONS ---');
+
+printScenario('9.1. Underdog (1000) bat Joueur en streak 10 (1600)', [
+    { id: 'Underdog', mmr: 1000, score: 150, placement: 1, gamesPlayed: 50, winStreak: 0 },
+    { id: 'Streak10', mmr: 1600, score: 140, placement: 2, gamesPlayed: 50, winStreak: 10 }
+]);
+
+printScenario('9.2. Lobby 3 joueurs avec underdog', [
+    { id: 'Master', mmr: 1600, score: 150, placement: 1, gamesPlayed: 50 },
+    { id: 'Gold', mmr: 1200, score: 130, placement: 2, gamesPlayed: 50 },
+    { id: 'Underdog', mmr: 1000, score: 120, placement: 3, gamesPlayed: 50 }
+]);

@@ -25,6 +25,8 @@ export const MMR_CONFIG = {
   UNDERDOG_MMR_THRESHOLD: 200,  // Seuil d'écart MMR pour être considéré underdog
   UNDERDOG_SCORE_RATIO: 0.65,   // Score minimum (65% du winner) pour gain underdog
   UNDERDOG_MAX_GAIN: 8,         // Gain max possible pour un underdog
+  // === Loss Protection ===
+  MAX_LOSS: -150,               // Perte maximale (protection streak holder)
 };
 
 /**
@@ -145,7 +147,9 @@ export function calculateMMRChange(player: PlayerResult, allPlayers: PlayerResul
       if (playerStreak > 0) {
         const streakLostMalus = 1 + playerStreak * MMR_CONFIG.STREAK_BREAK_MALUS;
         change *= streakLostMalus;
-        console.log(`💔 Streak perdue: ${playerStreak} victoires, perte x${streakLostMalus.toFixed(2)}`);
+        // Cap la perte à MAX_LOSS pour protéger les streak holders
+        change = Math.max(change, MMR_CONFIG.MAX_LOSS);
+        console.log(`💔 Streak perdue: ${playerStreak} victoires, perte x${streakLostMalus.toFixed(2)} (capped at ${MMR_CONFIG.MAX_LOSS})`);
       }
       
       // === UNDERDOG LOSS REDUCTION ===
