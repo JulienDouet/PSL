@@ -339,7 +339,7 @@ export async function POST(req: Request) {
         }
     }
     
-    console.log(`✅ [H2H] Updated ${winnerIds.length * loserIds.length * 2} matchup records`);
+    console.log(`✅ [H2H] Updated matchup records for ${playersForCalculation.length} players`);
 
     // 4. Sauvegarder les réponses (MatchAnswer) et apprendre les questions (PopsauceQuestion)
     const answers = (body as any).answers;
