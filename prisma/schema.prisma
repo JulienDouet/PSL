@@ -51,6 +51,10 @@ model User {
   // Rivalries (H2H tracking)
   matchups           UserMatchup[] @relation("UserMatchups")
   opponentMatchups   UserMatchup[] @relation("OpponentMatchups")
+  
+  // Solo Mode
+  soloSessions       SoloSession[]
+  soloBestStreaks    SoloBestStreak[]
 }
 
 model Session {
@@ -371,4 +375,59 @@ model ConnectionLog {
   @@index([createdAt])
   @@index([roomCode])
   @@index([userId])
+}
+
+// ============================================
+// SOLO MODE (Training / Practice)
+// ============================================
+
+enum SoloMode {
+  HARDCORE   // 5 seconds per question
+  CHALLENGE  // 8 seconds per question
+  NORMAL     // 12 seconds per question
+}
+
+enum SoloStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+  TIMEOUT     // Killed due to 5 min inactivity
+}
+
+model SoloSession {
+  id              String     @id @default(cuid())
+  userId          String
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  category        Category
+  mode            SoloMode
+  
+  streak          Int        @default(0)   // Current streak in this session
+  bestStreak      Int        @default(0)   // Best streak achieved in this session
+  questionsAsked  Int        @default(0)   // Total questions in this session
+  
+  roomCode        String?                  // JKLM room code
+  status          SoloStatus @default(IN_PROGRESS)
+  
+  startedAt       DateTime   @default(now())
+  lastActivityAt  DateTime   @default(now())  // For timeout detection
+  endedAt         DateTime?
+  
+  @@index([userId])
+  @@index([status])
+  @@index([category, mode])
+}
+
+model SoloBestStreak {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  category    Category
+  mode        SoloMode
+  bestStreak  Int      @default(0)
+  achievedAt  DateTime @default(now())
+  
+  @@unique([userId, category, mode])
+  @@index([category, mode, bestStreak])  // For leaderboard queries
 }
