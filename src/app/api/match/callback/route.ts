@@ -87,6 +87,7 @@ export async function POST(req: Request) {
             if (authService === 'jklm') {
                 // For JKLM, the "id" might be a hash or the username itself
                 // Try to find user by jklmUsername matching the nickname
+                console.log(`🔍 [JKLM] Searching for user with jklmUsername="${scoreData.nickname}" and isVerified=true`);
                 user = await prisma.user.findFirst({
                     where: {
                         isVerified: true,
@@ -98,6 +99,8 @@ export async function POST(req: Request) {
                 });
                 if (user) {
                     console.log(`✅ Match par auth JKLM: ${scoreData.nickname} -> ${user.name} (jklmUsername verified)`);
+                } else {
+                    console.log(`⚠️ [JKLM] No user found with jklmUsername="${scoreData.nickname}"`);
                 }
             } else {
                 // Chercher l'account avec ce service/ID (Discord, Twitch, etc)
