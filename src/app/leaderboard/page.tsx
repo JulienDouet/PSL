@@ -44,7 +44,24 @@ export default function LeaderboardPage() {
   const [soloMode, setSoloMode] = useState<SoloMode>('NORMAL');
   const [soloLeaderboard, setSoloLeaderboard] = useState<any[]>([]);
   const [soloLoading, setSoloLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { t } = useTranslation();
+
+  // Check admin status on mount
+  useEffect(() => {
+    async function checkAdmin() {
+      try {
+        const res = await fetch('/api/solo/start');
+        // If we get 200 or even 409, user has access (admin)
+        if (res.ok || res.status === 409) {
+          setIsAdmin(true);
+        }
+      } catch (err) {
+        // Not admin
+      }
+    }
+    checkAdmin();
+  }, []);
 
   // Catégories pour le leaderboard (correspondant aux modes de jeu)
   const LEADERBOARD_CATEGORIES = [
@@ -137,17 +154,19 @@ export default function LeaderboardPage() {
             >
                 {t.leaderboard.tabs.speed}
             </button>
-            {/*<button
+            {isAdmin && (
+              <button
                 onClick={() => setActiveTab('solo')}
                 className={`px-6 py-2 rounded-full font-bold transition-all flex items-center gap-2 ${
                     activeTab === 'solo' 
                     ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg scale-105' 
                     : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
                 }`}
-            >
+              >
                 <Flame className="w-4 h-4" />
                 Solo
-            </button>*/}
+              </button>
+            )}
           </div>
 
           {/* VIEW: MMR LEADERBOARD */}
