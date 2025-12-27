@@ -888,7 +888,7 @@ class JKLMBot {
       const delay = 500 + Math.random() * 1000;
       setTimeout(() => {
         if (this.gameSocket?.connected) {
-          this.gameSocket.emit('guess', answer);
+          this.gameSocket.emit('submitGuess', answer);
           console.log(`🤖 [SOLO] Bot répond: ${answer}`);
         }
       }, delay);
