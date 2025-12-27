@@ -707,6 +707,27 @@ class JKLMBot {
           console.log(`🔥 [SOLO] Streak: ${this.soloStreak} (Best: ${this.soloBestStreak})`);
           // Persist streak to database
           this.updateStreakInDb();
+          
+          // Record the user's answer for speed leaderboard
+          // Find the user's peerId and their response time
+          const userPeerId = userPeerIds.find(peerId => 
+            result.foundSourcesByPlayerPeerId && result.foundSourcesByPlayerPeerId[peerId]
+          );
+          if (userPeerId && this.currentChallenge) {
+            const userTime = this.currentChallenge.playerTimes.get(userPeerId);
+            const playerAnswer = result.foundSourcesByPlayerPeerId?.[userPeerId];
+            if (userTime) {
+              this.recordSoloAnswer({
+                question: this.currentChallenge.rawChallenge?.prompt,
+                questionHash: this.currentChallenge.questionHash,
+                answer: result.source,
+                playerAnswer: playerAnswer,
+                elapsedTime: userTime,
+                roundIndex: this.currentChallenge.roundIndex || 0,
+                peerId: userPeerId
+              });
+            }
+          }
         } else {
           if (this.soloStreak > 0) {
             console.log(`💔 [SOLO] Streak perdu ! (était: ${this.soloStreak})`);
@@ -968,6 +989,39 @@ class JKLMBot {
       }
     } catch (err) {
       console.log(`⚠️ [SOLO] Error saving streak: ${err.message}`);
+    }
+  }
+
+  /**
+   * [SOLO MODE] Record a solo answer for speed leaderboard
+   */
+  async recordSoloAnswer(data) {
+    if (!this.soloMode || !this.userId) return;
+    
+    try {
+      const res = await fetch(`${this.callbackUrl}/api/solo/record-answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: this.sessionId,
+          userId: this.userId,
+          questionHash: data.questionHash,
+          question: data.question,
+          answer: data.answer,
+          playerAnswer: data.playerAnswer,
+          elapsedTime: data.elapsedTime,
+          peerId: data.peerId,
+          roundIndex: data.roundIndex
+        })
+      });
+      
+      if (res.ok) {
+        console.log(`📊 [SOLO] Answer recorded: ${data.playerAnswer} in ${data.elapsedTime}ms`);
+      } else {
+        console.log(`⚠️ [SOLO] Failed to record answer: ${res.status}`);
+      }
+    } catch (err) {
+      console.log(`⚠️ [SOLO] Error recording answer: ${err.message}`);
     }
   }
 

@@ -132,6 +132,11 @@ enum Category {
   GAMES       // @deprecated - pas encore implémenté
 }
 
+enum AnswerSource {
+  RANKED
+  SOLO
+}
+
 // ============================================
 // MATCHES
 // ============================================
@@ -175,7 +180,7 @@ model MatchPlayer {
 
 model MatchAnswer {
   id          String   @id @default(cuid())
-  matchId     String
+  matchId     String?  // Nullable for solo mode answers
   userId      String?  // Nullable si on ne trouve pas le userId (cas rares), mais on essaiera de linker
   peerId      Int      // ID JKLM interne pour debug
   roundIndex  Int      // Numéro de la question
@@ -185,10 +190,11 @@ model MatchAnswer {
   answer      String   // La réponse (correcte)
   playerAnswer String? // Ce que le joueur a répondu (peut être différent de la réponse canonique)
   elapsedTime Int      // Temps en ms
+  source      AnswerSource @default(RANKED) // RANKED or SOLO - retroactive for existing
   
   createdAt   DateTime @default(now())
   
-  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  match       Match?   @relation(fields: [matchId], references: [id], onDelete: Cascade)
   user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   popsauceQuestion PopsauceQuestion? @relation(fields: [questionHash], references: [questionHash])
   

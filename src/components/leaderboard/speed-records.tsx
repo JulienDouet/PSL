@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSpeedRecords, type SpeedRecord } from '@/app/actions/get-speed-records';
+import { getSpeedRecords, type SpeedRecord, type SourceFilter } from '@/app/actions/get-speed-records';
 import { Loader2, Search, Timer } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslation } from "@/lib/i18n/context";
@@ -13,6 +13,7 @@ export function SpeedRecords() {
   const [filterType, setFilterType] = useState<'text' | 'length'>('text');
   const [searchTerm, setSearchTerm] = useState('');
   const [lengthFilter, setLengthFilter] = useState<number | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('ALL');
   const [records, setRecords] = useState<SpeedRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
@@ -53,14 +54,25 @@ export function SpeedRecords() {
   // Fetch when length filter changes
   useEffect(() => {
     if (filterType === 'length' && lengthFilter) {
-        fetchRecords({ length: lengthFilter });
+        fetchRecords({ length: lengthFilter, source: sourceFilter });
     }
-  }, [lengthFilter, filterType]);
+  }, [lengthFilter, filterType, sourceFilter]);
 
-  async function fetchRecords(options?: { query?: string, length?: number }) {
+  // Fetch when source filter changes
+  useEffect(() => {
+    if (filterType === 'text') {
+      fetchRecords({ query: searchTerm || undefined, source: sourceFilter });
+    } else if (filterType === 'length' && lengthFilter) {
+      fetchRecords({ length: lengthFilter, source: sourceFilter });
+    } else {
+      fetchRecords({ source: sourceFilter });
+    }
+  }, [sourceFilter]);
+
+  async function fetchRecords(options?: { query?: string, length?: number, source?: SourceFilter }) {
     setLoading(true);
     try {
-      const data = await getSpeedRecords(options);
+      const data = await getSpeedRecords({ ...options, source: options?.source || sourceFilter });
       setRecords(data);
     } catch (err) {
       console.error(err);
@@ -90,17 +102,45 @@ export function SpeedRecords() {
             <div className="flex gap-4 mb-4">
                 <Button 
                     variant={filterType === 'text' ? 'default' : 'outline'}
-                    onClick={() => { setFilterType('text'); setSearchTerm(''); fetchRecords(); }}
+                    onClick={() => { setFilterType('text'); setSearchTerm(''); fetchRecords({ source: sourceFilter }); }}
                     size="sm"
                 >
                     {t.leaderboard.speed.filter_text}
                 </Button>
                 <Button 
                     variant={filterType === 'length' ? 'default' : 'outline'}
-                    onClick={() => { setFilterType('length'); setLengthFilter(null); fetchRecords(); }}
+                    onClick={() => { setFilterType('length'); setLengthFilter(null); fetchRecords({ source: sourceFilter }); }}
                     size="sm"
                 >
                     {t.leaderboard.speed.filter_length}
+                </Button>
+            </div>
+
+            {/* Source Filter Toggle */}
+            <div className="flex gap-2 mb-4">
+                <Button 
+                    variant={sourceFilter === 'ALL' ? 'default' : 'outline'}
+                    onClick={() => setSourceFilter('ALL')}
+                    size="sm"
+                    className="text-xs"
+                >
+                    🎮 All
+                </Button>
+                <Button 
+                    variant={sourceFilter === 'RANKED' ? 'default' : 'outline'}
+                    onClick={() => setSourceFilter('RANKED')}
+                    size="sm"
+                    className="text-xs"
+                >
+                    ⚔️ Ranked
+                </Button>
+                <Button 
+                    variant={sourceFilter === 'SOLO' ? 'default' : 'outline'}
+                    onClick={() => setSourceFilter('SOLO')}
+                    size="sm"
+                    className="text-xs"
+                >
+                    🎯 Solo
                 </Button>
             </div>
 
