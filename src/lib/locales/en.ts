@@ -136,6 +136,9 @@ export const en = {
       global_top: "Top 50 - Global",
       search_top: "Top 50 - \"{query}\"",
       length_top: "Top 50 - {n} Letters",
+      source_all: "All",
+      source_ranked: "Ranked",
+      source_solo: "Solo",
     },
     no_players: "No ranked players in this category yet. Play games to appear here!"
   },
@@ -232,5 +235,28 @@ export const en = {
     all_opponents: "All Opponents",
     no_data: "No rivalries yet. Play more ranked matches!",
     need_more_games: "3+ games against same opponent required"
+  },
+  solo: {
+    title: "Solo Mode",
+    subtitle: "Practice and improve your response times",
+    access_denied: "Access restricted to administrators",
+    checking: "Checking access...",
+    select_category: "Choose your category",
+    select_mode: "Choose your mode",
+    mode_normal: "Normal",
+    mode_challenge: "Challenge",
+    mode_hardcore: "Hardcore",
+    mode_normal_desc: "15 seconds per question",
+    mode_challenge_desc: "8 seconds per question",
+    mode_hardcore_desc: "5 seconds per question",
+    start_session: "Start Session",
+    active_session: "Active Solo Session",
+    current_streak: "Current Streak",
+    best_streak: "Best Streak",
+    open_game: "Open Game",
+    stop_session: "Stop Session",
+    leaderboard_title: "Solo Leaderboard",
+    no_records: "No records for this category.",
+    be_first: "Be the first to set a record!"
   }
 }

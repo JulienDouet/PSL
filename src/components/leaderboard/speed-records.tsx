@@ -124,7 +124,7 @@ export function SpeedRecords() {
                     size="sm"
                     className="text-xs"
                 >
-                    🎮 All
+                    🎮 {t.leaderboard.speed.source_all}
                 </Button>
                 <Button 
                     variant={sourceFilter === 'RANKED' ? 'default' : 'outline'}
@@ -132,7 +132,7 @@ export function SpeedRecords() {
                     size="sm"
                     className="text-xs"
                 >
-                    ⚔️ Ranked
+                    ⚔️ {t.leaderboard.speed.source_ranked}
                 </Button>
                 <Button 
                     variant={sourceFilter === 'SOLO' ? 'default' : 'outline'}
@@ -140,7 +140,7 @@ export function SpeedRecords() {
                     size="sm"
                     className="text-xs"
                 >
-                    🎯 Solo
+                    🎯 {t.leaderboard.speed.source_solo}
                 </Button>
             </div>
 
@@ -236,6 +236,13 @@ export function SpeedRecords() {
                                             </div>
                                         )}
                                         <span className="font-medium">{record.userName}</span>
+                                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                            record.source === 'SOLO' 
+                                                ? 'bg-orange-500/20 text-orange-400' 
+                                                : 'bg-blue-500/20 text-blue-400'
+                                        }`}>
+                                            {record.source === 'SOLO' ? '🎯' : '⚔️'}
+                                        </span>
                                     </Link>
                                 </td>
                                 <td className="px-4 py-3 font-medium text-foreground/80">

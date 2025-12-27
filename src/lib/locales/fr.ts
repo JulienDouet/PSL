@@ -136,6 +136,9 @@ export const fr = {
       global_top: "Top 50 - Global",
       search_top: "Top 50 - \"{query}\"",
       length_top: "Top 50 - {n} Lettres",
+      source_all: "Tous",
+      source_ranked: "Ranked",
+      source_solo: "Solo",
     },
     no_players: "Aucun joueur classé dans cette catégorie. Joue des parties pour apparaître ici !"
   },
@@ -232,5 +235,28 @@ export const fr = {
     all_opponents: "Tous les adversaires",
     no_data: "Pas encore de rivalités. Joue plus de parties ranked !",
     need_more_games: "3+ parties contre un même adversaire requises"
+  },
+  solo: {
+    title: "Mode Solo",
+    subtitle: "Entraîne-toi et améliore tes temps de réponse",
+    access_denied: "Accès réservé aux administrateurs",
+    checking: "Vérification des accès...",
+    select_category: "Choisis ta catégorie",
+    select_mode: "Choisis ton mode",
+    mode_normal: "Normal",
+    mode_challenge: "Challenge",
+    mode_hardcore: "Hardcore",
+    mode_normal_desc: "15 secondes par question",
+    mode_challenge_desc: "8 secondes par question",
+    mode_hardcore_desc: "5 secondes par question",
+    start_session: "Lancer la session",
+    active_session: "Session Solo Active",
+    current_streak: "Série actuelle",
+    best_streak: "Meilleure série",
+    open_game: "Ouvrir la partie",
+    stop_session: "Arrêter la session",
+    leaderboard_title: "Classement Solo",
+    no_records: "Aucun record pour cette catégorie.",
+    be_first: "Sois le premier à établir un record!"
   }
 }

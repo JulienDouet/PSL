@@ -338,9 +338,9 @@ export default function LeaderboardPage() {
                 <div className="flex justify-center gap-2">
                   {(['NORMAL', 'CHALLENGE', 'HARDCORE'] as SoloMode[]).map((mode) => {
                     const modeConfig = {
-                      NORMAL: { emoji: '🎯', label: 'Normal' },
-                      CHALLENGE: { emoji: '⚡', label: 'Challenge' },
-                      HARDCORE: { emoji: '💀', label: 'Hardcore' }
+                      NORMAL: { emoji: '🎯', label: 'Normal', activeClass: 'bg-blue-500 text-white' },
+                      CHALLENGE: { emoji: '⚡', label: 'Challenge', activeClass: 'bg-purple-500 text-white' },
+                      HARDCORE: { emoji: '💀', label: 'Hardcore', activeClass: 'bg-gradient-to-r from-orange-500 to-red-500 text-white' }
                     };
                     return (
                       <button
@@ -348,7 +348,7 @@ export default function LeaderboardPage() {
                         onClick={() => setSoloMode(mode)}
                         className={`px-4 py-2 rounded-lg font-medium transition-all ${
                           soloMode === mode
-                            ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
+                            ? modeConfig[mode].activeClass
                             : 'bg-secondary/50 hover:bg-secondary text-muted-foreground'
                         }`}
                       >

@@ -431,14 +431,6 @@ export default function SoloPage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Leaderboard Link */}
-        <div className="mt-6 text-center">
-          <Link href="/leaderboard/solo" className="text-primary hover:underline inline-flex items-center gap-2">
-            <Trophy className="w-4 h-4" />
-            Voir le classement Solo
-          </Link>
-        </div>
       </div>
     </div>
   );
