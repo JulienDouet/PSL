@@ -55,6 +55,7 @@ interface ActiveSession {
   mode: SoloModeType;
   streak: number;
   bestStreak: number;
+  userBestStreak: number;  // All-time best across all sessions
   roomCode: string | null;
   startedAt: string;
 }
@@ -265,7 +266,7 @@ export default function SoloPage() {
               {/* Best Streak Display */}
               <div className="text-center py-6 bg-secondary/30 rounded-xl">
                 <div className="text-6xl font-black text-primary mb-2">
-                  🔥 {activeSession.bestStreak}
+                  🔥 {activeSession.userBestStreak}
                 </div>
                 <p className="text-muted-foreground">{t.solo.best_streak}</p>
                 {activeSession.streak > 0 && (

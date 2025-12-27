@@ -187,6 +187,12 @@ export async function GET() {
       return NextResponse.json({ active: false });
     }
 
+    // Get user's all-time best streak across all sessions
+    const allTimeBest = await prisma.soloSession.aggregate({
+      where: { userId: session.user.id },
+      _max: { bestStreak: true }
+    });
+
     return NextResponse.json({
       active: true,
       session: {
@@ -195,6 +201,7 @@ export async function GET() {
         mode: activeSession.mode,
         streak: activeSession.streak,
         bestStreak: activeSession.bestStreak,
+        userBestStreak: allTimeBest._max.bestStreak || 0,
         roomCode: activeSession.roomCode,
         startedAt: activeSession.startedAt
       }

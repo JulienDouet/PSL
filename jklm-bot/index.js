@@ -1087,6 +1087,32 @@ class JKLMBot {
     }
   }
 
+  /**
+   * [SOLO MODE] End the solo session via API
+   */
+  async endSoloSession() {
+    if (!this.sessionId || !this.callbackUrl) {
+      console.log('⚠️ [SOLO] Cannot end session: missing sessionId or callbackUrl');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${this.callbackUrl}/api/solo/end/${this.sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (res.ok) {
+        console.log(`✅ [SOLO] Session ${this.sessionId} ended successfully`);
+      } else {
+        const errorText = await res.text();
+        console.log(`⚠️ [SOLO] Failed to end session: ${res.status} - ${errorText}`);
+      }
+    } catch (err) {
+      console.log(`⚠️ [SOLO] Error ending session: ${err.message}`);
+    }
+  }
+
   disconnect() {
     this.roomSocket?.disconnect();
     this.gameSocket?.disconnect();
@@ -1437,14 +1463,19 @@ class JKLMBot {
     // === SOLO MODE COMMANDS ===
     if (this.soloMode && message === '/stop') {
         const nickname = (typeof sender === 'object' && sender) ? sender.nickname : sender;
-        const auth = (typeof sender === 'object' && sender) ? sender.auth : null;
         
-        // Verify if sender is the session owner (check peerId or if they are the only player)
-        // For simplicity in solo mode, we accept /stop from any player (there should be only one)
         console.log(`🛑 [SOLO] Commande /stop reçue de ${nickname}`);
         this.sendChat("🛑 Fin de la session solo...");
-        this.disconnect();
-        process.exit(0);
+        
+        // Call end session API before exiting
+        this.endSoloSession().then(() => {
+            this.disconnect();
+            process.exit(0);
+        }).catch(err => {
+            console.error(`❌ [SOLO] Error ending session: ${err.message}`);
+            this.disconnect();
+            process.exit(1);
+        });
         return;
     }
 
