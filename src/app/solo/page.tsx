@@ -213,6 +213,7 @@ export default function SoloPage() {
         mode: selectedMode,
         streak: 0,
         bestStreak: 0,
+        userBestStreak: 0,  // Will be fetched during polling
         roomCode: null,
         startedAt: new Date().toISOString()
       });
