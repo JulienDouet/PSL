@@ -47,6 +47,8 @@ class JKLMBot {
     this.soloGameStarted = false;
     this.sessionId = null;
     this.userId = null;
+    this.soloStreak = 0;       // Current consecutive correct answers
+    this.soloBestStreak = 0;   // Best streak this session
   }
   
   // Structured logging with levels (for test mode streaming)
@@ -592,10 +594,8 @@ class JKLMBot {
         rawChallenge: challenge  // Store for learning
       };
       
-      // [SOLO MODE] Try to answer if we know this question
-      if (this.soloMode) {
-        this.tryAnswer(questionHash);
-      }
+      // [SOLO MODE] Don't answer immediately - wait for user to answer first
+      // The bot will answer after the user in setPlayerState handler
     });
 
     this.gameSocket.on('setPlayerState', (peerId, state) => {
@@ -609,6 +609,16 @@ class JKLMBot {
         if (!this.currentChallenge.playerTimes.has(peerId)) {
            // On enregistre le premier temps valide reçu pour ce joueur sur ce round
            this.currentChallenge.playerTimes.set(peerId, state.elapsedTime);
+        }
+        
+        // [SOLO MODE] When a NON-BOT player finds the answer, bot answers immediately after
+        if (this.soloMode && peerId !== this.selfPeerId && this.currentChallenge.questionHash) {
+          // Prevent bot from answering multiple times for same question
+          if (!this.currentChallenge.botAnswered) {
+            this.currentChallenge.botAnswered = true;
+            console.log(`✅ [SOLO] Utilisateur a trouvé ! Bot va répondre...`);
+            this.tryAnswer(this.currentChallenge.questionHash);
+          }
         }
       }
     });
@@ -665,6 +675,28 @@ class JKLMBot {
       console.log(`✅ Réponse: ${result.source}`);
       if (result.details) {
           console.log(`ℹ️ Détails: ${result.details}`);
+      }
+      
+      // [SOLO MODE] Track user's streak
+      if (this.soloMode) {
+        // Check if the human player (non-bot) found the answer
+        const userPeerIds = [...this.players.keys()].filter(id => id !== this.selfPeerId);
+        const userFoundAnswer = userPeerIds.some(peerId => 
+          result.foundSourcesByPlayerPeerId && result.foundSourcesByPlayerPeerId[peerId]
+        );
+        
+        if (userFoundAnswer) {
+          this.soloStreak++;
+          if (this.soloStreak > this.soloBestStreak) {
+            this.soloBestStreak = this.soloStreak;
+          }
+          console.log(`🔥 [SOLO] Streak: ${this.soloStreak} (Best: ${this.soloBestStreak})`);
+        } else {
+          if (this.soloStreak > 0) {
+            console.log(`💔 [SOLO] Streak perdu ! (était: ${this.soloStreak})`);
+          }
+          this.soloStreak = 0;
+        }
       }
     });
 
