@@ -182,18 +182,31 @@ class SoloSession {
   
   /**
    * Connect to the JKLM room
-   * Uses the server URL that was stored from createRoom() response
+   * Like the ranked bot, we call /api/joinRoom to get server and register intent to join
    */
   async connectToRoom() {
-    // Use the server host from createRoom() - don't call /api/joinRoom again!
-    // The ranked bot's connect() method does call joinRoom, but we already have the server from createRoom
-    const serverHost = this.serverHost;
+    console.log(`📡 [SOLO-${this.sessionId}] Calling /api/joinRoom (like ranked bot)...`);
     
-    if (!serverHost) {
-      throw new Error('No server host set - createRoom must be called first');
-    }
+    // The ranked bot ALWAYS calls /api/joinRoom even after createRoom
+    // This POST request might register the intent to join on JKLM's side
+    const res = await fetch('https://jklm.fun/api/joinRoom', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      body: JSON.stringify({ roomCode: this.roomCode })
+    });
     
-    console.log(`📡 [SOLO-${this.sessionId}] Connecting to server: ${serverHost} (from startRoom)`);
+    const data = await res.json();
+    console.log(`📡 [SOLO-${this.sessionId}] joinRoom API response:`, JSON.stringify(data));
+    
+    if (data.errorCode) throw new Error(`joinRoom error: ${data.errorCode}`);
+    if (!data.url) throw new Error('No server URL in joinRoom response');
+    
+    const serverUrl = new URL(data.url);
+    const serverHost = serverUrl.host;
+    console.log(`📡 [SOLO-${this.sessionId}] Server from joinRoom API: ${serverHost}`);
     
     // Connect to room socket with timeout
     return new Promise((resolve, reject) => {
@@ -202,15 +215,14 @@ class SoloSession {
         reject(new Error('Room socket connection timeout'));
       }, 15000);
       
+      // Match EXACTLY the ranked bot's socket options (no forceNew, no timeout)
       this.roomSocket = io(`wss://${serverHost}`, {
-        path: '/socket.io/',  // CRITICAL: trailing slash like ranked bot!
         transports: ['websocket'],
-        query: { EIO: '4', transport: 'websocket' },  // Added from ranked bot
+        path: '/socket.io/',
+        query: { EIO: '4', transport: 'websocket' },
         extraHeaders: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        },
-        forceNew: true,
-        timeout: 10000
+        }
       });
       
       this.roomSocket.on('connect', () => {
