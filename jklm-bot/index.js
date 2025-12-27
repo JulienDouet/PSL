@@ -888,7 +888,7 @@ class JKLMBot {
       const delay = 500 + Math.random() * 1000;
       setTimeout(() => {
         if (this.gameSocket?.connected) {
-          this.gameSocket.emit('setGuess', answer);
+          this.gameSocket.emit('guess', answer);
           console.log(`🤖 [SOLO] Bot répond: ${answer}`);
         }
       }, delay);
@@ -1075,6 +1075,18 @@ class JKLMBot {
       return;
     }
     
+    // Category configs (matching game-modes.ts)
+    const CATEGORY_CONFIG = {
+      'GP_FR': { dictionaryId: 'fr', tagOps: [{ op: 'union', tag: 'Grand public' }, { op: 'difference', tag: 'Difficile' }] },
+      'MS_EN': { dictionaryId: 'en', tagOps: [{ op: 'union', tag: 'Mainstream' }, { op: 'difference', tag: 'Hard' }] },
+      'ANIME': { dictionaryId: 'en', tagOps: [{ op: 'intersection', tag: 'Anime & Manga' }] },
+      'FLAGS': { dictionaryId: 'en', tagOps: [{ op: 'intersection', tag: 'Flags' }] },
+      'NOFILTER_FR': { dictionaryId: 'fr', tagOps: [] },
+      'NOFILTER_EN': { dictionaryId: 'en', tagOps: [] }
+    };
+    
+    const config = CATEGORY_CONFIG[this.category] || CATEGORY_CONFIG['GP_FR'];
+    
     const modeDurations = {
       'HARDCORE': 5,
       'CHALLENGE': 8,
@@ -1082,13 +1094,17 @@ class JKLMBot {
     };
     const duration = modeDurations[this.soloModeType] || 12;
     
-    console.log(`📋 [SOLO] Mode: ${this.soloModeType || 'NORMAL'}, Duration: ${duration}s`);
+    console.log(`📋 [SOLO] Mode: ${this.soloModeType || 'NORMAL'}, Duration: ${duration}s, Category: ${this.category}`);
     
     // STEP 1: Unlock rules panel (required to change rules)
     this.gameSocket.emit('setRulesLocked', false);
     console.log('  🔓 Panel règles ouvert');
     
-    // STEP 2: Apply all rules
+    // STEP 2: Set dictionaryId FIRST (changing language resets other params)
+    this.gameSocket.emit('setRules', { dictionaryId: config.dictionaryId });
+    console.log(`  ✓ dictionaryId: ${config.dictionaryId}`);
+    
+    // STEP 3: Apply scoring and timing rules
     this.gameSocket.emit('setRules', { scoring: 'constant' });
     console.log('  ✓ scoring: constant');
     
@@ -1098,7 +1114,13 @@ class JKLMBot {
     this.gameSocket.emit('setRules', { scoreGoal: 1000 });
     console.log('  ✓ scoreGoal: 1000');
     
-    // STEP 3: Lock rules panel (allows game to start normally)
+    // STEP 4: Apply tag filters for category
+    if (config.tagOps) {
+      this.gameSocket.emit('setTagOps', config.tagOps);
+      console.log(`  ✓ tagOps: ${JSON.stringify(config.tagOps)}`);
+    }
+    
+    // STEP 5: Lock rules panel (allows game to start normally)
     this.gameSocket.emit('setRulesLocked', true);
     console.log('  🔒 Panel règles fermé');
   }
