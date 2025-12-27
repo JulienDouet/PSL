@@ -246,7 +246,7 @@ export const en = {
     mode_normal: "Normal",
     mode_challenge: "Challenge",
     mode_hardcore: "Hardcore",
-    mode_normal_desc: "15 seconds per question",
+    mode_normal_desc: "12 seconds per question",
     mode_challenge_desc: "8 seconds per question",
     mode_hardcore_desc: "5 seconds per question",
     start_session: "Start Session",

@@ -9,6 +9,7 @@ import Link from 'next/link';
 import type { Category, SoloMode as SoloModeType } from '@prisma/client';
 import { authClient } from '@/lib/auth-client';
 import { Navbar } from '@/components/navbar';
+import { useTranslation } from '@/lib/i18n/context';
 
 // Mode configuration
 const SOLO_MODES = {
@@ -66,6 +67,7 @@ interface BestStreak {
 
 export default function SoloPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState<Category>('GP_FR');
   const [selectedMode, setSelectedMode] = useState<SoloModeType>('NORMAL');
   const [isLoading, setIsLoading] = useState(false);
@@ -145,7 +147,7 @@ export default function SoloPage() {
         <div className="flex items-center justify-center pt-24">
           <div className="text-center">
             <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-muted-foreground">Vérification des accès...</p>
+            <p className="text-muted-foreground">{t.solo.checking}</p>
           </div>
         </div>
       </div>
@@ -253,9 +255,9 @@ export default function SoloPage() {
           <Card className="border-primary/30">
             <CardHeader className="text-center">
               <div className="text-4xl mb-2">{sessionMode.emoji}</div>
-              <CardTitle className="text-2xl">Session Solo Active</CardTitle>
+              <CardTitle className="text-2xl">{t.solo.active_session}</CardTitle>
               <CardDescription>
-                {CATEGORIES.find(c => c.key === activeSession.category)?.label} • {sessionMode.label}
+                {t.categories[activeSession.category as keyof typeof t.categories]} • {t.solo[`mode_${activeSession.mode.toLowerCase()}` as keyof typeof t.solo]}
               </CardDescription>
             </CardHeader>
 
@@ -265,7 +267,7 @@ export default function SoloPage() {
                 <div className="text-6xl font-black text-primary mb-2">
                   🔥 {activeSession.bestStreak}
                 </div>
-                <p className="text-muted-foreground">Meilleure streak</p>
+                <p className="text-muted-foreground">{t.solo.best_streak}</p>
                 {activeSession.streak > 0 && (
                   <p className="text-sm text-green-400 mt-1">
                     ✨ En cours: {activeSession.streak}
@@ -302,7 +304,7 @@ export default function SoloPage() {
                 onClick={handleEndSession}
               >
                 <X className="w-4 h-4 mr-2" />
-                Terminer la session
+                {t.solo.stop_session}
               </Button>
             </CardContent>
           </Card>
@@ -324,8 +326,8 @@ export default function SoloPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">🎯 Mode Solo</h1>
-            <p className="text-muted-foreground">Entraîne-toi et bat ton record de streak</p>
+            <h1 className="text-3xl font-bold">🎯 {t.solo.title}</h1>
+            <p className="text-muted-foreground">{t.solo.subtitle}</p>
           </div>
         </div>
 
@@ -339,7 +341,7 @@ export default function SoloPage() {
           {/* Left: Category Selection */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">📚 Catégorie</CardTitle>
+              <CardTitle className="text-lg">📚 {t.solo.select_category}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {CATEGORIES.map((cat) => (
@@ -353,7 +355,7 @@ export default function SoloPage() {
                   }`}
                 >
                   <span className="text-xl">{cat.emoji}</span>
-                  <span className="font-medium">{cat.label}</span>
+                  <span className="font-medium">{t.categories[cat.key as keyof typeof t.categories]}</span>
                 </button>
               ))}
             </CardContent>
@@ -362,7 +364,7 @@ export default function SoloPage() {
           {/* Right: Mode Selection */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">⏱️ Difficulté</CardTitle>
+              <CardTitle className="text-lg">⏱️ {t.solo.select_mode}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {(Object.keys(SOLO_MODES) as SoloModeType[]).map((mode) => {
@@ -386,10 +388,10 @@ export default function SoloPage() {
                     </div>
                     <div className="text-left">
                       <div className="font-bold flex items-center gap-2">
-                        {config.emoji} {config.label}
+                        {t.solo[`mode_${mode}` as keyof typeof t.solo]}
                       </div>
                       <div className={`text-sm ${selectedMode === mode ? 'text-white/80' : 'text-muted-foreground'}`}>
-                        {config.description}
+                        {t.solo[`mode_${mode}_desc` as keyof typeof t.solo]}
                       </div>
                     </div>
                   </button>
@@ -406,10 +408,10 @@ export default function SoloPage() {
               <div className="flex-1 text-center md:text-left">
                 <h3 className="font-bold text-lg">
                   {CATEGORIES.find(c => c.key === selectedCategory)?.emoji}{' '}
-                  {CATEGORIES.find(c => c.key === selectedCategory)?.label}
+                  {t.categories[selectedCategory as keyof typeof t.categories]}
                 </h3>
                 <p className="text-muted-foreground">
-                  {modeConfig.emoji} {modeConfig.label} • {modeConfig.duration}s par question
+                  {modeConfig.emoji} {t.solo[`mode_${selectedMode.toLowerCase()}` as keyof typeof t.solo]} • {t.solo[`mode_${selectedMode.toLowerCase()}_desc` as keyof typeof t.solo]}
                 </p>
               </div>
               
@@ -424,7 +426,7 @@ export default function SoloPage() {
                 ) : (
                   <>
                     <Play className="w-5 h-5 mr-2" />
-                    Démarrer
+                    {t.solo.start_session}
                   </>
                 )}
               </Button>

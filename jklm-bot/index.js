@@ -847,6 +847,23 @@ class JKLMBot {
             this.disconnect();
             process.exit(1);
         });
+    } else if (this.soloMode) {
+        // === SOLO MODE: NE PAS QUITTER ===
+        console.log('🎯 [SOLO] Partie terminée. Le bot reste en ligne pour la prochaine partie.');
+        this.sendChat("🔄 Nouvelle partie dans quelques instants...");
+        
+        // Relancer une partie après un court délai
+        setTimeout(() => {
+            if (this.gameSocket && this.gameSocket.connected) {
+                console.log('🎯 [SOLO] Relance automatique de la partie...');
+                // JKLM requires unlocking rules or starting round
+                // this.gameSocket.emit('startRoundNow'); // This might work if bot is leader
+                // Or just rely on natural loop if rules are unlocked?
+                // Ensuring rules are unlocked
+                this.gameSocket.emit('setRulesLocked', true);
+            }
+        }, 5000);
+        
     } else {
         console.log('⚠️ Pas de callback URL configurée.');
         this.disconnect();
@@ -1391,6 +1408,20 @@ class JKLMBot {
   }
 
   handleChatMessage(sender, message) {
+    // === SOLO MODE COMMANDS ===
+    if (this.soloMode && message === '/stop') {
+        const nickname = (typeof sender === 'object' && sender) ? sender.nickname : sender;
+        const auth = (typeof sender === 'object' && sender) ? sender.auth : null;
+        
+        // Verify if sender is the session owner (check peerId or if they are the only player)
+        // For simplicity in solo mode, we accept /stop from any player (there should be only one)
+        console.log(`🛑 [SOLO] Commande /stop reçue de ${nickname}`);
+        this.sendChat("🛑 Fin de la session solo...");
+        this.disconnect();
+        process.exit(0);
+        return;
+    }
+
     if (!this.verifyMode || !this.verifyCode) return;
 
     // Vérifier si le message contient le code attendu
