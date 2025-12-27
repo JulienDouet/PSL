@@ -115,9 +115,9 @@ export default function SoloPage() {
     checkAdmin();
   }, [router]);
 
-  // Poll for roomCode when session is active but room not yet created
+  // Poll for session updates (roomCode, streak, and detect session end)
   useEffect(() => {
-    if (!activeSession || activeSession.roomCode) return;
+    if (!activeSession) return;
 
     const pollInterval = setInterval(async () => {
       try {
@@ -125,20 +125,21 @@ export default function SoloPage() {
         if (res.ok) {
           const data = await res.json();
           if (data.active && data.session) {
+            // Update session data (roomCode, streak, etc.)
             setActiveSession(data.session);
-            // Stop polling once we have roomCode
-            if (data.session.roomCode) {
-              clearInterval(pollInterval);
-            }
+          } else if (!data.active) {
+            // Session ended (e.g., via /stop command)
+            setActiveSession(null);
+            clearInterval(pollInterval);
           }
         }
       } catch (err) {
         console.error('Polling error:', err);
       }
-    }, 2000); // Poll every 2 seconds
+    }, 3000); // Poll every 3 seconds
 
     return () => clearInterval(pollInterval);
-  }, [activeSession]);
+  }, [activeSession?.id]); // Re-run when session ID changes
 
   // Show loading while checking auth
   if (checkingAuth) {
