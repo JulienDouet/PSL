@@ -930,6 +930,8 @@ class JKLMBot {
     
     const answer = await this.lookupAnswer(questionHash);
     if (answer && this.gameSocket?.connected) {
+      // Submit answer with slight random delay (100-300ms)
+      const delay = 100 + Math.random() * 200;
       setTimeout(() => {
         if (this.gameSocket?.connected) {
           this.gameSocket.emit('submitGuess', answer);
