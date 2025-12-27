@@ -313,10 +313,8 @@ class JKLMBot {
          if (this.soloMode) {
            console.log('🎯 [SOLO] Configuration du mode solo...');
            
-           // Apply solo-specific rules after short delay
-           setTimeout(() => {
-             this.applySoloRules();
-           }, 500);
+           // DON'T apply rules yet - wait for player to join
+           // The rules will be applied right before starting
            
            // Listen for player joining to auto-start
            this.gameSocket.on('addPlayer', (player) => {
@@ -343,13 +341,21 @@ class JKLMBot {
                  this.gameSocket.emit('joinRound');
                }
                
-               // Then start the round after a delay
+               // Apply rules NOW (right before starting), then start after rules are set
                setTimeout(() => {
-                 if (this.gameSocket?.connected) {
-                   this.gameSocket.emit('startRoundNow');
-                   console.log('📤 [SOLO] startRoundNow envoyé');
-                 }
-               }, 1500);  // 1.5s delay for joinRound to process
+                 if (!this.gameSocket?.connected) return;
+                 
+                 // Apply solo-specific rules
+                 this.applySoloRulesSync();
+                 
+                 // Start the round after rules are applied
+                 setTimeout(() => {
+                   if (this.gameSocket?.connected) {
+                     this.gameSocket.emit('startRoundNow');
+                     console.log('📤 [SOLO] startRoundNow envoyé');
+                   }
+                 }, 1500);  // Wait for rules to be processed
+               }, 500);
              }
            });
            
@@ -977,6 +983,36 @@ class JKLMBot {
     }, 400);
   }
 
+  /**
+   * Apply solo-specific rules synchronously (for use right before starting game)
+   * This version doesn't lock rules - the game will start immediately after
+   */
+  applySoloRulesSync() {
+    console.log('🎯 [SOLO] Application des règles solo (sync)...');
+    if (!this.gameSocket?.connected) {
+      console.log('❌ [SOLO] gameSocket non connecté');
+      return;
+    }
+    
+    const modeDurations = {
+      'HARDCORE': 5,
+      'CHALLENGE': 8,
+      'NORMAL': 12
+    };
+    const duration = modeDurations[this.soloModeType] || 12;
+    
+    console.log(`📋 [SOLO] Mode: ${this.soloModeType || 'NORMAL'}, Duration: ${duration}s`);
+    
+    // Apply all rules with minimal delays
+    this.gameSocket.emit('setRules', { scoring: 'constant' });
+    console.log('  ✓ scoring: constant');
+    
+    this.gameSocket.emit('setRules', { challengeDuration: duration });
+    console.log(`  ✓ challengeDuration: ${duration}`);
+    
+    this.gameSocket.emit('setRules', { scoreGoal: 1000 });
+    console.log('  ✓ scoreGoal: 1000');
+  }
 
   findExpectedPlayer(nickname, auth) {
     // Cherche si ce joueur était attendu (pour récupérer son userId)
