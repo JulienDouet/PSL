@@ -336,12 +336,20 @@ class JKLMBot {
              if (!this.soloGameStarted) {
                this.soloGameStarted = true;
                console.log('🚀 [SOLO] Démarrage automatique de la partie...');
+               
+               // First, join the round as participant (required for game to count 2 players)
+               if (this.gameSocket?.connected) {
+                 console.log('📤 [SOLO] joinRound envoyé (bot devient participant)');
+                 this.gameSocket.emit('joinRound');
+               }
+               
+               // Then start the round after a delay
                setTimeout(() => {
                  if (this.gameSocket?.connected) {
                    this.gameSocket.emit('startRoundNow');
                    console.log('📤 [SOLO] startRoundNow envoyé');
                  }
-               }, 2000);  // 2s delay for player to settle
+               }, 1500);  // 1.5s delay for joinRound to process
              }
            });
            
@@ -450,10 +458,7 @@ class JKLMBot {
       }
     });
 
-    this.gameSocket.on('addPlayer', (player) => {
-      // Log complet pour debug
-      console.log(`👤 [DEBUG] addPlayer complet:`, JSON.stringify(player, null, 2));
-      
+    this.gameSocket.on('addPlayer', (player) => {      
       const nick = player.profile?.nickname || `Player${player.profile?.peerId}`;
       const auth = player.profile?.auth;
       
