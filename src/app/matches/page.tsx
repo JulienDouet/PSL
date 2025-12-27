@@ -338,7 +338,7 @@ export default function MatchesPage() {
                 ))}
               </div>
             )
-          ) : (
+          ) : activeTab === 'recent' ? (
             /* RECENT MATCHES VIEW */
             recentMatches.length === 0 ? (
                 <Card className="glass-card">
