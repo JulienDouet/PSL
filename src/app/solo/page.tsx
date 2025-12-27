@@ -39,12 +39,12 @@ const SOLO_MODES = {
 
 // Categories available for solo
 const CATEGORIES = [
-  { key: 'GP_FR', label: 'Grand Public FR', emoji: '🌍' },
-  { key: 'MS_EN', label: 'Mainstream EN', emoji: '🌎' },
+  { key: 'GP_FR', label: 'Grand Public FR', emoji: '🍿' },
+  { key: 'MS_EN', label: 'Mainstream EN', emoji: '🍿' },
   { key: 'ANIME', label: 'Anime/Manga', emoji: '🎌' },
   { key: 'FLAGS', label: 'Drapeaux', emoji: '🚩' },
-  { key: 'NOFILTER_FR', label: 'Sans Filtre FR', emoji: '🔞' },
-  { key: 'NOFILTER_EN', label: 'No Filter EN', emoji: '🔞' },
+  { key: 'NOFILTER_FR', label: 'Sans Filtre FR', emoji: '🔥' },
+  { key: 'NOFILTER_EN', label: 'No Filter EN', emoji: '🔥' },
 ];
 
 interface ActiveSession {

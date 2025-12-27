@@ -588,8 +588,14 @@ class JKLMBot {
         imageHash: challenge.image?.data ? this.hashBuffer(challenge.image.data) : null,
         questionHash: questionHash,
         index: this.roundCounter,
-        playerTimes: new Map() // peerId -> elapsedTime
+        playerTimes: new Map(), // peerId -> elapsedTime
+        rawChallenge: challenge  // Store for learning
       };
+      
+      // [SOLO MODE] Try to answer if we know this question
+      if (this.soloMode) {
+        this.tryAnswer(questionHash);
+      }
     });
 
     this.gameSocket.on('setPlayerState', (peerId, state) => {
@@ -613,9 +619,14 @@ class JKLMBot {
       
       // Enregistrer les réponses de ce round
       if (this.currentChallenge) {
-        const { question, text, imageHash, questionHash, index, playerTimes } = this.currentChallenge;
+        const { question, text, imageHash, questionHash, index, playerTimes, rawChallenge } = this.currentChallenge;
         const correctAnswer = result.source;
         const playerAnswers = result.foundSourcesByPlayerPeerId || {};
+        
+        // [SOLO MODE] Learn the correct answer for this question
+        if (this.soloMode && rawChallenge && correctAnswer) {
+          this.learnQuestion(rawChallenge, correctAnswer);
+        }
         
         for (const [peerId, elapsedTime] of playerTimes.entries()) {
             const player = this.players.get(peerId);
@@ -805,6 +816,83 @@ class JKLMBot {
     
     const combined = prompt + '|' + content;
     return crypto.createHash('sha256').update(combined).digest('hex').slice(0, 32);
+  }
+
+  /**
+   * [SOLO MODE] Look up answer for a question via API
+   */
+  async lookupAnswer(questionHash) {
+    if (!this.callbackUrl) return null;
+    
+    try {
+      const res = await fetch(`${this.callbackUrl}/api/popsauce/lookup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionHash })
+      });
+      
+      if (!res.ok) return null;
+      
+      const data = await res.json();
+      if (data.found && data.answer) {
+        console.log(`📖 [SOLO] Réponse trouvée en DB: ${data.answer}`);
+        return data.answer;
+      }
+    } catch (err) {
+      console.log(`⚠️ [SOLO] Lookup failed: ${err.message}`);
+    }
+    
+    return null;
+  }
+
+  /**
+   * [SOLO MODE] Learn a new answer from game result
+   */
+  async learnQuestion(challenge, correctAnswer) {
+    if (!this.callbackUrl || !correctAnswer) return;
+    
+    const questionHash = this.generateQuestionHash(challenge);
+    
+    try {
+      const payload = {
+        questionHash,
+        prompt: challenge.prompt,
+        text: challenge.text || null,
+        imageHash: challenge.image?.data ? this.hashBuffer(challenge.image.data) : null,
+        correctAnswer
+      };
+      
+      const res = await fetch(`${this.callbackUrl}/api/popsauce/learn`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (res.ok) {
+        console.log(`📚 [SOLO] Question apprise: ${correctAnswer}`);
+      }
+    } catch (err) {
+      console.log(`⚠️ [SOLO] Learn failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * [SOLO MODE] Try to answer a question if we know it
+   */
+  async tryAnswer(questionHash) {
+    if (!this.soloMode) return;
+    
+    const answer = await this.lookupAnswer(questionHash);
+    if (answer && this.gameSocket?.connected) {
+      // Submit answer with slight random delay (500-1500ms)
+      const delay = 500 + Math.random() * 1000;
+      setTimeout(() => {
+        if (this.gameSocket?.connected) {
+          this.gameSocket.emit('setGuess', answer);
+          console.log(`🤖 [SOLO] Bot répond: ${answer}`);
+        }
+      }, delay);
+    }
   }
 
   disconnect() {
