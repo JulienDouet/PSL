@@ -679,11 +679,25 @@ class JKLMBot {
       
       // [SOLO MODE] Track user's streak
       if (this.soloMode) {
+        // Debug: log what we receive
+        console.log(`🔍 [SOLO DEBUG] result.fastest: ${result.fastest}`);
+        console.log(`🔍 [SOLO DEBUG] result.foundSourcesByPlayerPeerId:`, result.foundSourcesByPlayerPeerId);
+        console.log(`🔍 [SOLO DEBUG] selfPeerId: ${this.selfPeerId}, players:`, [...this.players.keys()]);
+        
         // Check if the human player (non-bot) found the answer
+        // Method 1: Check foundSourcesByPlayerPeerId
         const userPeerIds = [...this.players.keys()].filter(id => id !== this.selfPeerId);
-        const userFoundAnswer = userPeerIds.some(peerId => 
+        let userFoundAnswer = userPeerIds.some(peerId => 
           result.foundSourcesByPlayerPeerId && result.foundSourcesByPlayerPeerId[peerId]
         );
+        
+        // Method 2: If no foundSourcesByPlayerPeerId, check if fastest is a non-bot player
+        if (!userFoundAnswer && result.fastest) {
+          const fastestPlayer = [...this.players.values()].find(p => p.nickname === result.fastest);
+          if (fastestPlayer && fastestPlayer.peerId !== this.selfPeerId) {
+            userFoundAnswer = true;
+          }
+        }
         
         if (userFoundAnswer) {
           this.soloStreak++;
@@ -916,8 +930,6 @@ class JKLMBot {
     
     const answer = await this.lookupAnswer(questionHash);
     if (answer && this.gameSocket?.connected) {
-      // Submit answer with slight random delay (500-1500ms)
-      const delay = 500 + Math.random() * 1000;
       setTimeout(() => {
         if (this.gameSocket?.connected) {
           this.gameSocket.emit('submitGuess', answer);
