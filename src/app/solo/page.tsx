@@ -8,6 +8,7 @@ import { ArrowLeft, Trophy, Clock, Zap, Target, Play, X, ExternalLink, Shield } 
 import Link from 'next/link';
 import type { Category, SoloMode as SoloModeType } from '@prisma/client';
 import { authClient } from '@/lib/auth-client';
+import { Navbar } from '@/components/navbar';
 
 // Mode configuration
 const SOLO_MODES = {
@@ -139,10 +140,13 @@ export default function SoloPage() {
   // Show loading while checking auth
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-muted-foreground">Vérification des accès...</p>
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex items-center justify-center pt-24">
+          <div className="text-center">
+            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-muted-foreground">Vérification des accès...</p>
+          </div>
         </div>
       </div>
     );
@@ -244,7 +248,8 @@ export default function SoloPage() {
     
     return (
       <div className="min-h-screen bg-background">
-        <div className="container max-w-2xl mx-auto px-4 py-8">
+        <Navbar />
+        <div className="container max-w-2xl mx-auto px-4 pt-24 pb-8">
           <Card className="border-primary/30">
             <CardHeader className="text-center">
               <div className="text-4xl mb-2">{sessionMode.emoji}</div>
@@ -309,7 +314,8 @@ export default function SoloPage() {
   // Mode selection UI
   return (
     <div className="min-h-screen bg-background">
-      <div className="container max-w-4xl mx-auto px-4 py-8">
+      <Navbar />
+      <div className="container max-w-4xl mx-auto px-4 pt-24 pb-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link href="/dashboard">
