@@ -1106,6 +1106,21 @@ async function main() {
     } else if (args[i] === '--test-mode') {
       bot.testMode = true;
       console.log('🧪 Test mode enabled (no MMR callback, log streaming on port 3099)');
+    } else if (args[i] === '--solo-mode') {
+      bot.soloMode = true;
+      console.log('🎯 Solo mode enabled');
+    } else if (args[i] === '--session') {
+      if (args[i + 1]) {
+        bot.sessionId = args[i + 1];
+        console.log('📋 Session ID:', bot.sessionId);
+        i++;
+      }
+    } else if (args[i] === '--user') {
+      if (args[i + 1]) {
+        bot.userId = args[i + 1];
+        console.log('👤 User ID:', bot.userId);
+        i++;
+      }
     } else if (args[i].startsWith('http')) {
       callbackUrl = args[i];
     } else if (args[i].length === 4 && !args[i].startsWith('-')) {
@@ -1213,10 +1228,38 @@ async function main() {
         const catLabel = categoryNames[bot.category] || bot.category || 'GP';
         roomName = `PSL Bot - ${catLabel}`;
       }
+      
+      // Solo mode uses private room
+      if (bot.soloMode) {
+        roomName = 'PSL Solo Training';
+      }
+      
       console.log(`🏗️ Mode création automatique (${roomName})...`);
-      const result = await bot.createRoom({ name: roomName, isPublic: !bot.testMode });
+      const result = await bot.createRoom({ name: roomName, isPublic: !bot.testMode && !bot.soloMode });
       roomCode = result.roomCode;
       console.log(`🎮 Room créée: ${roomCode}`);
+      
+      // Solo mode: notify API immediately via callback
+      if (bot.soloMode && callbackUrl && bot.sessionId) {
+        console.log(`📤 [SOLO] Sending room_created callback...`);
+        try {
+          const callbackPayload = {
+            type: 'room_created',
+            sessionId: bot.sessionId,
+            roomCode: roomCode,
+            joinUrl: `https://jklm.fun/${roomCode}`
+          };
+          
+          const res = await fetch(`${callbackUrl}/api/solo/callback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(callbackPayload)
+          });
+          console.log(`📥 [SOLO] Callback response: ${res.status}`);
+        } catch (err) {
+          console.error(`❌ [SOLO] Callback failed:`, err.message);
+        }
+      }
     }
 
     // Mode vérification

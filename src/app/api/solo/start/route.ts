@@ -84,8 +84,6 @@ export async function POST(req: Request) {
     // Get callback URL from environment
     const callbackUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://psl-ranked.app';
 
-    // Spawn solo-bot process
-    const botScript = path.join(process.cwd(), 'jklm-bot/solo-bot.js');
     
     const isDev = process.env.NODE_ENV === 'development';
     let isDetached = !isDev;
@@ -95,13 +93,17 @@ export async function POST(req: Request) {
 
     console.log(`🚀 [SOLO] Spawning bot for session ${soloSession.id}`);
 
+    // Use index.js (which works!) with --solo-mode flag instead of solo-bot.js
+    const botScript = path.join(process.cwd(), 'jklm-bot/index.js');
+    
     const child = spawn('node', [
       botScript,
+      '--create',           // Create room automatically
+      '--solo-mode',        // Enable solo-specific behavior
       '--session', soloSession.id,
       '--user', session.user.id,
       '--category', category,
-      '--mode', mode,
-      '--callback', callbackUrl
+      callbackUrl           // Callback URL for room_created notification
     ], {
       detached: isDetached,
       stdio: ['ignore', 'pipe', 'pipe'],
