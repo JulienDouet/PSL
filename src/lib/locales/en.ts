@@ -258,6 +258,8 @@ export const en = {
     stop_session: "Stop Session",
     leaderboard_title: "Solo Leaderboard",
     no_records: "No records for this category.",
-    be_first: "Be the first to set a record!"
+    be_first: "Be the first to set a record!",
+    join_lobby: "Join Lobby",
+    creating_lobby: "Creating lobby..."
   }
 }

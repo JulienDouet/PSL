@@ -258,6 +258,8 @@ export const fr = {
     stop_session: "Arrêter la session",
     leaderboard_title: "Classement Solo",
     no_records: "Aucun record pour cette catégorie.",
-    be_first: "Sois le premier à établir un record!"
+    be_first: "Sois le premier à établir un record!",
+    join_lobby: "Rejoindre le lobby",
+    creating_lobby: "Création du lobby..."
   }
 }

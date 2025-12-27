@@ -287,13 +287,13 @@ export default function SoloPage() {
                     onClick={() => window.open(`https://jklm.fun/${activeSession.roomCode}`, '_blank')}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    Rejoindre le lobby
+                    {t.solo.join_lobby}
                   </Button>
                 </div>
               ) : (
                 <div className="text-center p-4 bg-secondary/30 rounded-lg">
                   <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
-                  <p className="text-muted-foreground">Création du lobby...</p>
+                  <p className="text-muted-foreground">{t.solo.creating_lobby}</p>
                 </div>
               )}
 
