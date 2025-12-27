@@ -705,11 +705,15 @@ class JKLMBot {
             this.soloBestStreak = this.soloStreak;
           }
           console.log(`🔥 [SOLO] Streak: ${this.soloStreak} (Best: ${this.soloBestStreak})`);
+          // Persist streak to database
+          this.updateStreakInDb();
         } else {
           if (this.soloStreak > 0) {
             console.log(`💔 [SOLO] Streak perdu ! (était: ${this.soloStreak})`);
           }
           this.soloStreak = 0;
+          // Persist reset streak to database
+          this.updateStreakInDb();
         }
       }
     });
@@ -930,14 +934,40 @@ class JKLMBot {
     
     const answer = await this.lookupAnswer(questionHash);
     if (answer && this.gameSocket?.connected) {
-      // Submit answer with slight random delay (100-300ms)
-      const delay = 100 + Math.random() * 200;
       setTimeout(() => {
         if (this.gameSocket?.connected) {
           this.gameSocket.emit('submitGuess', answer);
           console.log(`🤖 [SOLO] Bot répond: ${answer}`);
         }
-      }, delay);
+      }, 1);
+      //submit answer after 1ms delay
+    }
+  }
+
+  /**
+   * [SOLO MODE] Update streak in database
+   */
+  async updateStreakInDb() {
+    if (!this.soloMode || !this.sessionId) return;
+    
+    try {
+      const res = await fetch(`${this.callbackUrl}/api/solo/update-streak`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: this.sessionId,
+          streak: this.soloStreak,
+          bestStreak: this.soloBestStreak
+        })
+      });
+      
+      if (res.ok) {
+        console.log(`📊 [SOLO] Streak saved to DB: ${this.soloStreak} (Best: ${this.soloBestStreak})`);
+      } else {
+        console.log(`⚠️ [SOLO] Failed to save streak: ${res.status}`);
+      }
+    } catch (err) {
+      console.log(`⚠️ [SOLO] Error saving streak: ${err.message}`);
     }
   }
 
