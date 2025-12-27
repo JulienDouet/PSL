@@ -85,12 +85,23 @@ class SoloSession {
   }
   
   /**
-   * Start the session - create room and join
+   * Start the session - create room and join using JKLMBot class from ranked bot
    */
   async start() {
     try {
-      // Create private room
-      this.roomCode = await this.createRoom();
+      // Import the working JKLMBot class
+      const { JKLMBot } = await import('./index.js');
+      
+      // Create a bot instance
+      this.bot = new JKLMBot();
+      
+      // Create private room (like test-mode in ranked bot)
+      console.log(`🏗️ [SOLO-${this.sessionId}] Creating room using JKLMBot...`);
+      const result = await this.bot.createRoom({ 
+        name: 'PSL Solo Training', 
+        isPublic: false 
+      });
+      this.roomCode = result.roomCode;
       console.log(`🏠 [SOLO-${this.sessionId}] Room created: ${this.roomCode}`);
       
       // 🔥 IMMEDIATELY notify API that room is created (don't wait for full connection)
@@ -116,15 +127,26 @@ class SoloSession {
           .catch(err => console.error(`❌ [SOLO-${this.sessionId}] Callback failed:`, err.message));
       }
       
-      // Wait for JKLM to fully initialize the room before connecting
-      console.log(`⏳ [SOLO-${this.sessionId}] Waiting 2s for room to initialize on JKLM...`);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Connect to room using the working JKLMBot.connect() method
+      console.log(`🔌 [SOLO-${this.sessionId}] Connecting to room using JKLMBot.connect()...`);
+      await this.bot.connect(this.roomCode, { 
+        nickname: CONFIG.BOT_NAME 
+      });
+      console.log(`✅ [SOLO-${this.sessionId}] Connected to room!`);
       
-      // Connect to room (async, continues in background)
-      await this.connectToRoom();
+      // Store references
+      this.roomSocket = this.bot.roomSocket;
+      this.gameSocket = this.bot.gameSocket;
+      this.selfPeerId = this.bot.selfPeerId;
+      
+      // Configure rules for solo mode
+      this.configureRules();
       
       // Setup keepalive and timeout
       this.setupTimers();
+      
+      // Setup solo-specific game handlers
+      this.setupSoloGameHandlers();
       
       return {
         success: true,
@@ -133,135 +155,86 @@ class SoloSession {
       };
     } catch (error) {
       console.error(`❌ [SOLO-${this.sessionId}] Start failed:`, error.message);
+      console.error(error.stack);
       this.cleanup();
       return { success: false, error: error.message };
     }
   }
   
   /**
-   * Create a private JKLM room
+   * Setup solo-specific game handlers
    */
-  async createRoom() {
-    // Generate token that will be used for BOTH creating AND joining
-    const creatorUserToken = this.generateUserToken();
-    const duration = CONFIG.MODES[this.mode]?.duration || 12;
+  setupSoloGameHandlers() {
+    if (!this.gameSocket) return;
     
-    const res = await fetch('https://jklm.fun/api/startRoom', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      },
-      body: JSON.stringify({
-        name: 'PSL Solo Training',
-        isPublic: false,
-        gameId: 'popsauce',
-        creatorUserToken
-      })
+    // Player joined
+    this.gameSocket.on('addPlayer', (player) => {
+      this.players.set(player.peerId, player);
+      console.log(`👤 [SOLO-${this.sessionId}] Player joined: ${player.nickname}`);
+      
+      // Auto-start when user joins
+      if (player.peerId !== this.selfPeerId) {
+        this.lastActivityAt = Date.now();
+        // Start game after short delay
+        setTimeout(() => {
+          if (this.gameSocket?.connected) {
+            console.log(`🚀 [SOLO-${this.sessionId}] Starting game...`);
+            this.gameSocket.emit('startRoundNow');
+          }
+        }, 2000);
+      }
     });
     
-    const data = await res.json();
-    console.log(`📦 [SOLO-${this.sessionId}] startRoom response:`, JSON.stringify(data));
-    
-    if (!data.roomCode) throw new Error('Failed to create room - no roomCode');
-    if (!data.url) throw new Error('Failed to create room - no server URL');
-    
-    // CRITICAL: Store the creator token to use the SAME token when joining!
-    // This is what the ranked bot does (index.js line 143)
-    this.userToken = creatorUserToken;
-    console.log(`🔑 [SOLO-${this.sessionId}] Using creator token for join`);
-    
-    // Extract server URL from the response - this is the server we should connect to!
-    // The ranked bot uses this URL directly, not calling /api/joinRoom again
-    const serverUrl = new URL(data.url);
-    this.serverHost = serverUrl.host;
-    console.log(`🌐 [SOLO-${this.sessionId}] Server from startRoom: ${this.serverHost}`);
-    
-    return data.roomCode;
-  }
-  
-  /**
-   * Connect to the JKLM room
-   * EXACT COPY of ranked bot's connect() method structure
-   */
-  async connectToRoom() {
-    const roomCode = this.roomCode;  // Use local variable like ranked bot
-    const nickname = CONFIG.BOT_NAME;
-    const language = 'fr-FR';
-    
-    console.log(`🎮 [SOLO-${this.sessionId}] Recherche du serveur pour le lobby ${roomCode}...`);
-    
-    try {
-      // Get room server - EXACT same as ranked bot's getRoomServer()
-      const response = await fetch('https://jklm.fun/api/joinRoom', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomCode })
-      });
+    // New challenge
+    this.gameSocket.on('setChallenge', (challenge) => {
+      this.currentChallenge = challenge;
+      this.userAnswered = false;
+      this.questionsAsked++;
+      this.lastActivityAt = Date.now();
       
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json();
-      
-      if (data.errorCode) throw new Error(data.errorCode);
-      if (!data.url) throw new Error('No URL in response');
-      
-      const url = new URL(data.url);
-      const serverHost = url.host;
-      console.log(`🌐 [SOLO-${this.sessionId}] Serveur trouvé: ${serverHost}`);
-      
-      const socketUrl = `wss://${serverHost}`;
-      console.log(`🔌 [SOLO-${this.sessionId}] Connexion WebSocket vers ${socketUrl}...`);
-      
-      // Étape 1: Connexion au lobby (room) - EXACT same as ranked bot
-      return new Promise((resolve, reject) => {
-        this.roomSocket = io(socketUrl, {
-          transports: ['websocket'],
-          path: '/socket.io/',
-          query: { EIO: '4', transport: 'websocket' },
-          extraHeaders: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      console.log(`❓ [SOLO-${this.sessionId}] Q${this.questionsAsked}: ${challenge.prompt}`);
+    });
+    
+    // Player answered
+    this.gameSocket.on('setPlayerState', (data) => {
+      if (data.state?.wasCorrect !== undefined && data.peerId !== this.selfPeerId) {
+        // User answered
+        this.userAnswered = true;
+        this.lastActivityAt = Date.now();
+        
+        if (data.state.wasCorrect) {
+          this.streak++;
+          if (this.streak > this.bestStreak) {
+            this.bestStreak = this.streak;
           }
-        });
-        
-        this.roomSocket.on('connect', () => {
-          console.log(`✅ [SOLO-${this.sessionId}] Connecté à ${serverHost} (room)`);
           
-          // Envoyer joinRoom avec callback (Ack) - EXACT format as ranked bot
-          const joinData = {
-            roomCode,  // Use local variable, NOT this.roomCode
-            userToken: this.userToken,
-            nickname,
-            language,
-          };
+          // Milestone announcements
+          if (this.streak % 50 === 0) {
+            this.sendChat(`🎯 ${this.streak}! 🔥`);
+          }
           
-          console.log(`📤 [SOLO-${this.sessionId}] Envoi joinRoom:`, roomCode);
-          this.roomSocket.emit('joinRoom', joinData, (response) => {
-            console.log(`📥 [SOLO-${this.sessionId}] Ack reçu:`, response);
-            if (response && (response.roomEntry || response[0]?.roomEntry)) {
-              console.log(`✅ [SOLO-${this.sessionId}] Lobby rejoint (Ack), connexion au jeu...`);
-              this.selfPeerId = response.roomEntry?.selfPeerId || response[0]?.roomEntry?.selfPeerId;
-              this.connectToGame(serverHost, roomCode, nickname);
-              resolve();
-            } else {
-              console.error(`❌ [SOLO-${this.sessionId}] Échec joinRoom (Ack vide/invalide)`);
-            }
-          });
-        });
-        
-        // Écouter tous les events (debug) - EXACT same position as ranked bot
-        this.roomSocket.onAny((event, ...args) => {
-          console.log(`📥 [SOLO-${this.sessionId}] [ROOM] ${event}:`, JSON.stringify(args).substring(0, 150));
-        });
-        
-        this.roomSocket.on('connect_error', (err) => {
-          console.error(`❌ [SOLO-${this.sessionId}] Erreur room:`, err.message);
-          reject(err);
-        });
-      });
-    } catch (err) {
-      console.error(`❌ [SOLO-${this.sessionId}] Impossible de trouver/rejoindre le lobby:`, err);
-      throw err;
-    }
+          // Try to answer if we know it
+          this.botAnswer();
+        }
+      }
+    });
+    
+    // Challenge ended
+    this.gameSocket.on('endChallenge', (result) => {
+      // Check if user missed this question
+      if (!this.userAnswered && this.streak > 0) {
+        this.sendChat(`❌ Streak perdue à ${this.streak}!`);
+        this.streak = 0;
+      }
+      
+      // Save state periodically
+      if (this.questionsAsked % CONFIG.SAVE_STATE_INTERVAL === 0) {
+        this.saveState();
+      }
+      
+      // Learn the question
+      this.learnQuestion(result);
+    });
   }
   
   /**
