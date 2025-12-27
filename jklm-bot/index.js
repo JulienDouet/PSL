@@ -713,9 +713,11 @@ class JKLMBot {
           
           // Record the user's answer for speed leaderboard
           // Find the user's peerId and their response time
-          let userPeerId = userPeerIds.find(peerId => 
-            result.foundSourcesByPlayerPeerId && result.foundSourcesByPlayerPeerId[peerId]
-          );
+          let userPeerId = userPeerIds.find(peerId => {
+              const found = result.foundSourcesByPlayerPeerId && result.foundSourcesByPlayerPeerId[peerId];
+              console.log(`🔍 [DEBUG] Checking peerId ${peerId} (type ${typeof peerId}) -> found: ${found}`);
+              return found;
+          });
           
           // Fallback: if foundSourcesByPlayerPeerId is empty, find by fastest nickname
           if (!userPeerId && result.fastest) {
@@ -746,7 +748,7 @@ class JKLMBot {
               console.log(`⚠️ [SOLO] No elapsed time found for userPeerId ${userPeerId}`);
             }
           } else {
-            console.log(`⚠️ [SOLO] Could not find user peerId for recording answer`);
+            console.log(`⚠️ [SOLO] Could not record answer: userPeerId=${userPeerId}, currentChallenge=${!!this.currentChallenge}`);
           }
         } else {
           if (this.soloStreak > 0) {
