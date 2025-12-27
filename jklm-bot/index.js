@@ -996,7 +996,11 @@ class JKLMBot {
     
     console.log(`📋 [SOLO] Mode: ${this.soloModeType || 'NORMAL'}, Duration: ${duration}s`);
     
-    // Apply all rules with minimal delays
+    // STEP 1: Unlock rules panel (required to change rules)
+    this.gameSocket.emit('setRulesLocked', false);
+    console.log('  🔓 Panel règles ouvert');
+    
+    // STEP 2: Apply all rules
     this.gameSocket.emit('setRules', { scoring: 'constant' });
     console.log('  ✓ scoring: constant');
     
@@ -1005,6 +1009,10 @@ class JKLMBot {
     
     this.gameSocket.emit('setRules', { scoreGoal: 1000 });
     console.log('  ✓ scoreGoal: 1000');
+    
+    // STEP 3: Lock rules panel (allows game to start normally)
+    this.gameSocket.emit('setRulesLocked', true);
+    console.log('  🔒 Panel règles fermé');
   }
 
   findExpectedPlayer(nickname, auth) {
