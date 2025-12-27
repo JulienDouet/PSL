@@ -936,31 +936,42 @@ class JKLMBot {
     
     console.log(`📋 [SOLO] Mode: ${this.soloModeType || 'NORMAL'}, Duration: ${duration}s`);
     
-    // 1. Set scoring to constant (10 points per answer regardless of speed)
-    this.gameSocket.emit('setRules', { scoring: 'constant' });
-    console.log('  ✓ scoring: constant');
+    // IMPORTANT: dictionaryId EN PREMIER car changer de langue reset les autres paramètres !
+    // (like ranked bot applyRules)
+    this.gameSocket.emit('setRules', { dictionaryId: 'fr' });
+    console.log('  ✓ dictionaryId: fr');
     
-    // 2. Set challenge duration
+    // Delay before setting other rules
     setTimeout(() => {
       if (!this.gameSocket?.connected) return;
-      this.gameSocket.emit('setRules', { challengeDuration: duration });
-      console.log(`  ✓ challengeDuration: ${duration}`);
       
-      // 3. Set high score goal (max 1000 per JKLM limits)
+      // 1. Set scoring to constant (10 points per answer regardless of speed)
+      this.gameSocket.emit('setRules', { scoring: 'constant' });
+      console.log('  ✓ scoring: constant');
+      
+      // 2. Set challenge duration
       setTimeout(() => {
         if (!this.gameSocket?.connected) return;
-        this.gameSocket.emit('setRules', { scoreGoal: 1000 });
-        console.log('  ✓ scoreGoal: 1000');
+        this.gameSocket.emit('setRules', { challengeDuration: duration });
+        console.log(`  ✓ challengeDuration: ${duration}`);
         
-        // 4. Lock rules and wait for player
+        // 3. Set high score goal (max 1000 per JKLM limits)
         setTimeout(() => {
           if (!this.gameSocket?.connected) return;
-          this.gameSocket.emit('setRulesLocked', true);
-          console.log('🔒 [SOLO] Règles verrouillées, en attente du joueur...');
-        }, 200);
-      }, 200);
-    }, 200);
+          this.gameSocket.emit('setRules', { scoreGoal: 1000 });
+          console.log('  ✓ scoreGoal: 1000');
+          
+          // 4. Lock rules and wait for player
+          setTimeout(() => {
+            if (!this.gameSocket?.connected) return;
+            this.gameSocket.emit('setRulesLocked', true);
+            console.log('🔒 [SOLO] Règles verrouillées, en attente du joueur...');
+          }, 300);
+        }, 300);
+      }, 300);
+    }, 400);
   }
+
 
   findExpectedPlayer(nickname, auth) {
     // Cherche si ce joueur était attendu (pour récupérer son userId)
