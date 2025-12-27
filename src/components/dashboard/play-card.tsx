@@ -436,7 +436,7 @@ export function PlayCard() {
                 href="/solo" 
                 className="w-full flex items-center justify-center gap-2 h-12 px-4 rounded-lg border border-border bg-secondary/30 hover:bg-secondary/50 hover:border-primary/50 transition-all text-sm font-medium"
               >
-                🎯 Mode Solo (Entraînement)
+                🎯 {t.dashboard.play_card.solo}
               </a>
             )}
             {Object.keys(queueCounts).length > 0 && Object.values(queueCounts).some(c => c > 0) && (

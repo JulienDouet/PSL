@@ -92,7 +92,8 @@ export const en = {
       ranking: "ranking",
       room_code: "Room Code",
       notification_title: "🎮 Match found!",
-      notification_body: "Room {code} - Click to join"
+      notification_body: "Room {code} - Click to join",
+      solo: "Singleplayer (Training mode)"
     },
     discord_card: {
       title: "Join the Community",
