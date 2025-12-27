@@ -182,136 +182,127 @@ class SoloSession {
   
   /**
    * Connect to the JKLM room
-   * Like the ranked bot, we call /api/joinRoom to get server and register intent to join
+   * EXACT COPY of ranked bot's connect() method structure
    */
   async connectToRoom() {
-    console.log(`📡 [SOLO-${this.sessionId}] Calling /api/joinRoom (like ranked bot)...`);
+    const roomCode = this.roomCode;  // Use local variable like ranked bot
+    const nickname = CONFIG.BOT_NAME;
+    const language = 'fr-FR';
     
-    // The ranked bot ALWAYS calls /api/joinRoom even after createRoom
-    // This POST request might register the intent to join on JKLM's side
-    const res = await fetch('https://jklm.fun/api/joinRoom', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      },
-      body: JSON.stringify({ roomCode: this.roomCode })
-    });
+    console.log(`🎮 [SOLO-${this.sessionId}] Recherche du serveur pour le lobby ${roomCode}...`);
     
-    const data = await res.json();
-    console.log(`📡 [SOLO-${this.sessionId}] joinRoom API response:`, JSON.stringify(data));
-    
-    if (data.errorCode) throw new Error(`joinRoom error: ${data.errorCode}`);
-    if (!data.url) throw new Error('No server URL in joinRoom response');
-    
-    const serverUrl = new URL(data.url);
-    const serverHost = serverUrl.host;
-    console.log(`📡 [SOLO-${this.sessionId}] Server from joinRoom API: ${serverHost}`);
-    
-    // Connect to room socket with timeout
-    return new Promise((resolve, reject) => {
-      const connectionTimeout = setTimeout(() => {
-        console.error(`⏰ [SOLO-${this.sessionId}] Room socket connection timeout (15s)`);
-        reject(new Error('Room socket connection timeout'));
-      }, 15000);
-      
-      // Match EXACTLY the ranked bot's socket options (no forceNew, no timeout)
-      this.roomSocket = io(`wss://${serverHost}`, {
-        transports: ['websocket'],
-        path: '/socket.io/',
-        query: { EIO: '4', transport: 'websocket' },
-        extraHeaders: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
+    try {
+      // Get room server - EXACT same as ranked bot's getRoomServer()
+      const response = await fetch('https://jklm.fun/api/joinRoom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomCode })
       });
       
-      this.roomSocket.on('connect', () => {
-        console.log(`🔗 [SOLO-${this.sessionId}] Room socket connected`);
-        
-        // Use callback format like ranked bot
-        const joinData = {
-          roomCode: this.roomCode,
-          userToken: this.userToken,
-          nickname: CONFIG.BOT_NAME,
-          language: 'fr-FR'
-        };
-        
-        console.log(`📤 [SOLO-${this.sessionId}] Sending joinRoom...`);
-        this.roomSocket.emit('joinRoom', joinData, (response) => {
-          console.log(`📥 [SOLO-${this.sessionId}] joinRoom Ack:`, JSON.stringify(response));
-          if (response && (response.roomEntry || response[0]?.roomEntry)) {
-            console.log(`✅ [SOLO-${this.sessionId}] Lobby rejoint via Ack`);
-            this.selfPeerId = response.roomEntry?.selfPeerId || response[0]?.roomEntry?.selfPeerId;
-            this.connectToGame(serverHost).then(resolve).catch(reject);
-          } else {
-            // Fallback: wait for joinedRoom event
-            console.log(`⚠️ [SOLO-${this.sessionId}] Ack vide, en attente de joinedRoom event...`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      
+      if (data.errorCode) throw new Error(data.errorCode);
+      if (!data.url) throw new Error('No URL in response');
+      
+      const url = new URL(data.url);
+      const serverHost = url.host;
+      console.log(`🌐 [SOLO-${this.sessionId}] Serveur trouvé: ${serverHost}`);
+      
+      const socketUrl = `wss://${serverHost}`;
+      console.log(`🔌 [SOLO-${this.sessionId}] Connexion WebSocket vers ${socketUrl}...`);
+      
+      // Étape 1: Connexion au lobby (room) - EXACT same as ranked bot
+      return new Promise((resolve, reject) => {
+        this.roomSocket = io(socketUrl, {
+          transports: ['websocket'],
+          path: '/socket.io/',
+          query: { EIO: '4', transport: 'websocket' },
+          extraHeaders: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
           }
         });
+        
+        this.roomSocket.on('connect', () => {
+          console.log(`✅ [SOLO-${this.sessionId}] Connecté à ${serverHost} (room)`);
+          
+          // Envoyer joinRoom avec callback (Ack) - EXACT format as ranked bot
+          const joinData = {
+            roomCode,  // Use local variable, NOT this.roomCode
+            userToken: this.userToken,
+            nickname,
+            language,
+          };
+          
+          console.log(`📤 [SOLO-${this.sessionId}] Envoi joinRoom:`, roomCode);
+          this.roomSocket.emit('joinRoom', joinData, (response) => {
+            console.log(`📥 [SOLO-${this.sessionId}] Ack reçu:`, response);
+            if (response && (response.roomEntry || response[0]?.roomEntry)) {
+              console.log(`✅ [SOLO-${this.sessionId}] Lobby rejoint (Ack), connexion au jeu...`);
+              this.selfPeerId = response.roomEntry?.selfPeerId || response[0]?.roomEntry?.selfPeerId;
+              this.connectToGame(serverHost, roomCode, nickname);
+              resolve();
+            } else {
+              console.error(`❌ [SOLO-${this.sessionId}] Échec joinRoom (Ack vide/invalide)`);
+            }
+          });
+        });
+        
+        // Écouter tous les events (debug) - EXACT same position as ranked bot
+        this.roomSocket.onAny((event, ...args) => {
+          console.log(`📥 [SOLO-${this.sessionId}] [ROOM] ${event}:`, JSON.stringify(args).substring(0, 150));
+        });
+        
+        this.roomSocket.on('connect_error', (err) => {
+          console.error(`❌ [SOLO-${this.sessionId}] Erreur room:`, err.message);
+          reject(err);
+        });
       });
-      
-      // Fallback listener if Ack doesn't work
-      this.roomSocket.on('joinedRoom', (roomData) => {
-        clearTimeout(connectionTimeout);
-        console.log(`✅ [SOLO-${this.sessionId}] Joined room via event, selfPeerId:`, roomData.selfPeerId);
-        if (!this.selfPeerId) {
-          this.selfPeerId = roomData.selfPeerId;
-          this.connectToGame(serverHost).then(resolve).catch(reject);
-        }
-      });
-      
-      this.roomSocket.on('connect_error', (err) => {
-        clearTimeout(connectionTimeout);
-        console.error(`❌ [SOLO-${this.sessionId}] Room socket connect_error:`, err.message);
-        reject(err);
-      });
-      
-      this.roomSocket.on('error', (err) => {
-        clearTimeout(connectionTimeout);
-        console.error(`❌ [SOLO-${this.sessionId}] Room socket error:`, err.message || err);
-        reject(err);
-      });
-      
-      this.roomSocket.on('disconnect', (reason) => {
-        console.log(`🔌 [SOLO-${this.sessionId}] Room socket disconnected: ${reason}`);
-      });
-      
-      // Debug: log all events
-      this.roomSocket.onAny((event, ...args) => {
-        console.log(`📥 [SOLO-${this.sessionId}] [ROOM] ${event}:`, JSON.stringify(args).substring(0, 150));
-      });
-    });
+    } catch (err) {
+      console.error(`❌ [SOLO-${this.sessionId}] Impossible de trouver/rejoindre le lobby:`, err);
+      throw err;
+    }
   }
   
   /**
-   * Connect to game socket
+   * Connect to game socket - EXACT same as ranked bot's connectToGame
    */
-  async connectToGame(serverHost) {
-    return new Promise((resolve, reject) => {
-      this.gameSocket = io(`wss://${serverHost}`, {
-        path: '/socket.io/',  // CRITICAL: trailing slash!
-        transports: ['websocket'],
-        query: { EIO: '4', transport: 'websocket' },
-        forceNew: true
-      });
+  connectToGame(serverHost, roomCode, nickname) {
+    // Étape 2: Connexion au jeu Popsauce sur le MÊME serveur
+    const socketUrl = `wss://${serverHost}`;
+    this.gameSocket = io(socketUrl, {
+      transports: ['websocket'],
+      path: '/socket.io/',
+      query: { EIO: '4', transport: 'websocket' },
+    });
+
+    this.gameSocket.on('connect', () => {
+      console.log(`✅ [SOLO-${this.sessionId}] Connecté à ${serverHost} (game)`);
       
-      this.gameSocket.on('connect', () => {
-        console.log(`🎮 [SOLO-${this.sessionId}] Game socket connected`);
-        // Use same format as ranked bot: 3 separate arguments
-        console.log(`📤 [SOLO-${this.sessionId}] Sending joinGame...`);
-        this.gameSocket.emit('joinGame', 'popsauce', this.roomCode, this.userToken);
-      });
+      // Format: joinGame(gameType, roomCode, userToken) - EXACT same format as ranked bot
+      console.log(`📤 [SOLO-${this.sessionId}] Envoi joinGame...`);
+      this.gameSocket.emit('joinGame', 'popsauce', roomCode, this.userToken);
+    });
+
+    // Écouter les events du jeu - use 'setup' like ranked bot, not 'joinedGame'
+    this.gameSocket.on('setup', (data) => {
+      console.log(`📋 [SOLO-${this.sessionId}] [SETUP] Setup reçu!`);
+      console.log(`📋 [SOLO-${this.sessionId}] [SETUP] selfPeerId: ${data.selfPeerId}`);
+      console.log(`📋 [SOLO-${this.sessionId}] [SETUP] selfRoles: ${JSON.stringify(data.selfRoles)}`);
+      this.selfPeerId = data.selfPeerId;
+      this.isLeader = data.selfRoles && data.selfRoles.includes('leader');
+      console.log(`📋 [SOLO-${this.sessionId}] [SETUP] isLeader: ${this.isLeader}`);
       
-      this.gameSocket.on('joinedGame', () => {
-        console.log(`✅ [SOLO-${this.sessionId}] Joined game`);
-        this.setupGameHandlers();
-        
-        // Configure rules for solo mode
-        this.configureRules();
-        resolve();
-      });
-      
-      this.gameSocket.on('connect_error', reject);
+      // Setup game handlers and configure rules
+      this.setupGameHandlers();
+      this.configureRules();
+    });
+
+    // Debug: log all game events
+    this.gameSocket.onAny((event, ...args) => {
+      if (!['setPlayerState'].includes(event)) {
+        console.log(`📥 [SOLO-${this.sessionId}] [GAME] ${event}:`, JSON.stringify(args).substring(0, 100));
+      }
     });
   }
   
