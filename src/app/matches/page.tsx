@@ -43,6 +43,20 @@ interface RecentMatch {
   players: RecentMatchPlayer[];
 }
 
+interface SoloSession {
+  id: string;
+  category: string;
+  mode: string;
+  roomCode: string | null;
+  streak: number;
+  bestStreak: number;
+  startedAt: string;
+  user: {
+    id: string;
+    name: string;
+  };
+}
+
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
@@ -62,9 +76,10 @@ function formatTimeAgo(dateString: string): string {
 }
 
 export default function MatchesPage() {
-  const [activeTab, setActiveTab] = useState<'live' | 'recent'>('live');
+  const [activeTab, setActiveTab] = useState<'live' | 'recent' | 'solo'>('live');
   const [activeMatches, setActiveMatches] = useState<ActiveMatch[]>([]);
   const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
+  const [soloSessions, setSoloSessions] = useState<SoloSession[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -113,15 +128,31 @@ export default function MatchesPage() {
     }
   };
 
+  const fetchSoloSessions = async () => {
+    try {
+      const res = await fetch('/api/solo/sessions/active');
+      if (res.ok) {
+        const data = await res.json();
+        setSoloSessions(data.sessions || []);
+      }
+    } catch (err) {
+      console.error('Error fetching solo sessions:', err);
+    }
+  };
+
   // Initial fetch based on tab
   useEffect(() => {
     setLoading(true);
     if (activeTab === 'live') {
       fetchActiveMatches().then(() => setLoading(false));
-      const interval = setInterval(fetchActiveMatches, 15000); // 15s au lieu de 5s
+      const interval = setInterval(fetchActiveMatches, 15000);
       return () => clearInterval(interval);
-    } else {
+    } else if (activeTab === 'recent') {
       fetchRecentMatches().then(() => setLoading(false));
+    } else if (activeTab === 'solo') {
+      fetchSoloSessions().then(() => setLoading(false));
+      const interval = setInterval(fetchSoloSessions, 10000);
+      return () => clearInterval(interval);
     }
   }, [activeTab]);
 
@@ -186,6 +217,19 @@ export default function MatchesPage() {
               >
                 🕒 {t.matches.tab_finished}
               </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setActiveTab('solo')}
+                  className={`px-6 py-2 rounded-full font-bold transition-all ${
+                    activeTab === 'solo'
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg scale-105'
+                      : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
+                  }`}
+                >
+                  🎯 {t.matches.tab_solo || 'Solo'}
+                  {soloSessions.length > 0 && <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">{soloSessions.length}</span>}
+                </button>
+              )}
             </div>
           </div>
 
@@ -404,7 +448,59 @@ export default function MatchesPage() {
                 ))}
               </div>
             )
-          )}
+          ) : activeTab === 'solo' ? (
+            /* SOLO SESSIONS VIEW (Admin only) */
+            soloSessions.length === 0 ? (
+              <Card className="glass-card">
+                <CardContent className="py-12 text-center">
+                  <p className="text-xl text-muted-foreground">🎯 {t.matches.solo_no_sessions || 'Aucune session solo active'}</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {t.matches.solo_will_appear || 'Les sessions solo apparaîtront ici.'}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {soloSessions.map((session) => (
+                  <Card key={session.id} className="glass-card overflow-hidden">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <span className="text-2xl">🎯</span>
+                          <div>
+                            <div className="font-bold">{session.user.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {getCategoryLabel(session.category)} • {session.mode}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          {session.roomCode ? (
+                            <a 
+                              href={`https://jklm.fun/${session.roomCode}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-lg font-mono font-bold text-primary hover:underline"
+                            >
+                              {session.roomCode}
+                            </a>
+                          ) : (
+                            <span className="text-sm text-muted-foreground animate-pulse">
+                              Création...
+                            </span>
+                          )}
+                          <div className="text-sm text-muted-foreground mt-1">
+                            🔥 Streak: {session.streak} (Best: {session.bestStreak})
+                          </div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+            )
+          ) : null}
         </div>
       </main>
     </div>
