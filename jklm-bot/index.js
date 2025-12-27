@@ -594,8 +594,10 @@ class JKLMBot {
         rawChallenge: challenge  // Store for learning
       };
       
-      // [SOLO MODE] Don't answer immediately - wait for user to answer first
-      // The bot will answer after the user in setPlayerState handler
+      // [SOLO MODE] Pre-fetch answer immediately so it's ready when user answers
+      if (this.soloMode) {
+        this.currentChallenge.prefetchedAnswerPromise = this.lookupAnswer(questionHash);
+      }
     });
 
     this.gameSocket.on('setPlayerState', (peerId, state) => {
@@ -617,7 +619,8 @@ class JKLMBot {
           if (!this.currentChallenge.botAnswered) {
             this.currentChallenge.botAnswered = true;
             console.log(`✅ [SOLO] Utilisateur a trouvé ! Bot va répondre...`);
-            this.tryAnswer(this.currentChallenge.questionHash);
+            // Use prefetched answer for maximum speed
+            this.submitPrefetchedAnswer();
           }
         }
       }
@@ -989,15 +992,28 @@ class JKLMBot {
   async tryAnswer(questionHash) {
     if (!this.soloMode) return;
     
+    // Normal lookup (fallback or manual call)
     const answer = await this.lookupAnswer(questionHash);
     if (answer && this.gameSocket?.connected) {
-      setTimeout(() => {
-        if (this.gameSocket?.connected) {
-          this.gameSocket.emit('submitGuess', answer);
-          console.log(`🤖 [SOLO] Bot répond: ${answer}`);
+        this.gameSocket.emit('submitGuess', answer);
+        console.log(`🤖 [SOLO] Bot répond (tryAnswer): ${answer}`);
+    }
+  }
+
+  /**
+   * [SOLO MODE] Submit the answer that was pre-fetched at start of round
+   */
+  async submitPrefetchedAnswer() {
+    if (!this.currentChallenge?.prefetchedAnswerPromise) return;
+
+    try {
+        const answer = await this.currentChallenge.prefetchedAnswerPromise;
+        if (answer && this.gameSocket?.connected) {
+            this.gameSocket.emit('submitGuess', answer);
+            console.log(`⚡ [SOLO] Bot répond (INSTANT): ${answer}`);
         }
-      }, 1);
-      //submit answer after 1ms delay
+    } catch (err) {
+        console.log(`⚠️ [SOLO] Prefetch failed: ${err.message}`);
     }
   }
 
