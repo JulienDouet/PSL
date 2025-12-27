@@ -660,7 +660,8 @@ class JKLMBot {
                 });
             }
         }
-        this.currentChallenge = null;
+        // Match answers collected
+        // this.currentChallenge = null; // MOVED TO END (after solo logic)
       }
       
       let message = '';
@@ -713,11 +714,9 @@ class JKLMBot {
           
           // Record the user's answer for speed leaderboard
           // Find the user's peerId and their response time
-          let userPeerId = userPeerIds.find(peerId => {
-              const found = result.foundSourcesByPlayerPeerId && result.foundSourcesByPlayerPeerId[peerId];
-              console.log(`🔍 [DEBUG] Checking peerId ${peerId} (type ${typeof peerId}) -> found: ${found}`);
-              return found;
-          });
+          let userPeerId = userPeerIds.find(peerId => 
+            result.foundSourcesByPlayerPeerId && result.foundSourcesByPlayerPeerId[peerId]
+          );
           
           // Fallback: if foundSourcesByPlayerPeerId is empty, find by fastest nickname
           if (!userPeerId && result.fastest) {
@@ -761,6 +760,10 @@ class JKLMBot {
           this.updateStreakInDb();
         }
       }
+
+      
+      // Reset current challenge after processing everything
+      this.currentChallenge = null;
     });
 
     this.gameSocket.on('setMilestone', (milestone) => {
