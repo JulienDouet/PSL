@@ -1252,5 +1252,10 @@ async function main() {
   }
 }
 
-main();
+// Only run main() if this file is executed directly, not when imported as a module
+import { fileURLToPath } from 'url';
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main();
+}
+
 export { JKLMBot };
