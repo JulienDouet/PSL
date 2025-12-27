@@ -33,10 +33,10 @@ export function Navbar() {
   useEffect(() => {
     async function fetchLiveMatches() {
       try {
-        const res = await fetch('/api/matches?status=IN_PROGRESS&limit=0');
+        const res = await fetch('/api/matches/active', { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
-          setLiveMatchCount(data.total || 0);
+          setLiveMatchCount(data.matches?.length || 0);
         }
       } catch (err) {
         // Ignore errors
