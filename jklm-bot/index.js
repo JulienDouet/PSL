@@ -1048,7 +1048,11 @@ class JKLMBot {
    * [SOLO MODE] Record a solo answer for speed leaderboard
    */
   async recordSoloAnswer(data) {
-    if (!this.soloMode || !this.userId) return;
+    if (!this.soloMode) return;
+    if (!this.userId) {
+        console.error('❌ [SOLO] recordSoloAnswer skipped: userId is missing!');
+        return;
+    }
     
     try {
       const res = await fetch(`${this.callbackUrl}/api/solo/record-answer`, {
@@ -1070,7 +1074,8 @@ class JKLMBot {
       if (res.ok) {
         console.log(`📊 [SOLO] Answer recorded: ${data.playerAnswer} in ${data.elapsedTime}ms`);
       } else {
-        console.log(`⚠️ [SOLO] Failed to record answer: ${res.status}`);
+        const errorText = await res.text();
+        console.log(`⚠️ [SOLO] Failed to record answer: ${res.status} - ${errorText}`);
       }
     } catch (err) {
       console.log(`⚠️ [SOLO] Error recording answer: ${err.message}`);
