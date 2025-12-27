@@ -40,6 +40,13 @@ class JKLMBot {
     this.testMode = false;
     this.logBuffer = [];    // Buffer for SSE streaming
     this.httpServer = null; // HTTP server for log streaming
+    
+    // Solo mode properties
+    this.soloMode = false;
+    this.soloModeType = null;  // HARDCORE / CHALLENGE / NORMAL
+    this.soloGameStarted = false;
+    this.sessionId = null;
+    this.userId = null;
   }
   
   // Structured logging with levels (for test mode streaming)
@@ -316,9 +323,10 @@ class JKLMBot {
              // Ignore self
              if (player.peerId === this.selfPeerId) return;
              
-             console.log(`👤 [SOLO] Joueur rejoint: ${player.nickname}`);
+             const nickname = player.profile?.nickname || `Player${player.peerId}`;
+             console.log(`👤 [SOLO] Joueur rejoint: ${nickname}`);
              this.players.set(player.peerId, {
-               nickname: player.nickname,
+               nickname: nickname,
                peerId: player.peerId,
                auth: player.profile?.auth || null,
                score: 0
