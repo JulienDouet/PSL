@@ -388,10 +388,10 @@ export default function SoloPage() {
                     </div>
                     <div className="text-left">
                       <div className="font-bold flex items-center gap-2">
-                        {t.solo[`mode_${mode}` as keyof typeof t.solo]}
+                        {t.solo[`mode_${mode.toLowerCase()}` as keyof typeof t.solo]}
                       </div>
                       <div className={`text-sm ${selectedMode === mode ? 'text-white/80' : 'text-muted-foreground'}`}>
-                        {t.solo[`mode_${mode}_desc` as keyof typeof t.solo]}
+                        {t.solo[`mode_${mode.toLowerCase()}_desc` as keyof typeof t.solo]}
                       </div>
                     </div>
                   </button>
