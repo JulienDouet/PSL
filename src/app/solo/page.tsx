@@ -260,15 +260,15 @@ export default function SoloPage() {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* Streak Display */}
+              {/* Best Streak Display */}
               <div className="text-center py-6 bg-secondary/30 rounded-xl">
                 <div className="text-6xl font-black text-primary mb-2">
-                  🔥 {activeSession.streak}
+                  🔥 {activeSession.bestStreak}
                 </div>
-                <p className="text-muted-foreground">Streak actuelle</p>
-                {activeSession.bestStreak > 0 && (
-                  <p className="text-sm text-amber-400 mt-1">
-                    ⭐ Record session: {activeSession.bestStreak}
+                <p className="text-muted-foreground">Meilleure streak</p>
+                {activeSession.streak > 0 && (
+                  <p className="text-sm text-green-400 mt-1">
+                    ✨ En cours: {activeSession.streak}
                   </p>
                 )}
               </div>

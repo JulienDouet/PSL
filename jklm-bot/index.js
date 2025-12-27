@@ -710,27 +710,46 @@ class JKLMBot {
           
           // Record the user's answer for speed leaderboard
           // Find the user's peerId and their response time
-          const userPeerId = userPeerIds.find(peerId => 
+          let userPeerId = userPeerIds.find(peerId => 
             result.foundSourcesByPlayerPeerId && result.foundSourcesByPlayerPeerId[peerId]
           );
+          
+          // Fallback: if foundSourcesByPlayerPeerId is empty, find by fastest nickname
+          if (!userPeerId && result.fastest) {
+            const fastestPlayer = [...this.players.values()].find(p => p.nickname === result.fastest);
+            if (fastestPlayer && fastestPlayer.peerId !== this.selfPeerId) {
+              userPeerId = fastestPlayer.peerId;
+            }
+          }
+          
           if (userPeerId && this.currentChallenge) {
             const userTime = this.currentChallenge.playerTimes.get(userPeerId);
-            const playerAnswer = result.foundSourcesByPlayerPeerId?.[userPeerId];
-            if (userTime) {
+            const playerAnswer = result.foundSourcesByPlayerPeerId?.[userPeerId] || result.source;
+            
+            // Use result.fastest time if playerTimes doesn't have it
+            const elapsedTime = userTime || (result.elapsedTime ? result.elapsedTime : null);
+            
+            if (elapsedTime) {
               this.recordSoloAnswer({
                 question: this.currentChallenge.rawChallenge?.prompt,
                 questionHash: this.currentChallenge.questionHash,
                 answer: result.source,
                 playerAnswer: playerAnswer,
-                elapsedTime: userTime,
+                elapsedTime: elapsedTime,
                 roundIndex: this.currentChallenge.roundIndex || 0,
                 peerId: userPeerId
               });
+            } else {
+              console.log(`⚠️ [SOLO] No elapsed time found for userPeerId ${userPeerId}`);
             }
+          } else {
+            console.log(`⚠️ [SOLO] Could not find user peerId for recording answer`);
           }
         } else {
           if (this.soloStreak > 0) {
             console.log(`💔 [SOLO] Streak perdu ! (était: ${this.soloStreak})`);
+            // Send chat message about lost streak
+            this.sendChat(`💔 Streak perdue ! (${this.soloStreak} consécutives)`);
           }
           this.soloStreak = 0;
           // Persist reset streak to database
