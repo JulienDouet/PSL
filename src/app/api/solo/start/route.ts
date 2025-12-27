@@ -4,11 +4,7 @@ import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { spawn } from 'child_process';
 import path from 'path';
-
-// In-memory map to store session-to-PID mapping for bot cleanup
-// Key: sessionId, Value: botPid
-export const sessionBotPids = new Map<string, number>();
-
+import { sessionBotPids } from '@/lib/solo-pids';
 import type { Category, SoloMode } from '@prisma/client';
 
 // Solo bot connection (runs in same process for now)

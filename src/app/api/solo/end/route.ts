@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { sessionBotPids } from '../start/route';
+import { sessionBotPids } from '@/lib/solo-pids';
 
 export async function POST(req: Request) {
   try {
