@@ -333,29 +333,22 @@ class JKLMBot {
              // Auto-start game when player joins
              if (!this.soloGameStarted) {
                this.soloGameStarted = true;
-               console.log('🚀 [SOLO] Démarrage automatique de la partie...');
+               console.log('🚀 [SOLO] Préparation de la partie...');
                
-               // First, join the round as participant (required for game to count 2 players)
-               if (this.gameSocket?.connected) {
-                 console.log('📤 [SOLO] joinRound envoyé (bot devient participant)');
-                 this.gameSocket.emit('joinRound');
-               }
+               // STEP 1: Apply rules FIRST (before joining round)
+               console.log('� [SOLO] Application des règles avant de rejoindre...');
+               this.applySoloRulesSync();
                
-               // Apply rules NOW (right before starting), then start after rules are set
+               // STEP 2: Wait for rules to be processed, THEN join round
                setTimeout(() => {
                  if (!this.gameSocket?.connected) return;
                  
-                 // Apply solo-specific rules
-                 this.applySoloRulesSync();
+                 console.log('📤 [SOLO] joinRound envoyé (bot devient participant)');
+                 this.gameSocket.emit('joinRound');
                  
-                 // Start the round after rules are applied
-                 setTimeout(() => {
-                   if (this.gameSocket?.connected) {
-                     this.gameSocket.emit('startRoundNow');
-                     console.log('📤 [SOLO] startRoundNow envoyé');
-                   }
-                 }, 1500);  // Wait for rules to be processed
-               }, 500);
+                 // STEP 3: Let the natural countdown run (no startRoundNow needed)
+                 console.log('⏳ [SOLO] Countdown naturel en cours...');
+               }, 1000);  // 1s delay for rules to be processed
              }
            });
            
