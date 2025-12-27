@@ -4,6 +4,11 @@ import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { spawn } from 'child_process';
 import path from 'path';
+
+// In-memory map to store session-to-PID mapping for bot cleanup
+// Key: sessionId, Value: botPid
+export const sessionBotPids = new Map<string, number>();
+
 import type { Category, SoloMode } from '@prisma/client';
 
 // Solo bot connection (runs in same process for now)
@@ -103,6 +108,7 @@ export async function POST(req: Request) {
       '--session', soloSession.id,
       '--user', session.user.id,
       '--category', category,
+      '--mode', mode,       // HARDCORE / CHALLENGE / NORMAL
       callbackUrl           // Callback URL for room_created notification
     ], {
       detached: isDetached,
@@ -112,6 +118,18 @@ export async function POST(req: Request) {
 
     const botPid = child.pid;
     console.log(`🤖 [SOLO] Bot spawned with PID: ${botPid}`);
+
+    // Store PID for cleanup on session end
+    if (botPid) {
+      sessionBotPids.set(soloSession.id, botPid);
+      console.log(`📋 [SOLO] Stored PID ${botPid} for session ${soloSession.id}`);
+    }
+
+    // Clean up PID from map when process exits
+    child.on('exit', (code, signal) => {
+      console.log(`🛑 [SOLO] Bot process exited: code=${code}, signal=${signal}`);
+      sessionBotPids.delete(soloSession.id);
+    });
 
     // Log stdout/stderr
     child.stdout.on('data', (data) => {

@@ -302,6 +302,45 @@ class JKLMBot {
       if (this.isLeader) {
          console.log('👑 Je suis LEADER!');
          
+         // === SOLO MODE ===
+         if (this.soloMode) {
+           console.log('🎯 [SOLO] Configuration du mode solo...');
+           
+           // Apply solo-specific rules after short delay
+           setTimeout(() => {
+             this.applySoloRules();
+           }, 500);
+           
+           // Listen for player joining to auto-start
+           this.gameSocket.on('addPlayer', (player) => {
+             // Ignore self
+             if (player.peerId === this.selfPeerId) return;
+             
+             console.log(`👤 [SOLO] Joueur rejoint: ${player.nickname}`);
+             this.players.set(player.peerId, {
+               nickname: player.nickname,
+               peerId: player.peerId,
+               auth: player.profile?.auth || null,
+               score: 0
+             });
+             
+             // Auto-start game when player joins
+             if (!this.soloGameStarted) {
+               this.soloGameStarted = true;
+               console.log('🚀 [SOLO] Démarrage automatique de la partie...');
+               setTimeout(() => {
+                 if (this.gameSocket?.connected) {
+                   this.gameSocket.emit('startRoundNow');
+                   console.log('📤 [SOLO] startRoundNow envoyé');
+                 }
+               }, 2000);  // 2s delay for player to settle
+             }
+           });
+           
+           return;  // Skip ranked mode logic
+         }
+         
+         // === RANKED MODE ===
          // Si on attend des joueurs, verrouiller les règles pour empêcher le démarrage
          if (this.expectedPlayers.length > 0) {
              console.log('🔒 Verrouillage des règles (en attente de joueurs)...');
@@ -866,6 +905,55 @@ class JKLMBot {
     }, 300);
   }
 
+  /**
+   * Apply solo-specific rules:
+   * - Scoring: constant (10 points per answer)
+   * - Challenge duration based on mode (HARDCORE=5s, CHALLENGE=8s, NORMAL=12s)
+   * - High score goal to prevent early game end
+   */
+  applySoloRules() {
+    console.log('🎯 [SOLO] Application des règles solo...');
+    if (!this.gameSocket?.connected) {
+      console.log('❌ [SOLO] gameSocket non connecté, abandon applySoloRules');
+      return;
+    }
+    
+    // Determine challenge duration based on mode
+    const modeDurations = {
+      'HARDCORE': 5,
+      'CHALLENGE': 8,
+      'NORMAL': 12
+    };
+    const duration = modeDurations[this.soloModeType] || 12;
+    
+    console.log(`📋 [SOLO] Mode: ${this.soloModeType || 'NORMAL'}, Duration: ${duration}s`);
+    
+    // 1. Set scoring to constant (10 points per answer regardless of speed)
+    this.gameSocket.emit('setRules', { scoring: 'constant' });
+    console.log('  ✓ scoring: constant');
+    
+    // 2. Set challenge duration
+    setTimeout(() => {
+      if (!this.gameSocket?.connected) return;
+      this.gameSocket.emit('setRules', { challengeDuration: duration });
+      console.log(`  ✓ challengeDuration: ${duration}`);
+      
+      // 3. Set high score goal (max 1000 per JKLM limits)
+      setTimeout(() => {
+        if (!this.gameSocket?.connected) return;
+        this.gameSocket.emit('setRules', { scoreGoal: 1000 });
+        console.log('  ✓ scoreGoal: 1000');
+        
+        // 4. Lock rules and wait for player
+        setTimeout(() => {
+          if (!this.gameSocket?.connected) return;
+          this.gameSocket.emit('setRulesLocked', true);
+          console.log('🔒 [SOLO] Règles verrouillées, en attente du joueur...');
+        }, 200);
+      }, 200);
+    }, 200);
+  }
+
   findExpectedPlayer(nickname, auth) {
     // Cherche si ce joueur était attendu (pour récupérer son userId)
     if (!auth && !nickname) return null;
@@ -1119,6 +1207,12 @@ async function main() {
       if (args[i + 1]) {
         bot.userId = args[i + 1];
         console.log('👤 User ID:', bot.userId);
+        i++;
+      }
+    } else if (args[i] === '--mode') {
+      if (args[i + 1]) {
+        bot.soloModeType = args[i + 1];
+        console.log('🎮 Solo mode type:', bot.soloModeType);
         i++;
       }
     } else if (args[i].startsWith('http')) {

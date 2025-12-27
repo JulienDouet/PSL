@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
+import { sessionBotPids } from '../start/route';
 
 export async function POST(req: Request) {
   try {
@@ -30,6 +31,23 @@ export async function POST(req: Request) {
     // Determine final status
     const finalStatus = reason === 'TIMEOUT' ? 'TIMEOUT' : 
                         reason === 'ABANDONED' ? 'ABANDONED' : 'COMPLETED';
+
+    // Kill the bot process if running
+    const botPid = sessionBotPids.get(sessionId);
+    if (botPid) {
+      console.log(`🛑 [SOLO] Killing bot process PID ${botPid} for session ${sessionId}`);
+      try {
+        process.kill(botPid, 'SIGTERM');
+        sessionBotPids.delete(sessionId);
+        console.log(`✅ [SOLO] Bot process killed successfully`);
+      } catch (killError: any) {
+        // Process might already be dead
+        console.log(`⚠️ [SOLO] Could not kill bot process: ${killError.message}`);
+        sessionBotPids.delete(sessionId);
+      }
+    } else {
+      console.log(`ℹ️ [SOLO] No bot PID found for session ${sessionId} (may already be terminated)`);
+    }
 
     // Update session
     const updatedSession = await prisma.soloSession.update({
